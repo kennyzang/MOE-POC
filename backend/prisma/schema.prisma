@@ -1,0 +1,298 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users & Auth ───────────────────────────────────────────────
+
+model User {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  password    String
+  displayName String
+  email       String?
+  role        String   // student, teacher, parent, admin, manager, finance, admissions
+  avatar      String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student  Student?
+  teacher  Teacher?
+  parent   Parent?
+}
+
+// ─── Student ────────────────────────────────────────────────────
+
+model Student {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  studentId     String   @unique // e.g. "2026001"
+  dateOfBirth   DateTime?
+  gender        String?
+  nationality   String?
+  gradeLevel    String?  // e.g. "Year 7"
+  className     String?  // e.g. "7A"
+  enrollmentStatus String @default("pending") // pending, enrolled, graduated
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id])
+  parentLinks   ParentStudent[]
+  enrollments   Enrollment[]
+  attendances   AttendanceRecord[]
+  grades        Grade[]
+}
+
+// ─── Teacher ────────────────────────────────────────────────────
+
+model Teacher {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  staffId         String   @unique
+  designation     String?
+  department      String?
+  qualification   String?
+  subjects        String?  // comma-separated
+  joinDate        DateTime?
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id])
+  certifications  Certification[]
+  courseAssignments CourseAssignment[]
+}
+
+// ─── Parent ─────────────────────────────────────────────────────
+
+model Parent {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  phone       String?
+  occupation  String?
+  relationship String? // father, mother, guardian
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+  childLinks  ParentStudent[]
+}
+
+model ParentStudent {
+  id        String  @id @default(uuid())
+  parentId  String
+  studentId String
+
+  parent    Parent  @relation(fields: [parentId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id])
+
+  @@unique([parentId, studentId])
+}
+
+// ─── Academic Structure ─────────────────────────────────────────
+
+model School {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  type      String   // primary, secondary
+  address   String?
+  phone     String?
+  principal String?
+  createdAt DateTime @default(now())
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  gradeLevel  String?  // which year/grade this course is for
+  creditHours Int      @default(1)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments    CourseAssignment[]
+  enrollments    Enrollment[]
+  attendanceSessions AttendanceSession[]
+  gradeItems     GradeItem[]
+}
+
+model CourseAssignment {
+  id        String  @id @default(uuid())
+  courseId   String
+  teacherId  String
+  semester   String? // e.g. "2026-S1"
+  schedule   String? // e.g. "Mon 08:00-09:30"
+
+  course    Course  @relation(fields: [courseId], references: [id])
+  teacher   Teacher @relation(fields: [teacherId], references: [id])
+
+  @@unique([courseId, teacherId, semester])
+}
+
+model Enrollment {
+  id          String   @id @default(uuid())
+  studentId   String
+  courseId     String
+  semester    String?
+  status      String   @default("enrolled") // enrolled, dropped, completed
+  enrolledAt  DateTime @default(now())
+
+  student     Student  @relation(fields: [studentId], references: [id])
+  course      Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([studentId, courseId, semester])
+}
+
+// ─── Attendance ─────────────────────────────────────────────────
+
+model AttendanceSession {
+  id        String   @id @default(uuid())
+  courseId   String
+  date      DateTime
+  topic     String?
+  token     String?  @unique
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+
+  course    Course   @relation(fields: [courseId], references: [id])
+  records   AttendanceRecord[]
+}
+
+model AttendanceRecord {
+  id          String   @id @default(uuid())
+  sessionId   String
+  studentId   String
+  status      String   // present, absent, late, excused
+  checkedInAt DateTime?
+
+  session     AttendanceSession @relation(fields: [sessionId], references: [id])
+  student     Student           @relation(fields: [studentId], references: [id])
+
+  @@unique([sessionId, studentId])
+}
+
+// ─── Grades ─────────────────────────────────────────────────────
+
+model GradeItem {
+  id          String   @id @default(uuid())
+  courseId     String
+  name        String   // e.g. "Quiz 1", "Midterm Exam"
+  type        String   // quiz, exam, assignment, project
+  maxScore    Float
+  weight      Float    @default(1.0)
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+
+  course      Course   @relation(fields: [courseId], references: [id])
+  grades      Grade[]
+}
+
+model Grade {
+  id          String   @id @default(uuid())
+  studentId   String
+  gradeItemId String
+  score       Float?
+  letterGrade String?  // A, B, C, D, F
+  remarks     String?
+  gradedAt    DateTime?
+  createdAt   DateTime @default(now())
+
+  student     Student   @relation(fields: [studentId], references: [id])
+  gradeItem   GradeItem @relation(fields: [gradeItemId], references: [id])
+
+  @@unique([studentId, gradeItemId])
+}
+
+// ─── Certification (EMS) ────────────────────────────────────────
+
+model Certification {
+  id          String   @id @default(uuid())
+  teacherId   String
+  name        String
+  issuedBy    String?
+  issuedDate  DateTime?
+  expiryDate  DateTime?
+  status      String   @default("active") // active, expired, pending
+  documentUrl String?
+  createdAt   DateTime @default(now())
+
+  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+}
+
+// ─── Admissions ─────────────────────────────────────────────────
+
+model Admission {
+  id              String   @id @default(uuid())
+  applicantName   String
+  dateOfBirth     DateTime?
+  gender          String?
+  nationality     String?
+  parentName      String?
+  parentPhone     String?
+  parentEmail     String?
+  gradeApplied    String   // which year/grade
+  previousSchool  String?
+  status          String   @default("pending") // pending, under_review, accepted, rejected
+  submittedAt     DateTime @default(now())
+  decidedAt       DateTime?
+  remarks         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── Finance (SMS) ──────────────────────────────────────────────
+
+model FeeInvoice {
+  id          String   @id @default(uuid())
+  studentId   String
+  semester    String?
+  amount      Float
+  status      String   @default("unpaid") // unpaid, paid, overdue
+  dueDate     DateTime?
+  paidAt      DateTime?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model SchoolExpense {
+  id          String   @id @default(uuid())
+  category    String   // supplies, maintenance, salary, utilities
+  description String
+  amount      Float
+  date        DateTime
+  approvedBy  String?
+  status      String   @default("pending") // pending, approved, rejected
+  createdAt   DateTime @default(now())
+}
+
+// ─── School Resources (SMS) ─────────────────────────────────────
+
+model Facility {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   // classroom, lab, hall, sports, office
+  capacity    Int?
+  location    String?
+  status      String   @default("available") // available, occupied, maintenance
+  createdAt   DateTime @default(now())
+}
+
+// ─── Notifications ──────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("info") // info, warning, success, error
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,38 @@
+import { Layout } from 'antd'
+import { Outlet } from 'react-router-dom'
+import Sidebar from './Sidebar'
+import Navbar from './Navbar'
+import { useUIStore } from '@/stores/uiStore'
+
+const { Content } = Layout
+
+const AppLayout = () => {
+  const collapsed = useUIStore(s => s.sidebarCollapsed)
+
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sidebar />
+      <Layout
+        style={{
+          marginLeft: collapsed ? 64 : 240,
+          transition: 'margin-left 0.2s',
+        }}
+      >
+        <Navbar />
+        <Content
+          style={{
+            margin: 16,
+            padding: 24,
+            background: '#fff',
+            borderRadius: 8,
+            minHeight: 'calc(100vh - 88px)',
+          }}
+        >
+          <Outlet />
+        </Content>
+      </Layout>
+    </Layout>
+  )
+}
+
+export default AppLayout

@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+.env.*
+*.key
+*.pem
+*.mp4
+*.mov
+.DS_Store
+*.local
+.claude/
+.playwright-mcp/
+*.db
