@@ -102,6 +102,13 @@ const en = {
     welcomeBack: 'Welcome back, {{name}}',
     overviewTitle: 'School Overview',
     attendanceTrend: 'Attendance Trend',
+    staffStatus: 'Staff Status',
+    staffActive: 'Active',
+    staffOnLeave: 'On Leave',
+    staffInTraining: 'In Training',
+    timetableConflicts: 'Timetable Conflicts',
+    noConflicts: 'No scheduling conflicts detected',
+    conflictDetail: '{{teacher}}: {{c1}} vs {{c2}} on {{day}}',
   },
   students: {
     title: 'Student Directory',

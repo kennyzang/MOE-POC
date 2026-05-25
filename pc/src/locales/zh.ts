@@ -102,6 +102,13 @@ const zh = {
     welcomeBack: '欢迎回来, {{name}}',
     overviewTitle: '学校概览',
     attendanceTrend: '出勤趋势',
+    staffStatus: '教职人员状态',
+    staffActive: '在职',
+    staffOnLeave: '请假',
+    staffInTraining: '培训中',
+    timetableConflicts: '课表冲突',
+    noConflicts: '未检测到排课冲突',
+    conflictDetail: '{{teacher}}：{{c1}} 与 {{c2}} 在 {{day}} 冲突',
   },
   students: {
     title: '学生名录',

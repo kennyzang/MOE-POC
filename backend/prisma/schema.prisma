@@ -35,6 +35,7 @@ model Student {
   dateOfBirth   DateTime?
   gender        String?
   nationality   String?
+  icNumber      String?  // IC number e.g. BN20100312
   gradeLevel    String?  // e.g. "Year 7"
   className     String?  // e.g. "7A"
   enrollmentStatus String @default("pending") // pending, enrolled, graduated
@@ -51,17 +52,20 @@ model Student {
 // ─── Teacher ────────────────────────────────────────────────────
 
 model Teacher {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  staffId         String   @unique
-  designation     String?
-  department      String?
-  qualification   String?
-  subjects        String?  // comma-separated
-  joinDate        DateTime?
-  status          String   @default("active")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  staffId          String   @unique
+  designation      String?
+  department       String?
+  qualification    String?
+  subjects         String?  // comma-separated
+  joinDate         DateTime?
+  status           String   @default("active")
+  cpdHours         Float    @default(0)      // CPD completed hours
+  cpdTarget        Float    @default(20)     // CPD annual target (default 20h)
+  employmentStatus String   @default("active") // active | onLeave | inTraining
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   user            User     @relation(fields: [userId], references: [id])
   certifications  Certification[]
@@ -234,6 +238,7 @@ model Admission {
   applicantName   String
   dateOfBirth     DateTime?
   gender          String?
+  icNumber        String?
   nationality     String?
   parentName      String?
   parentPhone     String?

@@ -27,13 +27,58 @@ function calcWeightedGpa(grades: Array<{ score: number | null; gradeItem: { maxS
   return Math.round(ratio * 4 * 100) / 100
 }
 
+// Helper: parse schedule string into day+time slots
+// e.g. "Mon/Wed 08:00-09:30 (7A)" → [{day:"Mon",start:480,end:570},{day:"Wed",...}]
+function parseScheduleSlots(schedule: string | null): Array<{ day: string; start: number; end: number }> {
+  if (!schedule) return []
+  const timeMatch = schedule.match(/(\d{2}):(\d{2})-(\d{2}):(\d{2})/)
+  const dayMatch = schedule.match(/^([A-Za-z]+(?:\/[A-Za-z]+)*)/)
+  if (!timeMatch || !dayMatch) return []
+  const start = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2])
+  const end = parseInt(timeMatch[3]) * 60 + parseInt(timeMatch[4])
+  const days = dayMatch[1].split('/')
+  return days.map((day) => ({ day, start, end }))
+}
+
+function detectTimetableConflicts(
+  assignments: Array<{ teacherId: string; schedule: string | null; course: { name: string; code: string }; teacher: { user: { displayName: string } } }>
+): Array<{ teacherName: string; course1: string; course2: string; day: string }> {
+  const byTeacher: Record<string, typeof assignments> = {}
+  for (const a of assignments) {
+    if (!byTeacher[a.teacherId]) byTeacher[a.teacherId] = []
+    byTeacher[a.teacherId].push(a)
+  }
+  const conflicts: Array<{ teacherName: string; course1: string; course2: string; day: string }> = []
+  for (const teacherAssignments of Object.values(byTeacher)) {
+    for (let i = 0; i < teacherAssignments.length; i++) {
+      const slotsA = parseScheduleSlots(teacherAssignments[i].schedule)
+      for (let j = i + 1; j < teacherAssignments.length; j++) {
+        const slotsB = parseScheduleSlots(teacherAssignments[j].schedule)
+        for (const a of slotsA) {
+          for (const b of slotsB) {
+            if (a.day === b.day && a.start < b.end && b.start < a.end) {
+              conflicts.push({
+                teacherName: teacherAssignments[i].teacher.user.displayName,
+                course1: teacherAssignments[i].course.code,
+                course2: teacherAssignments[j].course.code,
+                day: a.day,
+              })
+            }
+          }
+        }
+      }
+    }
+  }
+  return conflicts
+}
+
 // GET /stats — role-aware dashboard statistics
 router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { role, userId } = req.user!
 
-    if (role === 'admin' || role === 'manager') {
-      const [totalStudents, totalTeachers, totalCourses, pendingAdmissions, allRecords, students, recentAdmissions, invoices] =
+    if (role === 'admin' || role === 'manager' || role === 'principal') {
+      const [totalStudents, totalTeachers, totalCourses, pendingAdmissions, allRecords, students, recentAdmissions, invoices, allTeachers, courseAssignments] =
         await Promise.all([
           prisma.student.count(),
           prisma.teacher.count(),
@@ -43,6 +88,13 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           prisma.student.findMany({ select: { gradeLevel: true } }),
           prisma.admission.findMany({ orderBy: { createdAt: 'desc' }, take: 5 }),
           prisma.feeInvoice.findMany(),
+          prisma.teacher.findMany({ select: { employmentStatus: true } }),
+          prisma.courseAssignment.findMany({
+            include: {
+              course: { select: { name: true, code: true } },
+              teacher: { include: { user: { select: { displayName: true } } } },
+            },
+          }),
         ])
 
       const attendanceRate = calcAttendanceRate(allRecords)
@@ -52,12 +104,25 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
         const level = s.gradeLevel || 'Unassigned'
         gradeCounts[level] = (gradeCounts[level] || 0) + 1
       }
+      // Sort by numeric year level (Year 7 < Year 8 ... < Year 11)
       const enrollmentByGrade = Object.entries(gradeCounts)
-        .sort((a, b) => a[0].localeCompare(b[0]))
+        .sort((a, b) => {
+          const numA = parseInt(a[0].replace(/\D/g, '')) || 0
+          const numB = parseInt(b[0].replace(/\D/g, '')) || 0
+          return numA - numB
+        })
         .map(([gradeLevel, count]) => ({ gradeLevel, count }))
 
       const totalFees = invoices.reduce((sum, inv) => sum + inv.amount, 0)
       const collected = invoices.filter((i) => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0)
+
+      const staffStatus = {
+        active: allTeachers.filter((t) => t.employmentStatus === 'active').length,
+        onLeave: allTeachers.filter((t) => t.employmentStatus === 'onLeave').length,
+        inTraining: allTeachers.filter((t) => t.employmentStatus === 'inTraining').length,
+      }
+
+      const timetableConflictList = detectTimetableConflicts(courseAssignments)
 
       res.json({
         success: true,
@@ -70,6 +135,8 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           enrollmentByGrade,
           recentAdmissions,
           financeSummary: { totalFees, collected, outstanding: totalFees - collected },
+          staffStatus,
+          timetableConflicts: { count: timetableConflictList.length, conflicts: timetableConflictList },
         },
       })
       return

@@ -102,6 +102,13 @@ const ms = {
     welcomeBack: 'Selamat kembali, {{name}}',
     overviewTitle: 'Gambaran Keseluruhan Sekolah',
     attendanceTrend: 'Trend Kehadiran',
+    staffStatus: 'Status Kakitangan',
+    staffActive: 'Aktif',
+    staffOnLeave: 'Cuti',
+    staffInTraining: 'Dalam Latihan',
+    timetableConflicts: 'Konflik Jadual',
+    noConflicts: 'Tiada konflik penjadualan dikesan',
+    conflictDetail: '{{teacher}}: {{c1}} vs {{c2}} pada {{day}}',
   },
   students: {
     title: 'Direktori Pelajar',

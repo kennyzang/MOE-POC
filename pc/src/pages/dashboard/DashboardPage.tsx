@@ -1,4 +1,4 @@
-import { Card, Row, Col, Typography, Tag, Spin, Statistic } from 'antd'
+import { Card, Row, Col, Typography, Tag, Spin, Statistic, Alert, Badge } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -8,6 +8,11 @@ import {
   CalendarCheck,
   ClipboardList,
   DollarSign,
+  UserCheck,
+  UserX,
+  BookMarked,
+  AlertTriangle,
+  CheckCircle,
 } from 'lucide-react'
 import {
   BarChart,
@@ -40,6 +45,15 @@ interface DashboardStats {
     totalFees: number
     collected: number
     outstanding: number
+  }
+  staffStatus?: {
+    active: number
+    onLeave: number
+    inTraining: number
+  }
+  timetableConflicts?: {
+    count: number
+    conflicts: { teacherName: string; course1: string; course2: string; day: string }[]
   }
 }
 
@@ -135,6 +149,94 @@ const DashboardPage = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Row 1b: Staff Status + Timetable Conflicts (admin/manager/principal only) */}
+      {stats?.staffStatus && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={24} lg={12}>
+            <Card title={
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Users size={16} />
+                {t('dashboard.staffStatus')}
+              </span>
+            }>
+              <Row gutter={16}>
+                <Col span={8}>
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <UserCheck size={28} style={{ color: '#52c41a', marginBottom: 8 }} />
+                    <div style={{ fontSize: 28, fontWeight: 700, color: '#52c41a', lineHeight: 1 }}>
+                      {stats.staffStatus.active}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#00000073', marginTop: 4 }}>
+                      {t('dashboard.staffActive')}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <UserX size={28} style={{ color: '#faad14', marginBottom: 8 }} />
+                    <div style={{ fontSize: 28, fontWeight: 700, color: '#faad14', lineHeight: 1 }}>
+                      {stats.staffStatus.onLeave}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#00000073', marginTop: 4 }}>
+                      {t('dashboard.staffOnLeave')}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <BookMarked size={28} style={{ color: '#165DFF', marginBottom: 8 }} />
+                    <div style={{ fontSize: 28, fontWeight: 700, color: '#165DFF', lineHeight: 1 }}>
+                      {stats.staffStatus.inTraining}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#00000073', marginTop: 4 }}>
+                      {t('dashboard.staffInTraining')}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card title={
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {(stats.timetableConflicts?.count ?? 0) > 0
+                  ? <AlertTriangle size={16} style={{ color: '#ff4d4f' }} />
+                  : <CheckCircle size={16} style={{ color: '#52c41a' }} />
+                }
+                {t('dashboard.timetableConflicts')}
+                {(stats.timetableConflicts?.count ?? 0) > 0 && (
+                  <Badge count={stats.timetableConflicts!.count} style={{ marginLeft: 4 }} />
+                )}
+              </span>
+            }>
+              {(stats.timetableConflicts?.count ?? 0) === 0 ? (
+                <Alert
+                  title={t('dashboard.noConflicts')}
+                  type="success"
+                  showIcon
+                  style={{ border: 'none', background: '#f6ffed' }}
+                />
+              ) : (
+                <div>
+                  {stats.timetableConflicts!.conflicts.slice(0, 4).map((c, idx) => (
+                    <div key={idx} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '8px 0',
+                      borderBottom: idx < (stats.timetableConflicts!.conflicts.length - 1) ? '1px solid #f0f0f0' : 'none',
+                    }}>
+                      <AlertTriangle size={14} style={{ color: '#ff4d4f', flexShrink: 0 }} />
+                      <span style={{ fontSize: 13 }}>
+                        {t('dashboard.conflictDetail', { teacher: c.teacherName, c1: c.course1, c2: c.course2, day: c.day })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       {/* Row 2: Charts */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
