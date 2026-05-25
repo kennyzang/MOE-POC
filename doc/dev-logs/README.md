@@ -24,3 +24,4 @@
 | 2026-05-25 14:00 | [260525-1400.md](260525-1400.md) | Stage 3 完成：移动端 H5（antd-mobile）10页面，三端三语言，浏览器验证通过 | ~180k |
 | 2026-05-25 15:30 | [260525-1530.md](260525-1530.md) | Phase 4 完成：学生/家长门户 7 页实现，修复后端接口不匹配，StudentCoursesPage/GradesPage 从占位符升级为完整功能 | ~60k |
 | 2026-05-25 16:50 | [260525-1650.md](260525-1650.md) | Phase 5 验证：修复 Dashboard enrollmentByGrade 崩溃 Bug，清理 antd v6 废弃属性（10 文件 17 处），零控制台错误 | ~30k |
+| 2026-05-25 18:00 | [260525-1800.md](260525-1800.md) | Stage C 完成：EMS CPD 追踪 + 绩效评估审批工作流（PerformanceEvaluation 模型、5 个 API、2 个前端页面更新、hod/principal 角色支持） | ~80k |
