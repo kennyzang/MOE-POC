@@ -26,3 +26,4 @@
 | 2026-05-25 16:50 | [260525-1650.md](260525-1650.md) | Phase 5 验证：修复 Dashboard enrollmentByGrade 崩溃 Bug，清理 antd v6 废弃属性（10 文件 17 处），零控制台错误 | ~30k |
 | 2026-05-25 18:00 | [260525-1800.md](260525-1800.md) | Stage C 完成：EMS CPD 追踪 + 绩效评估审批工作流（PerformanceEvaluation 模型、5 个 API、2 个前端页面更新、hod/principal 角色支持） | ~80k |
 | 2026-05-25 19:00 | [260525-1900.md](260525-1900.md) | Stage D 完成：SMS 课表自动生成 + 设施预约（2 新模型、5 API、TimetablePage 周视图、SchoolResourcesPage 预约Tab、TypeScript 零错误） | ~45k |
+| 2026-05-25 19:10 | [260525-1910.md](260525-1910.md) | Stage E 完成：SIS 录取 4 步 Wizard（年龄-年级校验、POST/PATCH status API、i18n 全覆盖、Playwright 验证通过） | ~60k |
