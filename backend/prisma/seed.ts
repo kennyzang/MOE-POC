@@ -349,6 +349,197 @@ async function main() {
         previousSchool: 'Sekolah Rendah Berakas',
         status: 'under_review',
       },
+      {
+        applicantName: 'Muhammad Haziq Bin Rosli',
+        dateOfBirth: new Date('2013-02-14'),
+        gender: 'Male',
+        nationality: 'Bruneian',
+        parentName: 'Rosli Bin Hj Omar',
+        parentPhone: '+673-8456789',
+        parentEmail: 'rosli@email.com',
+        gradeApplied: 'Year 7',
+        previousSchool: 'Sekolah Rendah Rimba',
+        status: 'accepted',
+        decidedAt: new Date('2026-04-15'),
+        remarks: 'Excellent academic record',
+      },
+      {
+        applicantName: 'Siti Aminah Binti Latif',
+        dateOfBirth: new Date('2013-11-03'),
+        gender: 'Female',
+        nationality: 'Bruneian',
+        parentName: 'Latif Bin Awang',
+        parentPhone: '+673-8567890',
+        parentEmail: 'latif@email.com',
+        gradeApplied: 'Year 7',
+        previousSchool: 'Sekolah Rendah Gadong',
+        status: 'rejected',
+        decidedAt: new Date('2026-04-20'),
+        remarks: 'Insufficient documentation',
+      },
+    ],
+  })
+
+  // ─── Grades ───────────────────────────────────────────────────
+
+  const allGradeItems = await prisma.gradeItem.findMany({ orderBy: { courseId: 'asc' } })
+  const gradeScores: Record<string, [number, number]> = {
+    // [adam score, nurul score] per grade item type
+    'Quiz 1': [17, 19],
+    'Midterm Exam': [78, 92],
+    'Assignment 1': [42, 47],
+    'Final Exam': [82, 88],
+  }
+
+  for (const gi of allGradeItems) {
+    const scores = gradeScores[gi.name] ?? [75, 80]
+    const adamScore = scores[0] + Math.floor(Math.random() * 5 - 2)
+    const nurulScore = scores[1] + Math.floor(Math.random() * 5 - 2)
+
+    const letterGrade = (score: number, max: number) => {
+      const pct = (score / max) * 100
+      if (pct >= 90) return 'A'
+      if (pct >= 80) return 'B'
+      if (pct >= 70) return 'C'
+      if (pct >= 60) return 'D'
+      return 'F'
+    }
+
+    await prisma.grade.createMany({
+      data: [
+        {
+          studentId: adam.id,
+          gradeItemId: gi.id,
+          score: Math.min(adamScore, gi.maxScore),
+          letterGrade: letterGrade(adamScore, gi.maxScore),
+          gradedAt: new Date('2026-04-30'),
+        },
+        {
+          studentId: nurul.id,
+          gradeItemId: gi.id,
+          score: Math.min(nurulScore, gi.maxScore),
+          letterGrade: letterGrade(nurulScore, gi.maxScore),
+          gradedAt: new Date('2026-04-30'),
+        },
+      ],
+    })
+  }
+
+  // ─── Attendance Sessions & Records ────────────────────────────
+
+  const sessionDates = [
+    new Date('2026-05-12'),
+    new Date('2026-05-14'),
+    new Date('2026-05-19'),
+    new Date('2026-05-21'),
+  ]
+  const attendanceStatuses = ['present', 'present', 'present', 'late', 'present', 'absent', 'present', 'present']
+  let statusIdx = 0
+
+  for (const course of courses.slice(0, 3)) {
+    for (const date of sessionDates.slice(0, 2)) {
+      const session = await prisma.attendanceSession.create({
+        data: {
+          courseId: course.id,
+          date,
+          topic: `${course.name} - Week ${date.getDate() < 15 ? 1 : 2}`,
+          status: 'completed',
+        },
+      })
+      for (const student of [adam, nurul]) {
+        const st = attendanceStatuses[statusIdx % attendanceStatuses.length]
+        await prisma.attendanceRecord.create({
+          data: {
+            sessionId: session.id,
+            studentId: student.id,
+            status: st,
+            checkedInAt: st !== 'absent' ? new Date(`${date.toISOString().slice(0, 10)}T08:05:00`) : null,
+          },
+        })
+        statusIdx++
+      }
+    }
+  }
+
+  // Active session for today (for demo)
+  const todaySession = await prisma.attendanceSession.create({
+    data: {
+      courseId: mathCourse.id,
+      date: new Date(),
+      topic: 'Algebra Review',
+      status: 'active',
+    },
+  })
+  await prisma.attendanceRecord.createMany({
+    data: [
+      { sessionId: todaySession.id, studentId: adam.id, status: 'present', checkedInAt: new Date() },
+      { sessionId: todaySession.id, studentId: nurul.id, status: 'present', checkedInAt: new Date() },
+    ],
+  })
+
+  // ─── Fee Invoices ─────────────────────────────────────────────
+
+  await prisma.feeInvoice.createMany({
+    data: [
+      {
+        studentId: adam.id,
+        semester: '2026-S1',
+        amount: 350.0,
+        status: 'paid',
+        dueDate: new Date('2026-02-28'),
+        paidAt: new Date('2026-02-20'),
+        description: 'Tuition Fee - Semester 1',
+      },
+      {
+        studentId: adam.id,
+        semester: '2026-S1',
+        amount: 50.0,
+        status: 'paid',
+        dueDate: new Date('2026-02-28'),
+        paidAt: new Date('2026-02-20'),
+        description: 'Science Lab Fee',
+      },
+      {
+        studentId: nurul.id,
+        semester: '2026-S1',
+        amount: 350.0,
+        status: 'unpaid',
+        dueDate: new Date('2026-06-30'),
+        description: 'Tuition Fee - Semester 1',
+      },
+      {
+        studentId: nurul.id,
+        semester: '2026-S1',
+        amount: 50.0,
+        status: 'overdue',
+        dueDate: new Date('2026-03-31'),
+        description: 'Science Lab Fee',
+      },
+    ],
+  })
+
+  // ─── School Expenses ──────────────────────────────────────────
+
+  await prisma.schoolExpense.createMany({
+    data: [
+      { category: 'supplies', description: 'Science lab equipment restocking', amount: 2500.0, date: new Date('2026-03-10'), approvedBy: 'Hj Kamaruddin', status: 'approved' },
+      { category: 'maintenance', description: 'Classroom 7A air conditioning repair', amount: 800.0, date: new Date('2026-04-05'), approvedBy: 'Hj Kamaruddin', status: 'approved' },
+      { category: 'utilities', description: 'Electricity bill - April 2026', amount: 3200.0, date: new Date('2026-04-30'), approvedBy: 'Hj Kamaruddin', status: 'approved' },
+      { category: 'supplies', description: 'Sports equipment for field day', amount: 1500.0, date: new Date('2026-05-01'), status: 'pending' },
+      { category: 'maintenance', description: 'Library shelving replacement', amount: 1200.0, date: new Date('2026-05-10'), status: 'pending' },
+      { category: 'utilities', description: 'Internet service upgrade', amount: 450.0, date: new Date('2026-05-15'), approvedBy: 'Hj Kamaruddin', status: 'approved' },
+    ],
+  })
+
+  // ─── Notifications ────────────────────────────────────────────
+
+  await prisma.notification.createMany({
+    data: [
+      { userId: adamUser.id, title: 'Grade Published', message: 'Your Mathematics Quiz 1 grade has been published.', type: 'success' },
+      { userId: adamUser.id, title: 'Fee Due Reminder', message: 'Your Science Lab Fee is due by March 31.', type: 'warning' },
+      { userId: drsitiUser.id, title: 'Certification Expiring', message: 'Your Cambridge International Teaching Certificate expires on March 1, 2026.', type: 'warning' },
+      { userId: fatimahUser.id, title: 'Attendance Alert', message: 'Adam was marked absent for English Language on May 14.', type: 'error' },
+      { userId: adminUser.id, title: 'New Admission', message: '2 new admission applications require review.', type: 'info' },
     ],
   })
 

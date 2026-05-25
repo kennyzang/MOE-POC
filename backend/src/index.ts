@@ -4,6 +4,18 @@ import cors from 'cors'
 import helmet from 'helmet'
 import morgan from 'morgan'
 import authRoutes from './routes/auth'
+import studentRoutes from './routes/students'
+import teacherRoutes from './routes/teachers'
+import courseRoutes from './routes/courses'
+import gradeRoutes from './routes/grades'
+import attendanceRoutes from './routes/attendance'
+import admissionRoutes from './routes/admissions'
+import certificationRoutes from './routes/certifications'
+import facilityRoutes from './routes/facilities'
+import financeRoutes from './routes/finance'
+import dashboardRoutes from './routes/dashboard'
+import enrollmentRoutes from './routes/enrollments'
+import egncRoutes from './routes/egnc'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
 const app = express()
@@ -30,6 +42,18 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0', ts: n
 
 // Routes
 app.use('/api/v1/auth', authRoutes)
+app.use('/api/v1/students', studentRoutes)
+app.use('/api/v1/teachers', teacherRoutes)
+app.use('/api/v1/courses', courseRoutes)
+app.use('/api/v1/grades', gradeRoutes)
+app.use('/api/v1/attendance', attendanceRoutes)
+app.use('/api/v1/admissions', admissionRoutes)
+app.use('/api/v1/certifications', certificationRoutes)
+app.use('/api/v1/facilities', facilityRoutes)
+app.use('/api/v1/finance', financeRoutes)
+app.use('/api/v1/dashboard', dashboardRoutes)
+app.use('/api/v1/enrollments', enrollmentRoutes)
+app.use('/api/v1/egnc', egncRoutes)
 
 // Error handling
 app.use(notFound)

@@ -68,5 +68,20 @@ Before marking any feature as complete:
 7. For dashboards: add/remove data in another module, verify numbers update
 
 ## Git Rules
-- Never commit: `.env`, `*.key`, `*.pem`, `*.mp4`, `node_modules/`
-- GitHub remote: https://github.com/kennyzang/MOE-POC.git
+- Never commit: `.env`, `*.key`, `*.pem`, `*.mp4`, `node_modules/`, `*.db`
+- Two remotes, push both every time:
+  ```bash
+  git push origin master
+  git push github master
+  ```
+
+## End-of-Conversation Checklist (MUST DO)
+Before ending each conversation, you MUST complete these steps in order:
+1. **Commit** all changes with a meaningful commit message
+2. **Push** to both remotes (`origin` + `github`)
+3. **Update dev log** in `doc/dev-logs/`:
+   - Create or update the log file for this session (`YYMMDD-HHmm.md`)
+   - Update `doc/dev-logs/README.md` index table
+   - Log must include: conversation time (minute precision), token estimate, summary of completed work, files changed
+   - The log is primarily for AI to understand development progress; the summary section at the top is for human review
+4. **Commit + Push** the dev log update

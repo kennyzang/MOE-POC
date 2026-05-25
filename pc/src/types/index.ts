@@ -26,3 +26,215 @@ export interface LoginResponse {
   token: string
   user: User
 }
+
+// ─── Domain Models ──────────────────────────────────────────────
+
+export interface Student {
+  id: string
+  userId: string
+  studentId: string
+  dateOfBirth?: string
+  gender?: string
+  nationality?: string
+  gradeLevel?: string
+  className?: string
+  enrollmentStatus: string
+  user: User
+  enrollments?: Enrollment[]
+  grades?: Grade[]
+}
+
+export interface Teacher {
+  id: string
+  userId: string
+  staffId: string
+  designation?: string
+  department?: string
+  qualification?: string
+  subjects?: string
+  joinDate?: string
+  status: string
+  user: User
+  certifications?: Certification[]
+  courseAssignments?: CourseAssignment[]
+}
+
+export interface Course {
+  id: string
+  code: string
+  name: string
+  description?: string
+  gradeLevel?: string
+  creditHours: number
+  status: string
+  assignments?: CourseAssignment[]
+  enrollments?: Enrollment[]
+}
+
+export interface CourseAssignment {
+  id: string
+  courseId: string
+  teacherId: string
+  semester?: string
+  schedule?: string
+  course?: Course
+  teacher?: Teacher
+}
+
+export interface Enrollment {
+  id: string
+  studentId: string
+  courseId: string
+  semester?: string
+  status: string
+  course?: Course
+  student?: Student
+}
+
+export interface GradeItem {
+  id: string
+  courseId: string
+  name: string
+  type: string
+  maxScore: number
+  weight: number
+  dueDate?: string
+  course?: Course
+}
+
+export interface Grade {
+  id: string
+  studentId: string
+  gradeItemId: string
+  score?: number
+  letterGrade?: string
+  remarks?: string
+  gradedAt?: string
+  student?: Student
+  gradeItem?: GradeItem
+}
+
+export interface AttendanceSession {
+  id: string
+  courseId: string
+  date: string
+  topic?: string
+  status: string
+  course?: Course
+  _count?: { records: number }
+}
+
+export interface AttendanceRecord {
+  id: string
+  sessionId: string
+  studentId: string
+  status: string
+  checkedInAt?: string
+  session?: AttendanceSession
+  student?: Student
+}
+
+export interface Admission {
+  id: string
+  applicantName: string
+  dateOfBirth?: string
+  gender?: string
+  nationality?: string
+  parentName?: string
+  parentPhone?: string
+  parentEmail?: string
+  gradeApplied: string
+  previousSchool?: string
+  status: string
+  submittedAt: string
+  decidedAt?: string
+  remarks?: string
+}
+
+export interface Certification {
+  id: string
+  teacherId: string
+  name: string
+  issuedBy?: string
+  issuedDate?: string
+  expiryDate?: string
+  status: string
+  documentUrl?: string
+  teacher?: Teacher
+}
+
+export interface Facility {
+  id: string
+  name: string
+  type: string
+  capacity?: number
+  location?: string
+  status: string
+}
+
+export interface FeeInvoice {
+  id: string
+  studentId: string
+  semester?: string
+  amount: number
+  status: string
+  dueDate?: string
+  paidAt?: string
+  description?: string
+  student?: Student
+}
+
+export interface SchoolExpense {
+  id: string
+  category: string
+  description: string
+  amount: number
+  date: string
+  approvedBy?: string
+  status: string
+}
+
+export interface Notification {
+  id: string
+  userId: string
+  title: string
+  message: string
+  type: string
+  read: boolean
+  createdAt: string
+}
+
+// ─── API Response ───────────────────────────────────────────────
+
+export interface ApiResponse<T = unknown> {
+  success: boolean
+  data: T
+  message?: string
+}
+
+// ─── Dashboard Stats ────────────────────────────────────────────
+
+export interface AdminDashboardStats {
+  totalStudents: number
+  totalTeachers: number
+  totalCourses: number
+  attendanceRate: number
+  pendingAdmissions: number
+  enrollmentByGrade: { gradeLevel: string; count: number }[]
+  recentAdmissions: Admission[]
+  financeSummary: { totalFees: number; collected: number; outstanding: number }
+}
+
+export interface StudentDashboardStats {
+  enrolledCourses: number
+  attendanceRate: number
+  gpa: number
+  upcomingItems: GradeItem[]
+}
+
+export interface EgncService {
+  name: string
+  status: 'connected' | 'disconnected' | 'maintenance'
+  lastSync: string | null
+  description: string
+}

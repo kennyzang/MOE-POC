@@ -1,0 +1,106 @@
+import { Router, Response } from 'express'
+import prisma from '../lib/prisma'
+import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+
+const router = Router()
+
+// GET /teachers — list all teachers with user info
+router.get(
+  '/',
+  authenticate,
+  requireRole('admin', 'manager'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { search, department } = req.query
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const where: any = {}
+
+      if (department) where.department = department as string
+
+      if (search) {
+        where.OR = [
+          { staffId: { contains: search as string } },
+          { user: { displayName: { contains: search as string } } },
+          { user: { username: { contains: search as string } } },
+        ]
+      }
+
+      const teachers = await prisma.teacher.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              email: true,
+              role: true,
+              avatar: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      res.json({ success: true, data: teachers })
+    } catch (error) {
+      console.error('Error listing teachers:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
+// GET /teachers/:id — get teacher with details
+router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const id = req.params.id as string
+    const { role, userId } = req.user!
+
+    // Role check
+    if (!['admin', 'manager', 'teacher'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' })
+      return
+    }
+
+    const teacher = await prisma.teacher.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            email: true,
+            role: true,
+            avatar: true,
+            status: true,
+          },
+        },
+        certifications: true,
+        courseAssignments: {
+          include: { course: true },
+        },
+      },
+    })
+
+    if (!teacher) {
+      res.status(404).json({ success: false, message: 'Teacher not found' })
+      return
+    }
+
+    // Teacher can only view own record
+    if (role === 'teacher' && teacher.userId !== userId) {
+      res.status(403).json({ success: false, message: 'Forbidden' })
+      return
+    }
+
+    res.json({ success: true, data: teacher })
+  } catch (error) {
+    console.error('Error getting teacher:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+export default router
