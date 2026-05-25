@@ -870,7 +870,7 @@ const AdmissionsPage = () => {
             <Button
               type="primary"
               icon={<ArrowRight size={16} />}
-              iconPosition="end"
+              iconPlacement="end"
               onClick={handleNextStep}
             >
               {t('common.next')}
