@@ -67,8 +67,14 @@ Before marking any feature as complete:
 6. For workflow features: verify the full state machine (every status transition)
 7. For dashboards: add/remove data in another module, verify numbers update
 
+## Playwright / Dev Screenshots
+- **Always** save Playwright screenshots to `screenshots/` in the project root
+- This directory is `.gitignore`d — never commit screenshots
+- Command example: `browser_take_screenshot` → path `screenshots/<feature>-<yyyymmdd>.png`
+- Never save screenshots directly to the project root or any source directory
+
 ## Git Rules
-- Never commit: `.env`, `*.key`, `*.pem`, `*.mp4`, `node_modules/`, `*.db`
+- Never commit: `.env`, `*.key`, `*.pem`, `*.mp4`, `node_modules/`, `*.db`, `screenshots/`
 - Two remotes, push both every time:
   ```bash
   git push origin master

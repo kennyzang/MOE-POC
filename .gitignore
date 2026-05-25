@@ -11,3 +11,6 @@ dist
 .claude/
 .playwright-mcp/
 *.db
+
+# Playwright / dev screenshots — store here, never commit
+screenshots/
