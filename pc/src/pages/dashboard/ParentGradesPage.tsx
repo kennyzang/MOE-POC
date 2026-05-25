@@ -96,14 +96,16 @@ const ParentGradesPage = () => {
               value={selectedChild.gradeAverage}
               suffix="%"
               precision={1}
-              valueStyle={{
-                fontSize: 48,
-                color:
-                  selectedChild.gradeAverage >= 75
-                    ? '#52c41a'
-                    : selectedChild.gradeAverage >= 50
-                      ? '#faad14'
-                      : '#ff4d4f',
+              styles={{
+                content: {
+                  fontSize: 48,
+                  color:
+                    selectedChild.gradeAverage >= 75
+                      ? '#52c41a'
+                      : selectedChild.gradeAverage >= 50
+                        ? '#faad14'
+                        : '#ff4d4f',
+                },
               }}
             />
           </Card>

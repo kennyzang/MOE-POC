@@ -123,7 +123,7 @@ const StudentCoursesPage = () => {
               title={t('dashboard.enrolledCourses')}
               value={stats?.enrolledCourses ?? enrollments?.length ?? 0}
               prefix={<BookOpen size={20} color="#1677ff" style={{ marginRight: 6 }} />}
-              valueStyle={{ color: '#1677ff', fontWeight: 700, fontSize: 36 }}
+              styles={{ content: { color: '#1677ff', fontWeight: 700, fontSize: 36 } }}
             />
           </Card>
         </Col>
@@ -135,7 +135,7 @@ const StudentCoursesPage = () => {
               suffix="%"
               precision={1}
               prefix={<CalendarCheck size={20} color="#52c41a" style={{ marginRight: 6 }} />}
-              valueStyle={{ color: '#52c41a', fontWeight: 700, fontSize: 36 }}
+              styles={{ content: { color: '#52c41a', fontWeight: 700, fontSize: 36 } }}
             />
           </Card>
         </Col>

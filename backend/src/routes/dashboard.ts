@@ -47,11 +47,14 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
 
       const attendanceRate = calcAttendanceRate(allRecords)
 
-      const enrollmentByGrade: Record<string, number> = {}
+      const gradeCounts: Record<string, number> = {}
       for (const s of students) {
         const level = s.gradeLevel || 'Unassigned'
-        enrollmentByGrade[level] = (enrollmentByGrade[level] || 0) + 1
+        gradeCounts[level] = (gradeCounts[level] || 0) + 1
       }
+      const enrollmentByGrade = Object.entries(gradeCounts)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([gradeLevel, count]) => ({ gradeLevel, count }))
 
       const totalFees = invoices.reduce((sum, inv) => sum + inv.amount, 0)
       const collected = invoices.filter((i) => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0)

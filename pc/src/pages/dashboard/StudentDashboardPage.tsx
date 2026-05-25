@@ -63,7 +63,7 @@ const StudentDashboardPage = () => {
               title={t('dashboard.enrolledCourses')}
               value={stats?.enrolledCourses ?? 0}
               prefix={<BookOpen size={18} color="#1677ff" style={{ marginRight: 4 }} />}
-              valueStyle={{ color: '#1677ff', fontWeight: 700 }}
+              styles={{ content: { color: '#1677ff', fontWeight: 700 } }}
             />
           </Card>
         </Col>
@@ -75,7 +75,7 @@ const StudentDashboardPage = () => {
               suffix="%"
               precision={1}
               prefix={<CalendarCheck size={18} color="#52c41a" style={{ marginRight: 4 }} />}
-              valueStyle={{ color: '#52c41a', fontWeight: 700 }}
+              styles={{ content: { color: '#52c41a', fontWeight: 700 } }}
             />
           </Card>
         </Col>
@@ -86,7 +86,7 @@ const StudentDashboardPage = () => {
               value={stats?.gpa ?? 0}
               precision={2}
               prefix={<Award size={18} color="#fa8c16" style={{ marginRight: 4 }} />}
-              valueStyle={{ color: '#fa8c16', fontWeight: 700 }}
+              styles={{ content: { color: '#fa8c16', fontWeight: 700 } }}
             />
           </Card>
         </Col>

@@ -208,7 +208,7 @@ const StudentGradesPage = () => {
               precision={2}
               suffix="/ 4.00"
               prefix={<Award size={20} color={gpaColor} style={{ marginRight: 6 }} />}
-              valueStyle={{ color: gpaColor, fontWeight: 700, fontSize: 36 }}
+              styles={{ content: { color: gpaColor, fontWeight: 700, fontSize: 36 } }}
             />
           </Card>
         </Col>
@@ -218,7 +218,7 @@ const StudentGradesPage = () => {
               title={t('dashboard.enrolledCourses')}
               value={courseGroups.length || (stats?.enrolledCourses ?? 0)}
               prefix={<BookOpen size={20} color="#1677ff" style={{ marginRight: 6 }} />}
-              valueStyle={{ color: '#1677ff', fontWeight: 700, fontSize: 36 }}
+              styles={{ content: { color: '#1677ff', fontWeight: 700, fontSize: 36 } }}
             />
           </Card>
         </Col>

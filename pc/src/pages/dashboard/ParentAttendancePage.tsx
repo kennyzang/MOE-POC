@@ -178,14 +178,16 @@ const ParentAttendancePage = () => {
               value={selectedChild.attendanceRate}
               suffix="%"
               precision={1}
-              valueStyle={{
-                fontSize: 36,
-                color:
-                  selectedChild.attendanceRate >= 80
-                    ? '#52c41a'
-                    : selectedChild.attendanceRate >= 60
-                      ? '#faad14'
-                      : '#ff4d4f',
+              styles={{
+                content: {
+                  fontSize: 36,
+                  color:
+                    selectedChild.attendanceRate >= 80
+                      ? '#52c41a'
+                      : selectedChild.attendanceRate >= 60
+                        ? '#faad14'
+                        : '#ff4d4f',
+                },
               }}
               prefix={<CalendarCheck size={28} style={{ marginRight: 8 }} />}
             />

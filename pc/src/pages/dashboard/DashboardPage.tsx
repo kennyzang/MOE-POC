@@ -1,4 +1,4 @@
-import { Card, Row, Col, Typography, Tag, Spin, Statistic, List } from 'antd'
+import { Card, Row, Col, Typography, Tag, Spin, Statistic } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -29,7 +29,7 @@ interface DashboardStats {
   totalCourses: number
   attendanceRate: number
   pendingAdmissions: number
-  enrollmentByGrade: { gradeLevel: string; _count: { _all: number } }[]
+  enrollmentByGrade: { gradeLevel: string; count: number }[]
   recentAdmissions: {
     id: string
     applicantName: string
@@ -72,7 +72,7 @@ const DashboardPage = () => {
 
   const enrollmentData = (stats?.enrollmentByGrade ?? []).map((item) => ({
     grade: item.gradeLevel,
-    count: item._count._all,
+    count: item.count,
   }))
 
   return (
@@ -167,14 +167,16 @@ const DashboardPage = () => {
                 value={stats?.attendanceRate ?? 0}
                 suffix="%"
                 precision={1}
-                valueStyle={{
-                  fontSize: 48,
-                  color:
-                    (stats?.attendanceRate ?? 0) >= 80
-                      ? '#52c41a'
-                      : (stats?.attendanceRate ?? 0) >= 60
-                        ? '#faad14'
-                        : '#ff4d4f',
+                styles={{
+                  content: {
+                    fontSize: 48,
+                    color:
+                      (stats?.attendanceRate ?? 0) >= 80
+                        ? '#52c41a'
+                        : (stats?.attendanceRate ?? 0) >= 60
+                          ? '#faad14'
+                          : '#ff4d4f',
+                  },
                 }}
                 prefix={
                   <CalendarCheck size={36} style={{ marginRight: 8 }} />
@@ -189,29 +191,37 @@ const DashboardPage = () => {
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col span={24}>
           <Card title={t('dashboard.recentAdmissions')}>
-            <List
-              size="small"
-              dataSource={(stats?.recentAdmissions ?? []).slice(0, 5)}
-              locale={{ emptyText: t('common.noData') }}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={item.applicantName}
-                    description={new Date(item.createdAt).toLocaleDateString()}
-                  />
-                  <Tag
-                    color={
-                      ADMISSION_STATUS_COLORS[item.status] ?? 'default'
-                    }
-                  >
+            {(stats?.recentAdmissions ?? []).slice(0, 5).length === 0 ? (
+              <div style={{ color: '#00000040', textAlign: 'center', padding: '12px 0' }}>
+                {t('common.noData')}
+              </div>
+            ) : (
+              (stats?.recentAdmissions ?? []).slice(0, 5).map((item, idx, arr) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 0',
+                    borderBottom: idx < arr.length - 1 ? '1px solid #f0f0f0' : 'none',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{item.applicantName}</div>
+                    <div style={{ fontSize: 12, color: '#00000073' }}>
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <Tag color={ADMISSION_STATUS_COLORS[item.status] ?? 'default'}>
                     {t(
                       `admissions.status${item.status.charAt(0).toUpperCase() + item.status.slice(1).replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}` as never,
                       item.status
                     )}
                   </Tag>
-                </List.Item>
-              )}
-            />
+                </div>
+              ))
+            )}
           </Card>
         </Col>
       </Row>
@@ -235,7 +245,7 @@ const DashboardPage = () => {
               value={stats?.financeSummary?.collected ?? 0}
               prefix={<DollarSign size={16} style={{ color: '#52c41a' }} />}
               suffix="BND"
-              valueStyle={{ color: '#52c41a' }}
+              styles={{ content: { color: '#52c41a' } }}
             />
           </Card>
         </Col>
@@ -246,7 +256,7 @@ const DashboardPage = () => {
               value={stats?.financeSummary?.outstanding ?? 0}
               prefix={<DollarSign size={16} style={{ color: '#ff4d4f' }} />}
               suffix="BND"
-              valueStyle={{ color: '#ff4d4f' }}
+              styles={{ content: { color: '#ff4d4f' } }}
             />
           </Card>
         </Col>

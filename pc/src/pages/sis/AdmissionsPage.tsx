@@ -202,7 +202,7 @@ const AdmissionsPage = () => {
             <Statistic
               title={t('admissions.pendingReview')}
               value={pendingCount}
-              valueStyle={{ color: '#fa8c16' }}
+              styles={{ content: { color: '#fa8c16' } }}
             />
           </Card>
         </Col>
@@ -211,7 +211,7 @@ const AdmissionsPage = () => {
             <Statistic
               title={t('admissions.accepted')}
               value={acceptedCount}
-              valueStyle={{ color: '#52c41a' }}
+              styles={{ content: { color: '#52c41a' } }}
             />
           </Card>
         </Col>
@@ -220,7 +220,7 @@ const AdmissionsPage = () => {
             <Statistic
               title={t('admissions.rejected')}
               value={rejectedCount}
-              valueStyle={{ color: '#f5222d' }}
+              styles={{ content: { color: '#f5222d' } }}
             />
           </Card>
         </Col>

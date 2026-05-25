@@ -265,7 +265,7 @@ const FinancialReportsPage = () => {
               title={t('finance.totalCollected')}
               value={summary?.collected ?? 0}
               prefix={<TrendingUp size={16} />}
-              valueStyle={{ color: '#52c41a' }}
+              styles={{ content: { color: '#52c41a' } }}
               formatter={(val) => formatBND(Number(val))}
             />
           </Card>
@@ -276,7 +276,7 @@ const FinancialReportsPage = () => {
               title={t('finance.totalOutstanding')}
               value={summary?.outstanding ?? 0}
               prefix={<CreditCard size={16} />}
-              valueStyle={{ color: '#faad14' }}
+              styles={{ content: { color: '#faad14' } }}
               formatter={(val) => formatBND(Number(val))}
             />
           </Card>
@@ -287,7 +287,7 @@ const FinancialReportsPage = () => {
               title={t('finance.totalExpenses')}
               value={summary?.totalExpenses ?? 0}
               prefix={<TrendingDown size={16} />}
-              valueStyle={{ color: '#ff4d4f' }}
+              styles={{ content: { color: '#ff4d4f' } }}
               formatter={(val) => formatBND(Number(val))}
             />
           </Card>

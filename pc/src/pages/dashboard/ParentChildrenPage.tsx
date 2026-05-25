@@ -98,14 +98,16 @@ const ParentChildrenPage = () => {
                       value={child.attendanceRate}
                       suffix="%"
                       precision={1}
-                      valueStyle={{
-                        fontSize: 22,
-                        color:
-                          child.attendanceRate >= 80
-                            ? '#52c41a'
-                            : child.attendanceRate >= 60
-                              ? '#faad14'
-                              : '#ff4d4f',
+                      styles={{
+                        content: {
+                          fontSize: 22,
+                          color:
+                            child.attendanceRate >= 80
+                              ? '#52c41a'
+                              : child.attendanceRate >= 60
+                                ? '#faad14'
+                                : '#ff4d4f',
+                        },
                       }}
                     />
                   </Col>
@@ -115,7 +117,7 @@ const ParentChildrenPage = () => {
                       value={child.gradeAverage}
                       suffix="%"
                       precision={1}
-                      valueStyle={{ fontSize: 22, color: '#165DFF' }}
+                      styles={{ content: { fontSize: 22, color: '#165DFF' } }}
                     />
                   </Col>
                 </Row>
