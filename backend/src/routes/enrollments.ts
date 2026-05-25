@@ -9,7 +9,9 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { studentId, courseId } = req.query as { studentId?: string; courseId?: string }
 
-    if (!studentId && !courseId) {
+    // Student and parent roles can query without params (scoped server-side)
+    const isPortalRole = req.user!.role === 'student' || req.user!.role === 'parent'
+    if (!isPortalRole && !studentId && !courseId) {
       res
         .status(400)
         .json({ success: false, message: 'studentId or courseId query param is required' })

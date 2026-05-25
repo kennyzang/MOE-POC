@@ -291,11 +291,12 @@ const en = {
     profile: 'My Profile',
     courses: 'My Courses',
     grades: 'My Grades',
-    noCoursesEnrolled: 'No courses enrolled',
+    noCoursesEnrolled: 'No courses enrolled for this semester',
     courseSchedule: 'Course Schedule',
     gradeHistory: 'Grade History',
     overallGpa: 'Overall GPA',
     attendanceSummary: 'Attendance Summary',
+    statusActive: 'Active',
   },
   parentPortal: {
     myChildren: 'My Children',
@@ -305,7 +306,8 @@ const en = {
     viewGrades: 'View Grades',
     viewAttendance: 'View Attendance',
     attendanceRate: 'Attendance Rate',
-    gradeOverview: 'Grade Overview',
+    gradeOverview: 'Grade Average',
+    gpa: 'GPA',
   },
 }
 

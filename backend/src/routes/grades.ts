@@ -34,7 +34,9 @@ async function getTeacherCourseIds(userId: string): Promise<string[]> {
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { courseId, studentId } = req.query as { courseId?: string; studentId?: string }
-    if (!courseId && !studentId) {
+    // Student and parent roles can query without params (scoped server-side)
+    const isPortalRole = req.user!.role === 'student' || req.user!.role === 'parent'
+    if (!isPortalRole && !courseId && !studentId) {
       res.status(400).json({ success: false, message: 'courseId or studentId query param is required' })
       return
     }
@@ -67,7 +69,9 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const grades = await prisma.grade.findMany({
       where,
       include: {
-        gradeItem: true,
+        gradeItem: {
+          include: { course: { select: { id: true, code: true, name: true } } },
+        },
         student: { include: { user: { select: { id: true, displayName: true, username: true } } } },
       },
       orderBy: { createdAt: 'desc' },

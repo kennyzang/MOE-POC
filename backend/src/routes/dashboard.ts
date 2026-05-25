@@ -178,11 +178,26 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
 
       const children = (parent?.childLinks || []).map((link) => {
         const s = link.student
+        const grades = s.grades
+        // Weighted percentage average (0-100)
+        let totalWeight = 0
+        let weightedSum = 0
+        for (const g of grades) {
+          if (g.score === null) continue
+          const pct = g.score / g.gradeItem.maxScore
+          weightedSum += pct * g.gradeItem.weight
+          totalWeight += g.gradeItem.weight
+        }
+        const gradeAverage = totalWeight === 0 ? 0 : Math.round((weightedSum / totalWeight) * 10000) / 100
+
         return {
+          id: s.id,
           studentId: s.id,
-          displayName: s.user.displayName,
-          gradeLevel: s.gradeLevel,
-          gpa: calcWeightedGpa(s.grades),
+          gradeLevel: s.gradeLevel ?? '',
+          className: s.className ?? '',
+          user: { displayName: s.user.displayName },
+          gpa: calcWeightedGpa(grades),
+          gradeAverage,
           attendanceRate: calcAttendanceRate(s.attendances),
         }
       })

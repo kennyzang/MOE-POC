@@ -291,11 +291,12 @@ const zh = {
     profile: '个人信息',
     courses: '我的课程',
     grades: '我的成绩',
-    noCoursesEnrolled: '暂无选课',
+    noCoursesEnrolled: '本学期暂无选课',
     courseSchedule: '课程表',
     gradeHistory: '成绩记录',
     overallGpa: '总绩点',
     attendanceSummary: '出勤统计',
+    statusActive: '在读',
   },
   parentPortal: {
     myChildren: '我的孩子',
@@ -305,7 +306,8 @@ const zh = {
     viewGrades: '查看成绩',
     viewAttendance: '查看考勤',
     attendanceRate: '出勤率',
-    gradeOverview: '成绩概览',
+    gradeOverview: '成绩均分',
+    gpa: '绩点',
   },
 }
 

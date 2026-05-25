@@ -89,9 +89,9 @@ const StudentProfilePage = () => {
             {profile?.email ?? '—'}
           </Descriptions.Item>
           <Descriptions.Item label={t('common.status')}>
-            <Tag color="success">Active</Tag>
+            <Tag color="success">{t('studentPortal.statusActive')}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="Semester">
+          <Descriptions.Item label={t('courses.semester')}>
             2026-S1
           </Descriptions.Item>
         </Descriptions>

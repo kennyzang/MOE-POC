@@ -291,11 +291,12 @@ const ms = {
     profile: 'Profil Saya',
     courses: 'Kursus Saya',
     grades: 'Gred Saya',
-    noCoursesEnrolled: 'Tiada kursus didaftarkan',
+    noCoursesEnrolled: 'Tiada kursus didaftarkan semester ini',
     courseSchedule: 'Jadual Kursus',
     gradeHistory: 'Sejarah Gred',
     overallGpa: 'PNG Keseluruhan',
     attendanceSummary: 'Ringkasan Kehadiran',
+    statusActive: 'Aktif',
   },
   parentPortal: {
     myChildren: 'Anak Saya',
@@ -305,7 +306,8 @@ const ms = {
     viewGrades: 'Lihat Gred',
     viewAttendance: 'Lihat Kehadiran',
     attendanceRate: 'Kadar Kehadiran',
-    gradeOverview: 'Gambaran Gred',
+    gradeOverview: 'Purata Gred',
+    gpa: 'PNG',
   },
 }
 

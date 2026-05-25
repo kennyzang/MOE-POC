@@ -14,8 +14,9 @@ interface ChildInfo {
   gradeLevel: string
   className: string
   user: { displayName: string }
-  attendanceRate: number
+  gpa: number
   gradeAverage: number
+  attendanceRate: number
 }
 
 interface DashboardStats {

@@ -1,18 +1,43 @@
-import { Card, Statistic, Alert, Spin, Typography, Row, Col } from 'antd'
+import { Card, Table, Tag, Spin, Typography, Row, Col, Statistic } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, CalendarCheck } from 'lucide-react'
+import type { ColumnsType } from 'antd/es/table'
 import api from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
 import type { StudentDashboardStats } from '../../types'
 
-const { Title, Text } = Typography
+const { Title } = Typography
+
+interface CourseInfo {
+  id: string
+  code: string
+  name: string
+  gradeLevel?: string
+  creditHours: number
+}
+
+interface Enrollment {
+  id: string
+  studentId: string
+  courseId: string
+  semester?: string
+  status: string
+  course?: CourseInfo
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  enrolled: 'green',
+  pending: 'orange',
+  withdrawn: 'red',
+  completed: 'blue',
+}
 
 const StudentCoursesPage = () => {
   const { t } = useTranslation()
   const { user } = useAuthStore()
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ['student-dashboard-stats', user?.id],
     queryFn: async () => {
       const { data } = await api.get('/dashboard/stats')
@@ -20,6 +45,62 @@ const StudentCoursesPage = () => {
     },
     enabled: !!user,
   })
+
+  const { data: enrollments, isLoading } = useQuery({
+    queryKey: ['student-enrollments', user?.id],
+    queryFn: async () => {
+      const { data } = await api.get('/enrollments')
+      return data.data as Enrollment[]
+    },
+    enabled: !!user,
+  })
+
+  const columns: ColumnsType<Enrollment> = [
+    {
+      title: t('courses.code'),
+      dataIndex: ['course', 'code'],
+      key: 'code',
+      width: 120,
+      render: (code: string) => <Tag color="blue">{code}</Tag>,
+    },
+    {
+      title: t('courses.courseName'),
+      dataIndex: ['course', 'name'],
+      key: 'name',
+    },
+    {
+      title: t('courses.gradeLevel'),
+      dataIndex: ['course', 'gradeLevel'],
+      key: 'gradeLevel',
+      width: 120,
+      render: (v?: string) => v ?? '—',
+    },
+    {
+      title: t('courses.creditHours'),
+      dataIndex: ['course', 'creditHours'],
+      key: 'creditHours',
+      width: 100,
+      align: 'center',
+    },
+    {
+      title: t('courses.semester'),
+      dataIndex: 'semester',
+      key: 'semester',
+      width: 120,
+      render: (v?: string) => v ?? '—',
+    },
+    {
+      title: t('common.status'),
+      dataIndex: 'status',
+      key: 'status',
+      width: 110,
+      render: (status: string) => (
+        <Tag color={STATUS_COLOR[status] ?? 'default'}>
+          {t(`students.${status}` as never, status)}
+        </Tag>
+      ),
+    },
+  ]
 
   if (isLoading) {
     return (
@@ -35,20 +116,12 @@ const StudentCoursesPage = () => {
         {t('studentPortal.courses')}
       </Title>
 
-      <Alert
-        type="info"
-        showIcon
-        message="Semester 2026-S1"
-        description={`You are enrolled in ${stats?.enrolledCourses ?? 0} course(s) for Semester 2026-S1. Contact your class teacher or school admin to view the full course schedule and materials.`}
-        style={{ borderRadius: 8 }}
-      />
-
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12}>
           <Card style={{ borderRadius: 10 }}>
             <Statistic
               title={t('dashboard.enrolledCourses')}
-              value={stats?.enrolledCourses ?? 0}
+              value={stats?.enrolledCourses ?? enrollments?.length ?? 0}
               prefix={<BookOpen size={20} color="#1677ff" style={{ marginRight: 6 }} />}
               valueStyle={{ color: '#1677ff', fontWeight: 700, fontSize: 36 }}
             />
@@ -68,13 +141,15 @@ const StudentCoursesPage = () => {
         </Col>
       </Row>
 
-      <Card
-        title={t('studentPortal.courseSchedule')}
-        style={{ borderRadius: 10 }}
-      >
-        <Text type="secondary">
-          Detailed course schedule is managed by your school. Please refer to your physical timetable or contact your homeroom teacher for the latest schedule information.
-        </Text>
+      <Card title={t('studentPortal.courseSchedule')} style={{ borderRadius: 10 }}>
+        <Table
+          columns={columns}
+          dataSource={enrollments ?? []}
+          rowKey="id"
+          pagination={false}
+          locale={{ emptyText: t('studentPortal.noCoursesEnrolled') }}
+          size="middle"
+        />
       </Card>
     </div>
   )
