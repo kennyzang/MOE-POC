@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Form, Input, Button, Typography, message, Space } from 'antd'
+import { Card, Form, Input, Button, Typography, message, Space, Divider, Tooltip } from 'antd'
 import { Lock, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
@@ -10,25 +10,49 @@ import type { LoginRequest, LoginResponse } from '@/types'
 
 const { Title, Text } = Typography
 
+const DEMO_ACCOUNTS = [
+  { username: 'admin',    label: 'Admin',       color: '#722ED1', bg: '#F9F0FF' },
+  { username: 'manager',  label: 'Manager',     color: '#1677FF', bg: '#E6F4FF' },
+  { username: 'drsiti',   label: 'Teacher',     color: '#FA8C16', bg: '#FFF7E6' },
+  { username: 'adam',     label: 'Student',     color: '#52C41A', bg: '#F6FFED' },
+  { username: 'fatimah',  label: 'Parent',      color: '#EB2F96', bg: '#FFF0F6' },
+  { username: 'finance',  label: 'Finance',     color: '#13C2C2', bg: '#E6FFFB' },
+]
+
 const LoginPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const [loading, setLoading] = useState(false)
+  const [quickLoading, setQuickLoading] = useState<string | null>(null)
+
+  const doLogin = async (username: string, password: string) => {
+    const { data } = await api.post<LoginResponse>('/auth/login', { username, password })
+    if (data.success) {
+      setAuth(data.user, data.token)
+      navigate(ROLE_HOME[data.user.role] ?? '/dashboard', { replace: true })
+    }
+  }
 
   const onFinish = async (values: LoginRequest) => {
     setLoading(true)
     try {
-      const { data } = await api.post<LoginResponse>('/auth/login', values)
-      if (data.success) {
-        setAuth(data.user, data.token)
-        const home = ROLE_HOME[data.user.role] ?? '/dashboard'
-        navigate(home, { replace: true })
-      }
+      await doLogin(values.username, values.password)
     } catch {
       message.error(t('auth.loginError'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const onQuickLogin = async (username: string) => {
+    setQuickLoading(username)
+    try {
+      await doLogin(username, 'Demo@2026')
+    } catch {
+      message.error(t('auth.loginError'))
+    } finally {
+      setQuickLoading(null)
     }
   }
 
@@ -45,12 +69,12 @@ const LoginPage = () => {
     >
       <Card
         style={{
-          width: 420,
+          width: 440,
           borderRadius: 12,
           boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
         }}
       >
-        <Space direction="vertical" size={24} style={{ width: '100%' }}>
+        <Space direction="vertical" size={20} style={{ width: '100%' }}>
           <div style={{ textAlign: 'center' }}>
             <Title level={3} style={{ marginBottom: 4 }}>
               {t('auth.loginTitle')}
@@ -96,21 +120,29 @@ const LoginPage = () => {
             </Form.Item>
           </Form>
 
-          <div
-            style={{
-              background: '#f7f8fa',
-              borderRadius: 8,
-              padding: '12px 16px',
-              fontSize: 12,
-              color: '#86909c',
-            }}
-          >
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Demo Accounts</div>
-            <div>admin / Demo@2026 — System Admin</div>
-            <div>manager / Demo@2026 — School Manager</div>
-            <div>drsiti / Demo@2026 — Teacher</div>
-            <div>adam / Demo@2026 — Student</div>
-            <div>fatimah / Demo@2026 — Parent</div>
+          <Divider style={{ margin: '4px 0', fontSize: 12, color: '#bfbfbf' }}>
+            Demo Accounts
+          </Divider>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {DEMO_ACCOUNTS.map(account => (
+              <Tooltip key={account.username} title={account.username} placement="top">
+                <Button
+                  size="small"
+                  loading={quickLoading === account.username}
+                  disabled={quickLoading !== null && quickLoading !== account.username}
+                  onClick={() => void onQuickLogin(account.username)}
+                  style={{
+                    color: account.color,
+                    background: account.bg,
+                    borderColor: account.color,
+                    fontWeight: 500,
+                  }}
+                >
+                  {account.label}
+                </Button>
+              </Tooltip>
+            ))}
           </div>
         </Space>
       </Card>
