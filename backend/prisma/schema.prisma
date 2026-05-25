@@ -71,6 +71,7 @@ model Teacher {
   certifications  Certification[]
   courseAssignments CourseAssignment[]
   performanceEvaluations PerformanceEvaluation[]
+  timetableSlots  TimetableSlot[]
 }
 
 // ─── Parent ─────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ model Course {
   enrollments    Enrollment[]
   attendanceSessions AttendanceSession[]
   gradeItems     GradeItem[]
+  timetableSlots TimetableSlot[]
 }
 
 model CourseAssignment {
@@ -313,6 +315,42 @@ model Facility {
   location    String?
   status      String   @default("available") // available, occupied, maintenance
   createdAt   DateTime @default(now())
+
+  bookings    FacilityBooking[]
+}
+
+// ─── Timetable ──────────────────────────────────────────────────
+model TimetableSlot {
+  id         String  @id @default(uuid())
+  courseId   String
+  teacherId  String
+  gradeLevel String  // "Year 7"
+  className  String? // "7A"
+  dayOfWeek  Int     // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri
+  startTime  String  // "08:00"
+  endTime    String  // "09:30"
+  room       String?
+  semester   String  @default("2026-S1")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  course  Course  @relation(fields: [courseId], references: [id])
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+}
+
+// ─── Facility Booking ────────────────────────────────────────────
+model FacilityBooking {
+  id         String   @id @default(uuid())
+  facilityId String
+  bookedBy   String   // User.id
+  purpose    String
+  date       DateTime
+  startTime  String   // "08:00"
+  endTime    String   // "10:00"
+  status     String   @default("approved") // pending, approved, cancelled
+  createdAt  DateTime @default(now())
+
+  facility   Facility @relation(fields: [facilityId], references: [id])
 }
 
 // ─── Notifications ──────────────────────────────────────────────

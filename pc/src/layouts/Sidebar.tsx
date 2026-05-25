@@ -16,6 +16,7 @@ import {
   FileText,
   Bell,
   Settings,
+  Calendar,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -96,10 +97,11 @@ const Sidebar = () => {
         key: '/sms',
         label: t('nav.sms'),
         icon: icon(School),
-        roles: ['admin', 'manager', 'finance'],
+        roles: ['admin', 'manager', 'finance', 'principal'],
         children: [
           { key: '/sms/courses', label: t('nav.smsCourses'), roles: ['admin', 'manager'] },
           { key: '/sms/resources', label: t('nav.smsResources'), roles: ['admin', 'manager'] },
+          { key: '/sms/timetable', label: t('nav.smsTimetable'), icon: icon(Calendar), roles: ['admin', 'manager', 'principal'] },
           { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['admin', 'manager', 'finance'] },
         ],
       },

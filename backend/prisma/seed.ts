@@ -943,6 +943,66 @@ async function main() {
     },
   })
 
+  // ─── Timetable Slots (Year 7A pre-generated) ─────────────────────
+  // Mon 0, Tue 1, Wed 2, Thu 3, Fri 4
+  const y7aSlots = [
+    { courseId: mathCourse.id, teacherId: teacher01.id, dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 7A' },
+    { courseId: mathCourse.id, teacherId: teacher01.id, dayOfWeek: 2, startTime: '08:00', endTime: '09:30', room: 'Classroom 7A' },
+    { courseId: sciCourse.id, teacherId: teacher01.id, dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: sciCourse.id, teacherId: teacher01.id, dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: engCourse.id, teacherId: faizal.id, dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Classroom 7A' },
+    { courseId: engCourse.id, teacherId: faizal.id, dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Classroom 7A' },
+    { courseId: mibCourse.id, teacherId: faizal.id, dayOfWeek: 4, startTime: '08:00', endTime: '10:00', room: 'Classroom 7A' },
+    { courseId: icCourse.id, teacherId: drsiti.id, dayOfWeek: 4, startTime: '10:00', endTime: '12:00', room: 'Computer Lab' },
+  ]
+
+  for (const slot of y7aSlots) {
+    await prisma.timetableSlot.create({
+      data: { ...slot, gradeLevel: 'Year 7', className: '7A', semester: '2026-S1' },
+    })
+  }
+
+  // ─── Facility Bookings ──────────────────────────────────────────
+  const facilities = await prisma.facility.findMany()
+  const hallA = facilities.find(f => f.name === 'Hall A')
+  const sciLab = facilities.find(f => f.name === 'Science Lab 1')
+  const compLab = facilities.find(f => f.name === 'Computer Lab')
+
+  if (hallA) {
+    await prisma.facilityBooking.create({
+      data: {
+        facilityId: hallA.id,
+        bookedBy: principalUser.id,
+        purpose: 'Year 7 Orientation Assembly',
+        date: new Date('2026-06-02'),
+        startTime: '09:00',
+        endTime: '11:00',
+        status: 'approved',
+      },
+    })
+  }
+  if (sciLab) {
+    await prisma.facilityBooking.createMany({
+      data: [
+        { facilityId: sciLab.id, bookedBy: drsitiUser.id, purpose: 'Chemistry Practical - Year 9', date: new Date('2026-05-27'), startTime: '14:00', endTime: '16:00', status: 'approved' },
+        { facilityId: sciLab.id, bookedBy: teacher01User.id, purpose: 'Science Fair Preparation - Year 7', date: new Date('2026-06-05'), startTime: '13:00', endTime: '15:00', status: 'pending' },
+      ],
+    })
+  }
+  if (compLab) {
+    await prisma.facilityBooking.create({
+      data: {
+        facilityId: compLab.id,
+        bookedBy: drsitiUser.id,
+        purpose: 'ICT Examination - Year 10',
+        date: new Date('2026-06-03'),
+        startTime: '08:00',
+        endTime: '10:00',
+        status: 'approved',
+      },
+    })
+  }
+
   console.log('Seed completed successfully!')
   console.log('Summary:')
   const userCount = await prisma.user.count()

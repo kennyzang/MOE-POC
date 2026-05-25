@@ -196,6 +196,35 @@ export interface Facility {
   capacity?: number
   location?: string
   status: string
+  bookings?: FacilityBooking[]
+}
+
+export interface TimetableSlot {
+  id: string
+  courseId: string
+  teacherId: string
+  gradeLevel: string
+  className?: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  room?: string
+  semester: string
+  course?: { id: string; code: string; name: string }
+  teacher?: { id: string; user?: { displayName?: string } }
+}
+
+export interface FacilityBooking {
+  id: string
+  facilityId: string
+  bookedBy: string
+  purpose: string
+  date: string
+  startTime: string
+  endTime: string
+  status: string
+  createdAt: string
+  facility?: { id: string; name: string; type: string }
 }
 
 export interface FeeInvoice {
