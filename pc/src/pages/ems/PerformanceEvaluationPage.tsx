@@ -313,7 +313,7 @@ const PerformanceEvaluationPage = () => {
         }
         footer={null}
         width={560}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={form}
@@ -401,7 +401,7 @@ const PerformanceEvaluationPage = () => {
         }
         footer={null}
         width={640}
-        destroyOnClose
+        destroyOnHidden
       >
         {selectedEval && (
           <div>
@@ -489,7 +489,7 @@ const PerformanceEvaluationPage = () => {
         }
         footer={null}
         width={560}
-        destroyOnClose
+        destroyOnHidden
       >
         {selectedEval && (
           <div>

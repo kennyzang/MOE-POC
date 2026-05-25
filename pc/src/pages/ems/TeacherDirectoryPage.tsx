@@ -385,7 +385,7 @@ const TeacherDirectoryPage = () => {
         }
         footer={null}
         width={720}
-        destroyOnClose
+        destroyOnHidden
       >
         <Tabs items={detailTabs} defaultActiveKey="info" />
       </Modal>
