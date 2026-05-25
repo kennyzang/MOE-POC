@@ -49,6 +49,7 @@ const AttendanceTrackingPage = lazy(() => import('@/pages/sis/AttendanceTracking
 const TeacherDirectoryPage = lazy(() => import('@/pages/ems/TeacherDirectoryPage'))
 const CertificationsPage = lazy(() => import('@/pages/ems/CertificationsPage'))
 const TeachingWorkloadPage = lazy(() => import('@/pages/ems/TeachingWorkloadPage'))
+const PerformanceEvaluationPage = lazy(() => import('@/pages/ems/PerformanceEvaluationPage'))
 
 // SMS
 const CourseManagementPage = lazy(() => import('@/pages/sms/CourseManagementPage'))
@@ -100,6 +101,7 @@ export const router = createBrowserRouter([
       { path: 'ems/teachers', element: r(['admin', 'manager'], <TeacherDirectoryPage />) },
       { path: 'ems/certifications', element: r(['admin', 'manager', 'teacher'], <CertificationsPage />) },
       { path: 'ems/workload', element: r(['admin', 'manager', 'teacher'], <TeachingWorkloadPage />) },
+      { path: 'ems/performance-evaluations', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <PerformanceEvaluationPage />) },
 
       // SMS
       { path: 'sms/courses', element: r(['admin', 'manager'], <CourseManagementPage />) },

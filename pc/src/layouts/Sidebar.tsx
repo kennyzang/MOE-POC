@@ -43,6 +43,8 @@ const ROLE_HOME: Record<UserRole, string> = {
   teacher: '/ems/workload',
   student: '/student/dashboard',
   parent: '/parent/children',
+  hod: '/ems/performance-evaluations',
+  principal: '/ems/performance-evaluations',
 }
 
 const Sidebar = () => {
@@ -81,11 +83,12 @@ const Sidebar = () => {
         key: '/ems',
         label: t('nav.ems'),
         icon: icon(GraduationCap),
-        roles: ['admin', 'manager', 'teacher'],
+        roles: ['admin', 'manager', 'teacher', 'hod', 'principal'],
         children: [
           { key: '/ems/teachers', label: t('nav.emsTeachers'), roles: ['admin', 'manager'] },
           { key: '/ems/certifications', label: t('nav.emsCertifications'), roles: ['admin', 'manager', 'teacher'] },
           { key: '/ems/workload', label: t('nav.emsWorkload'), roles: ['admin', 'manager', 'teacher'] },
+          { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['admin', 'manager', 'hod', 'principal', 'teacher'] },
         ],
       },
       // SMS - School Management System

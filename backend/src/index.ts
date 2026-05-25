@@ -16,6 +16,7 @@ import financeRoutes from './routes/finance'
 import dashboardRoutes from './routes/dashboard'
 import enrollmentRoutes from './routes/enrollments'
 import egncRoutes from './routes/egnc'
+import emsRoutes from './routes/ems'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
 const app = express()
@@ -54,6 +55,7 @@ app.use('/api/v1/finance', financeRoutes)
 app.use('/api/v1/dashboard', dashboardRoutes)
 app.use('/api/v1/enrollments', enrollmentRoutes)
 app.use('/api/v1/egnc', egncRoutes)
+app.use('/api/v1/ems', emsRoutes)
 
 // Error handling
 app.use(notFound)

@@ -903,6 +903,46 @@ async function main() {
     ],
   })
 
+  // ─── Performance Evaluations ──────────────────────────────────
+
+  // teacher01 (Ms. Aminah) — submitted, pending principal approval
+  await prisma.performanceEvaluation.create({
+    data: {
+      teacherId: teacher01.id,
+      academicYear: '2025/2026',
+      evaluatorId: hodUser.id,
+      teachingScore: 82,
+      professionalScore: 78,
+      conductScore: 85,
+      overallScore: 81.7,
+      rating: 'Good',
+      comments:
+        'Ms. Aminah demonstrates good classroom management skills. CPD hours slightly below target — needs to complete remaining 2 hours before year end.',
+      status: 'submitted',
+      submittedAt: daysAgo(5),
+    },
+  })
+
+  // drsiti — approved
+  await prisma.performanceEvaluation.create({
+    data: {
+      teacherId: drsiti.id,
+      academicYear: '2025/2026',
+      evaluatorId: hodUser.id,
+      teachingScore: 92,
+      professionalScore: 90,
+      conductScore: 95,
+      overallScore: 92.3,
+      rating: 'Excellent',
+      comments: 'Dr. Siti consistently exceeds expectations. Recommended for senior role consideration.',
+      status: 'approved',
+      submittedAt: daysAgo(20),
+      reviewerId: principalUser.id,
+      reviewerComments: 'Approved. Excellent performance.',
+      reviewedAt: daysAgo(15),
+    },
+  })
+
   console.log('Seed completed successfully!')
   console.log('Summary:')
   const userCount = await prisma.user.count()

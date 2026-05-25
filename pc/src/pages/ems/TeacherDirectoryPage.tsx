@@ -13,10 +13,12 @@ import {
   Tabs,
   Typography,
   Button,
+  Progress,
+  Alert,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { GraduationCap, Search, Eye } from 'lucide-react'
+import { GraduationCap, Search, Eye, AlertTriangle } from 'lucide-react'
 import api from '../../lib/api'
 import type { Teacher, ApiResponse, Certification, CourseAssignment } from '../../types'
 import type { ColumnsType } from 'antd/es/table'
@@ -111,6 +113,45 @@ const TeacherDirectoryPage = () => {
       ),
     },
     {
+      title: t('ems.employmentStatus'),
+      dataIndex: 'employmentStatus',
+      key: 'employmentStatus',
+      width: 120,
+      render: (val: string) => {
+        const colorMap: Record<string, string> = {
+          active: 'green',
+          onLeave: 'orange',
+          inTraining: 'blue',
+        }
+        const labelKey: Record<string, string> = {
+          active: 'ems.active',
+          onLeave: 'ems.onLeave',
+          inTraining: 'ems.inTraining',
+        }
+        return (
+          <Tag color={colorMap[val] ?? 'default'}>
+            {t(labelKey[val] ?? val)}
+          </Tag>
+        )
+      },
+    },
+    {
+      title: t('ems.cpdHours'),
+      key: 'cpd',
+      width: 120,
+      render: (_: unknown, record: Teacher) => {
+        const hours = record.cpdHours ?? 0
+        const target = record.cpdTarget ?? 20
+        const below = hours < target
+        return (
+          <Space size={4}>
+            <span>{`${hours}/${target}h`}</span>
+            {below && <AlertTriangle size={14} color="#fa8c16" />}
+          </Space>
+        )
+      },
+    },
+    {
       title: t('common.actions'),
       key: 'actions',
       width: 80,
@@ -197,26 +238,65 @@ const TeacherDirectoryPage = () => {
       key: 'info',
       label: t('students.personalInfo'),
       children: teacherDetail ? (
-        <Descriptions column={2} bordered size="small">
-          <Descriptions.Item label={t('teachers.staffId')}>
-            {teacherDetail.staffId}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('teachers.designation')}>
-            {teacherDetail.designation || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('teachers.department')}>
-            {teacherDetail.department || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('teachers.qualification')}>
-            {teacherDetail.qualification || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('teachers.joinDate')}>
-            {teacherDetail.joinDate ? teacherDetail.joinDate.slice(0, 10) : '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('common.email')}>
-            {teacherDetail.user?.email || '-'}
-          </Descriptions.Item>
-        </Descriptions>
+        <div>
+          <Descriptions column={2} bordered size="small">
+            <Descriptions.Item label={t('teachers.staffId')}>
+              {teacherDetail.staffId}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('teachers.designation')}>
+              {teacherDetail.designation || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('teachers.department')}>
+              {teacherDetail.department || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('teachers.qualification')}>
+              {teacherDetail.qualification || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('teachers.joinDate')}>
+              {teacherDetail.joinDate ? teacherDetail.joinDate.slice(0, 10) : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('common.email')}>
+              {teacherDetail.user?.email || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('ems.employmentStatus')}>
+              {(() => {
+                const val = teacherDetail.employmentStatus ?? 'active'
+                const colorMap: Record<string, string> = { active: 'green', onLeave: 'orange', inTraining: 'blue' }
+                const labelKey: Record<string, string> = { active: 'ems.active', onLeave: 'ems.onLeave', inTraining: 'ems.inTraining' }
+                return <Tag color={colorMap[val] ?? 'default'}>{t(labelKey[val] ?? val)}</Tag>
+              })()}
+            </Descriptions.Item>
+          </Descriptions>
+          <div style={{ marginTop: 16 }}>
+            <Typography.Text strong>{t('ems.cpdProgress')}</Typography.Text>
+            <div style={{ marginTop: 8 }}>
+              {(() => {
+                const hours = teacherDetail.cpdHours ?? 0
+                const target = teacherDetail.cpdTarget ?? 20
+                const pct = Math.min(Math.round((hours / target) * 100), 100)
+                const below = hours < target
+                const remaining = Math.max(target - hours, 0)
+                return (
+                  <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                    <Typography.Text>{`${hours}/${target} ${t('ems.cpdHours')}`}</Typography.Text>
+                    <Progress
+                      percent={pct}
+                      status={below ? 'normal' : 'success'}
+                      strokeColor={below ? '#fa8c16' : undefined}
+                    />
+                    {below && (
+                      <Alert
+                        type="warning"
+                        title={t('ems.cpdWarning', { remaining })}
+                        showIcon
+                      />
+                    )}
+                  </Space>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
       ) : null,
     },
     {

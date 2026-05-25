@@ -6,6 +6,8 @@ export type UserRole =
   | 'manager'
   | 'finance'
   | 'admissions'
+  | 'hod'
+  | 'principal'
 
 export interface User {
   id: string
@@ -44,6 +46,26 @@ export interface Student {
   grades?: Grade[]
 }
 
+export interface PerformanceEvaluation {
+  id: string
+  teacherId: string
+  academicYear: string
+  evaluatorId: string
+  teachingScore?: number
+  professionalScore?: number
+  conductScore?: number
+  overallScore?: number
+  rating?: string
+  comments?: string
+  status: string
+  reviewerId?: string
+  reviewerComments?: string
+  submittedAt?: string
+  reviewedAt?: string
+  createdAt: string
+  teacher?: { user?: { displayName?: string } }
+}
+
 export interface Teacher {
   id: string
   userId: string
@@ -54,9 +76,13 @@ export interface Teacher {
   subjects?: string
   joinDate?: string
   status: string
+  cpdHours?: number
+  cpdTarget?: number
+  employmentStatus?: string
   user: User
   certifications?: Certification[]
   courseAssignments?: CourseAssignment[]
+  performanceEvaluations?: PerformanceEvaluation[]
 }
 
 export interface Course {

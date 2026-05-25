@@ -70,6 +70,7 @@ model Teacher {
   user            User     @relation(fields: [userId], references: [id])
   certifications  Certification[]
   courseAssignments CourseAssignment[]
+  performanceEvaluations PerformanceEvaluation[]
 }
 
 // ─── Parent ─────────────────────────────────────────────────────
@@ -229,6 +230,30 @@ model Certification {
   createdAt   DateTime @default(now())
 
   teacher     Teacher  @relation(fields: [teacherId], references: [id])
+}
+
+// ─── Performance Evaluation (EMS) ──────────────────────────────
+
+model PerformanceEvaluation {
+  id                String    @id @default(uuid())
+  teacherId         String
+  academicYear      String    // "2025/2026"
+  evaluatorId       String    // HOD User.id
+  teachingScore     Float?    // 0-100
+  professionalScore Float?    // 0-100
+  conductScore      Float?    // 0-100
+  overallScore      Float?    // (teaching+professional+conduct)/3
+  rating            String?   // Excellent | Good | Satisfactory | NeedsImprovement
+  comments          String?
+  status            String    @default("draft") // draft | submitted | approved | rejected
+  reviewerId        String?   // Principal User.id
+  reviewerComments  String?
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  teacher           Teacher   @relation(fields: [teacherId], references: [id])
 }
 
 // ─── Admissions ─────────────────────────────────────────────────
