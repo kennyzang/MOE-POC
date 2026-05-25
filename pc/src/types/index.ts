@@ -165,10 +165,12 @@ export interface Admission {
   applicantName: string
   dateOfBirth?: string
   gender?: string
+  icNumber?: string
   nationality?: string
   parentName?: string
   parentPhone?: string
   parentEmail?: string
+  parentRelationship?: string
   gradeApplied: string
   previousSchool?: string
   status: string
