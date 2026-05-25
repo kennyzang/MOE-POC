@@ -52,6 +52,33 @@ router.get(
   }
 )
 
+// GET /teachers/me — return the current teacher's own record
+router.get('/me', authenticate, requireRole('teacher'), async (req: AuthRequest, res: Response) => {
+  try {
+    const teacher = await prisma.teacher.findUnique({
+      where: { userId: req.user!.userId },
+      include: {
+        user: {
+          select: { id: true, username: true, displayName: true, email: true, role: true, avatar: true, status: true },
+        },
+        courseAssignments: {
+          include: {
+            course: { select: { id: true, code: true, name: true, gradeLevel: true, creditHours: true, status: true } },
+          },
+        },
+      },
+    })
+    if (!teacher) {
+      res.status(404).json({ success: false, message: 'Teacher record not found' })
+      return
+    }
+    res.json({ success: true, data: teacher })
+  } catch (error) {
+    console.error('GET /teachers/me error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
 // GET /teachers/:id — get teacher with details
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
