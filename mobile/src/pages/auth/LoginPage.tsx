@@ -9,12 +9,19 @@ import type { LoginResponse } from '@/types'
 
 type Language = 'en' | 'zh' | 'ms'
 
+const DEMO_ACCOUNTS = [
+  { username: 'fatimah', label: 'Parent',  labelZh: '家长', labelMs: 'Ibu Bapa', color: '#00B42A' },
+  { username: 'adam',    label: 'Student', labelZh: '学生', labelMs: 'Pelajar',  color: '#165DFF' },
+  { username: 'drsiti',  label: 'Teacher', labelZh: '教师', labelMs: 'Guru',     color: '#FF7D00' },
+]
+
 export default function LoginPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const { language, setLanguage } = useLanguageStore()
   const [loading, setLoading] = useState(false)
+  const [quickLoading, setQuickLoading] = useState<string | null>(null)
 
   const handleLogin = async (values: { username: string; password: string }) => {
     setLoading(true)
@@ -34,6 +41,30 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleQuickLogin = async (username: string) => {
+    setQuickLoading(username)
+    try {
+      const { data } = await api.post<LoginResponse>('/auth/login', { username, password: 'Demo@2026' })
+      if (data.success) {
+        setAuth(data.user, data.token)
+        const roleHome: Record<string, string> = {
+          parent: '/parent/home', student: '/student/home', teacher: '/teacher/home',
+        }
+        navigate(roleHome[data.user.role] ?? '/', { replace: true })
+      }
+    } catch {
+      Toast.show({ content: t('auth.loginError'), icon: 'fail', duration: 2000 })
+    } finally {
+      setQuickLoading(null)
+    }
+  }
+
+  const getLangLabel = (account: typeof DEMO_ACCOUNTS[0]) => {
+    if (language === 'zh') return account.labelZh
+    if (language === 'ms') return account.labelMs
+    return account.label
   }
 
   const langs: { code: Language; label: string }[] = [
@@ -131,7 +162,43 @@ export default function LoginPage() {
           </div>
         </Form>
 
-        <div style={{ textAlign: 'center', marginTop: 24, color: '#86909c', fontSize: 12 }}>
+        {/* Quick login demo accounts */}
+        <div style={{ marginTop: 24 }}>
+          <div style={{
+            textAlign: 'center', fontSize: 12, color: '#86909c',
+            marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
+            <span>Demo</span>
+            <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {DEMO_ACCOUNTS.map(account => (
+              <button
+                key={account.username}
+                onClick={() => void handleQuickLogin(account.username)}
+                disabled={quickLoading !== null}
+                style={{
+                  flex: 1,
+                  padding: '10px 4px',
+                  borderRadius: 10,
+                  border: `1.5px solid ${account.color}`,
+                  background: quickLoading === account.username ? account.color : `${account.color}12`,
+                  color: quickLoading === account.username ? 'white' : account.color,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: quickLoading !== null ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s',
+                  opacity: quickLoading !== null && quickLoading !== account.username ? 0.5 : 1,
+                }}
+              >
+                {quickLoading === account.username ? '...' : getLangLabel(account)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 20, color: '#86909c', fontSize: 12 }}>
           MOE SERPS v0.1 · Ministry of Education, Brunei
         </div>
       </div>
