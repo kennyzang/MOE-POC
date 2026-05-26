@@ -30,3 +30,4 @@
 | 2026-05-26 08:20 | [260526-0820.md](260526-0820.md) | Stage G+H 完成：AI Chatbot（SSE流式\/Demo fallback）+ At-Risk仪表板（Ahmad HIGH RISK 82%✓）+ settings auto mode | ~120k |
 | 2026-05-26 08:54 | [260526-0854.md](260526-0854.md) | Stage F 补做完成：通知系统（铃铛 UI + Office365 SMTP 邮件）+ 6个业务事件触发点 + POST /finance/invoices | ~35k |
 | 2026-05-26 09:20 | [260526-0920.md](260526-0920.md) | SMTP 系统配置页面（admin 界面配置邮件服务器）+ 密钥泄露修复（git history rewrite） | ~20k |
+| 2026-05-26 10:00 | [260526-1000.md](260526-1000.md) | 进度梳理 + 存档系统建立（BACKLOG.md 看板 + 详细验收清单 + CLAUDE.md 账号表修正）| ~30k |
