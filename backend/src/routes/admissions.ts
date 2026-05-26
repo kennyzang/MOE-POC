@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { sendMany } from '../services/notificationService'
 
 const router = Router()
 
@@ -153,6 +154,20 @@ router.patch(
         where: { id },
         data: updateData,
       })
+
+      // Notify all managers
+      const managers = await prisma.user.findMany({
+        where: { role: 'manager' },
+        select: { id: true },
+      })
+      await sendMany(
+        managers.map(m => m.id),
+        {
+          title: 'Admission Status Updated',
+          message: `Application for ${admission.applicantName} changed to "${admission.status}".`,
+          type: 'info',
+        },
+      )
 
       res.json({ success: true, data: admission })
     } catch (error) {

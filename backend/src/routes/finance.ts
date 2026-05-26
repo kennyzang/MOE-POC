@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { send } from '../services/notificationService'
 
 const router = Router()
 
@@ -100,6 +101,66 @@ router.get(
       })
     } catch (error) {
       console.error('GET /finance/summary error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// POST /invoices — create a fee invoice and notify student + parents
+router.post(
+  '/invoices',
+  authenticate,
+  requireRole(...financeRoles),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { studentId, semester, amount, dueDate, description } = req.body as {
+        studentId: string
+        semester?: string
+        amount: number
+        dueDate?: string
+        description?: string
+      }
+
+      if (!studentId || amount === undefined) {
+        res.status(400).json({ success: false, message: 'studentId and amount are required' })
+        return
+      }
+
+      const invoice = await prisma.feeInvoice.create({
+        data: {
+          studentId,
+          semester,
+          amount: Number(amount),
+          dueDate: dueDate ? new Date(dueDate) : undefined,
+          description,
+        },
+      })
+
+      // Notify student + parents
+      const student = await prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: { select: { id: true, displayName: true } },
+          parentLinks: { include: { parent: { include: { user: { select: { id: true } } } } } },
+        },
+      })
+      if (student) {
+        const notifyIds = [student.userId, ...student.parentLinks.map(l => l.parent.user.id)]
+        await Promise.all(
+          notifyIds.map(uid =>
+            send({
+              userId: uid,
+              title: 'Fee Invoice Generated',
+              message: `A fee invoice of BND ${Number(amount).toFixed(2)} has been issued for ${student.user.displayName}${semester ? ` (${semester})` : ''}.`,
+              type: 'warning',
+            }),
+          ),
+        )
+      }
+
+      res.status(201).json({ success: true, data: invoice })
+    } catch (error) {
+      console.error('POST /finance/invoices error:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   },

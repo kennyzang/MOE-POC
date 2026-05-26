@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, type AuthRequest } from '../middleware/auth'
+import { send, sendMany } from '../services/notificationService'
 
 const router = Router()
 
@@ -215,6 +216,27 @@ router.patch('/performance-evaluations/:id/submit', authenticate, async (req: Au
         },
       },
     })
+
+    // Notify evaluated teacher
+    await send({
+      userId: updated.teacher.user.id,
+      title: 'Performance Evaluation Submitted',
+      message: `Your performance evaluation for ${updated.academicYear} has been submitted for review.`,
+      type: 'info',
+    })
+    // Notify managers
+    const managers = await prisma.user.findMany({
+      where: { role: 'manager' },
+      select: { id: true },
+    })
+    await sendMany(
+      managers.map(m => m.id),
+      {
+        title: 'Performance Evaluation Submitted',
+        message: `Evaluation for ${updated.teacher.user.displayName} (${updated.academicYear}) has been submitted.`,
+        type: 'info',
+      },
+    )
 
     res.json({ success: true, data: updated })
   } catch (error) {

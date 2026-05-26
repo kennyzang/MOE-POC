@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { send } from '../services/notificationService'
 
 const router = Router()
 
@@ -278,6 +279,14 @@ router.post(
         include: {
           facility: { select: { id: true, name: true, type: true } },
         },
+      })
+
+      // Notify booker
+      await send({
+        userId: req.user!.userId,
+        title: 'Facility Booking Confirmed',
+        message: `Your booking for ${facility.name} on ${date} (${startTime}–${endTime}) has been submitted.`,
+        type: 'success',
       })
 
       res.status(201).json({ success: true, data: booking })

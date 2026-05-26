@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { send } from '../services/notificationService'
 
 const router = Router()
 
@@ -103,6 +104,29 @@ router.post(
         update: { score, letterGrade, remarks, gradedAt: new Date() },
         include: { gradeItem: true },
       })
+
+      // Notify student and parents
+      const student = await prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: { select: { id: true, displayName: true } },
+          parentLinks: { include: { parent: { include: { user: { select: { id: true } } } } } },
+        },
+      })
+      if (student) {
+        const notifyIds = [student.userId, ...student.parentLinks.map(l => l.parent.user.id)]
+        const itemName = grade.gradeItem?.name ?? 'an assessment'
+        await Promise.all(
+          notifyIds.map(uid =>
+            send({
+              userId: uid,
+              title: 'Grade Published',
+              message: `A grade has been recorded for ${student.user.displayName} on ${itemName}.`,
+              type: 'info',
+            }),
+          ),
+        )
+      }
 
       res.json({ success: true, data: grade })
     } catch (error) {

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { send } from '../services/notificationService'
 
 const router = Router()
 
@@ -169,6 +170,32 @@ router.post(
           }),
         ),
       )
+
+      // Notify absent students and their parents
+      const absentRecords = records.filter(r => r.status === 'absent')
+      if (absentRecords.length > 0) {
+        const absentStudentIds = absentRecords.map(r => r.studentId)
+        const students = await prisma.student.findMany({
+          where: { id: { in: absentStudentIds } },
+          include: {
+            user: { select: { id: true, displayName: true } },
+            parentLinks: { include: { parent: { include: { user: { select: { id: true } } } } } },
+          },
+        })
+        await Promise.all(
+          students.flatMap(student => {
+            const notifyIds = [student.userId, ...student.parentLinks.map(l => l.parent.user.id)]
+            return notifyIds.map(uid =>
+              send({
+                userId: uid,
+                title: 'Attendance Alert',
+                message: `${student.user.displayName} was marked absent.`,
+                type: 'warning',
+              }),
+            )
+          }),
+        )
+      }
 
       res.json({ success: true, data: upserted })
     } catch (error) {
