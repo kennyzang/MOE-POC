@@ -73,6 +73,36 @@ Before marking any feature as complete:
 - Command example: `browser_take_screenshot` → path `screenshots/<feature>-<yyyymmdd>.png`
 - Never save screenshots directly to the project root or any source directory
 
+## Secrets & Credentials Rules (CRITICAL — 血的教训)
+
+**绝对禁止将以下内容写入任何提交到 git 的文件：**
+- 密码、授权码、API Key、Token、Secret
+- 邮箱账号 + 密码的组合（即使邮箱地址本身无害，和密码一起就是凭证）
+- 任何第三方服务的连接串（数据库 URL、SMTP、OAuth Secret 等）
+
+**正确做法：**
+1. 敏感配置只放 `.env`（已在 `.gitignore`，永远不提交）
+2. 需要在系统中管理的配置（如 SMTP）存入数据库 `SystemConfig` 表，通过系统设置页面维护
+3. 文档、计划文档、dev log 中出现配置示例时，**必须用占位符**：
+   ```
+   SMTP_PASS=<your-smtp-password>      ✅
+   SMTP_PASS=actual_password_here      ❌
+   ```
+4. AI 在编写实现计划（`docs/superpowers/plans/`）时，**严禁将用户提供的真实凭证写入计划文档**
+
+**写入 git 前的检查（每次 commit 前）：**
+```bash
+# 扫描是否有可疑内容（密码/key 等关键词后跟真实值）
+git diff --cached | grep -iE "(password|secret|api.?key|token|auth)\s*[=:]\s*\S{8,}"
+```
+如果有输出，停止提交，改用占位符或移入 `.env`。
+
+**发生泄露时的应急步骤：**
+1. **立即修改**泄露的密码/Key（最紧急）
+2. `git filter-branch` 重写历史清除敏感内容
+3. `git push --force` 覆盖两个远端
+4. 通知相关服务提供商（如 GitGuardian 告警）
+
 ## Git Rules
 - Never commit: `.env`, `*.key`, `*.pem`, `*.mp4`, `node_modules/`, `*.db`, `screenshots/`
 - Two remotes, push both every time:
