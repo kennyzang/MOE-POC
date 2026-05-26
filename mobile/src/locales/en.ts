@@ -105,6 +105,18 @@ const en = {
     late: 'Late',
     excused: 'Excused',
   },
+  push: {
+    enableTitle: 'Stay Updated',
+    enableDesc: 'Enable push notifications to receive alerts when your child\'s attendance is recorded.',
+    enableBtn: 'Enable Notifications',
+    disableBtn: 'Disable Notifications',
+    testBtn: 'Send Test',
+    enabled: 'Notifications enabled',
+    denied: 'Notifications blocked. Please allow in browser settings.',
+    unsupported: 'Push notifications not supported in this browser.',
+    offlineBanner: 'You are offline. Data shown may not be current.',
+    offlineAttendanceQueued: 'Attendance saved offline. Will sync when connected.',
+  },
 }
 
 export default en

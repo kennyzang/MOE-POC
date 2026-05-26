@@ -105,6 +105,18 @@ const ms = {
     late: 'Lewat',
     excused: 'Dimaafkan',
   },
+  push: {
+    enableTitle: 'Kekal Dikemaskini',
+    enableDesc: 'Aktifkan pemberitahuan tolak untuk menerima amaran apabila kehadiran anak anda direkodkan.',
+    enableBtn: 'Aktifkan Pemberitahuan',
+    disableBtn: 'Nyahaktifkan Pemberitahuan',
+    testBtn: 'Hantar Ujian',
+    enabled: 'Pemberitahuan diaktifkan',
+    denied: 'Pemberitahuan disekat. Sila benarkan dalam tetapan pelayar.',
+    unsupported: 'Pemberitahuan tolak tidak disokong dalam pelayar ini.',
+    offlineBanner: 'Anda sedang luar talian. Data yang ditunjukkan mungkin tidak terkini.',
+    offlineAttendanceQueued: 'Kehadiran disimpan luar talian. Akan disegerakkan apabila disambungkan.',
+  },
 }
 
 export default ms

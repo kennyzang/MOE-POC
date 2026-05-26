@@ -4,6 +4,7 @@ import { SpinLoading, Card, Button, Tag } from 'antd-mobile'
 import { Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout'
+import PushNotificationBanner from '@/components/PushNotificationBanner'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/lib/api'
 import type { ApiResponse, ParentDashboardStats } from '@/types'
@@ -25,6 +26,7 @@ export default function ParentHomePage() {
 
   return (
     <AppLayout title={t('parent.title')} showLogout>
+      <PushNotificationBanner showTest />
       <div className="welcome-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{

@@ -4,6 +4,7 @@ import { SpinLoading, List, Tag } from 'antd-mobile'
 import { BookOpen, Users } from 'lucide-react'
 import dayjs from 'dayjs'
 import AppLayout from '@/components/AppLayout'
+import PushNotificationBanner from '@/components/PushNotificationBanner'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/lib/api'
 import type { ApiResponse, TeacherDashboardStats } from '@/types'
@@ -22,6 +23,7 @@ export default function TeacherHomePage() {
 
   return (
     <AppLayout title={t('teacher.title')} showLogout>
+      <PushNotificationBanner showTest />
       <div className="welcome-card">
         <div className="welcome-name">
           {t('teacher.welcome')}, {user?.displayName?.split(' ')[0]}

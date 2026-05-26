@@ -105,6 +105,18 @@ const zh = {
     late: '迟到',
     excused: '请假',
   },
+  push: {
+    enableTitle: '保持更新',
+    enableDesc: '开启推送通知，当子女考勤被记录时第一时间收到提醒。',
+    enableBtn: '开启通知',
+    disableBtn: '关闭通知',
+    testBtn: '发送测试',
+    enabled: '通知已开启',
+    denied: '通知已被屏蔽，请在浏览器设置中允许。',
+    unsupported: '该浏览器不支持推送通知。',
+    offlineBanner: '您当前处于离线状态，显示的数据可能不是最新的。',
+    offlineAttendanceQueued: '考勤已离线保存，联网后自动同步。',
+  },
 }
 
 export default zh

@@ -452,6 +452,14 @@ const en = {
     deleteEvent: 'Delete Event',
     deleteEventConfirm: 'Are you sure you want to delete this event?',
   },
+  errors: {
+    notFoundTitle: '404 — Page Not Found',
+    notFoundDesc: 'The page you are looking for does not exist or has been moved.',
+    unauthorizedTitle: '403 — Access Denied',
+    unauthorizedDesc: 'You do not have permission to view this page.',
+    goHome: 'Go to Dashboard',
+    goBack: 'Go Back',
+  },
 }
 
 export default en

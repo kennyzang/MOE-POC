@@ -20,10 +20,8 @@ interface RoleRouteProps {
 }
 const RoleRoute: React.FC<RoleRouteProps> = ({ roles, children }) => {
   const { user } = useAuthStore()
-  if (!user || !roles.includes(user.role)) {
-    const to = (user && ROLE_HOME[user.role]) ?? '/login'
-    return <Navigate to={to} replace />
-  }
+  if (!user) return <Navigate to="/login" replace />
+  if (!roles.includes(user.role)) return <Navigate to="/unauthorized" replace />
   return <>{children}</>
 }
 
@@ -75,6 +73,10 @@ const ParentAttendancePage = lazy(() => import('@/pages/dashboard/ParentAttendan
 
 // Settings
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'))
+
+// Error pages
+const NotFoundPage = lazy(() => import('@/pages/errors/NotFoundPage'))
+const UnauthorizedPage = lazy(() => import('@/pages/errors/UnauthorizedPage'))
 
 export const router = createBrowserRouter([
   {
@@ -138,5 +140,6 @@ export const router = createBrowserRouter([
       { path: 'settings', element: r(['admin'], <SettingsPage />) },
     ],
   },
-  { path: '*', element: <RoleRedirect /> },
+  { path: '/unauthorized', element: wrap(<UnauthorizedPage />) },
+  { path: '*', element: wrap(<NotFoundPage />) },
 ])

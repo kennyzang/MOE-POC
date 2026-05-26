@@ -452,6 +452,14 @@ const ms = {
     deleteEvent: 'Padam Acara',
     deleteEventConfirm: 'Adakah anda pasti mahu memadam acara ini?',
   },
+  errors: {
+    notFoundTitle: '404 — Halaman Tidak Dijumpai',
+    notFoundDesc: 'Halaman yang anda cari tidak wujud atau telah dipindahkan.',
+    unauthorizedTitle: '403 — Akses Ditolak',
+    unauthorizedDesc: 'Anda tidak mempunyai kebenaran untuk melihat halaman ini.',
+    goHome: 'Pergi ke Papan Pemuka',
+    goBack: 'Kembali',
+  },
 }
 
 export default ms

@@ -2,6 +2,7 @@ import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 import { send } from '../services/notificationService'
+import { sendPushToUser } from '../services/pushService'
 
 const router = Router()
 
@@ -184,8 +185,9 @@ router.post(
         })
         await Promise.all(
           students.flatMap(student => {
-            const notifyIds = [student.userId, ...student.parentLinks.map(l => l.parent.user.id)]
-            return notifyIds.map(uid =>
+            const parentUserIds = student.parentLinks.map(l => l.parent.user.id)
+            const notifyIds = [student.userId, ...parentUserIds]
+            const inAppAlerts = notifyIds.map(uid =>
               send({
                 userId: uid,
                 title: 'Attendance Alert',
@@ -193,6 +195,15 @@ router.post(
                 type: 'warning',
               }),
             )
+            // Also send Web Push to parents
+            const pushAlerts = parentUserIds.map(uid =>
+              sendPushToUser(uid, {
+                title: 'Attendance Alert',
+                body: `${student.user.displayName} was marked absent today. Please contact the school if needed.`,
+                url: '/parent/attendance',
+              }).catch(err => console.error('[Push] Failed to send to parent:', err)),
+            )
+            return [...inAppAlerts, ...pushAlerts]
           }),
         )
       }

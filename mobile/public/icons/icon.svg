@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#165DFF"/>
+  <rect x="28" y="52" width="136" height="100" rx="8" fill="white" opacity="0.15"/>
+  <rect x="28" y="52" width="136" height="100" rx="8" fill="none" stroke="white" stroke-width="4"/>
+  <!-- Book pages -->
+  <line x1="96" y1="56" x2="96" y2="148" stroke="white" stroke-width="3" opacity="0.6"/>
+  <!-- Book lines -->
+  <line x1="40" y1="78" x2="88" y2="78" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="40" y1="94" x2="88" y2="94" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="40" y1="110" x2="88" y2="110" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="40" y1="126" x2="72" y2="126" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="104" y1="78" x2="152" y2="78" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="104" y1="94" x2="152" y2="94" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="104" y1="110" x2="152" y2="110" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="104" y1="126" x2="136" y2="126" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <!-- MOE text hint: small star/crest at top -->
+  <circle cx="96" cy="36" r="10" fill="#FFD700"/>
+  <polygon points="96,27 98,33 104,33 99,37 101,43 96,39 91,43 93,37 88,33 94,33" fill="#165DFF"/>
+</svg>

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
+import OfflineBanner from '@/components/OfflineBanner'
 import LoginPage from '@/pages/auth/LoginPage'
 import ParentHomePage from '@/pages/parent/ParentHomePage'
 import ParentGradesPage from '@/pages/parent/ParentGradesPage'
@@ -32,6 +33,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <OfflineBanner />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<RequireAuth><RoleRedirect /></RequireAuth>} />

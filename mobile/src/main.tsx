@@ -16,3 +16,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </React.StrictMode>
 )
+
+// Register Service Worker (vite-plugin-pwa auto-generates this)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // vite-plugin-pwa registers sw automatically with registerType: 'autoUpdate'
+    // This listener handles update notifications
+    navigator.serviceWorker.ready.then(registration => {
+      console.log('[SW] Service Worker registered, scope:', registration.scope)
+    }).catch(err => {
+      console.warn('[SW] Registration check failed:', err)
+    })
+  })
+}

@@ -452,6 +452,14 @@ const zh = {
     deleteEvent: '删除事件',
     deleteEventConfirm: '确定要删除此事件吗？',
   },
+  errors: {
+    notFoundTitle: '404 — 页面不存在',
+    notFoundDesc: '您要访问的页面不存在或已被移动。',
+    unauthorizedTitle: '403 — 无权访问',
+    unauthorizedDesc: '您没有权限查看此页面。',
+    goHome: '返回仪表板',
+    goBack: '返回上一页',
+  },
 }
 
 export default zh
