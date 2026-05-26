@@ -29,3 +29,4 @@
 | 2026-05-25 19:10 | [260525-1910.md](260525-1910.md) | Stage E 完成：SIS 录取 4 步 Wizard（年龄-年级校验、POST/PATCH status API、i18n 全覆盖、Playwright 验证通过） | ~60k |
 | 2026-05-26 08:20 | [260526-0820.md](260526-0820.md) | Stage G+H 完成：AI Chatbot（SSE流式\/Demo fallback）+ At-Risk仪表板（Ahmad HIGH RISK 82%✓）+ settings auto mode | ~120k |
 | 2026-05-26 08:54 | [260526-0854.md](260526-0854.md) | Stage F 补做完成：通知系统（铃铛 UI + Office365 SMTP 邮件）+ 6个业务事件触发点 + POST /finance/invoices | ~35k |
+| 2026-05-26 09:20 | [260526-0920.md](260526-0920.md) | SMTP 系统配置页面（admin 界面配置邮件服务器）+ 密钥泄露修复（git history rewrite） | ~20k |
