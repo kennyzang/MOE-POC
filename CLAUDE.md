@@ -24,17 +24,26 @@ moe-poc-claude/
 ```
 
 ## User Roles & Demo Accounts
+
+> 密码已在 seed.ts 更新（2026-05-26）。重置数据库后以下密码生效。
+
 | Role | Username | Display Name | Password |
 |------|----------|-------------|----------|
-| student | adam | Adam Bin Haris | Demo@2026 |
-| student | nurul | Nurul Binti Rahman | Demo@2026 |
-| parent | fatimah | Fatimah Binti Yusof | Demo@2026 |
+| admin | admin | System Admin | admin123 |
+| principal | principal | Hjh Rashidah Binti Mohamad | principal123 |
+| hod | hod01 | Dr. Azman Bin Ishak | hod123 |
+| manager | manager | Hj Kamaruddin | Demo@2026 |
+| finance | finance | Finance Officer | finance123 |
+| admissions | admission | Admission Officer | admission123 |
+| admissions | admissions | Admissions Officer | Demo@2026 |
 | teacher | drsiti | Dr. Siti Nurhaliza | Demo@2026 |
 | teacher | faizal | Mohd Faizal Bin Aziz | Demo@2026 |
-| admissions | admissions | Admissions Officer | Demo@2026 |
-| manager | manager | Hj Kamaruddin | Demo@2026 |
-| finance | finance | Finance Officer | Demo@2026 |
-| admin | admin | System Admin | Demo@2026 |
+| teacher | teacher01 | Ms. Aminah Binti Hassan | teacher123 |
+| student | student001 | Ahmad Bin Abdullah | student123 |
+| student | adam | Adam Bin Haris | Demo@2026 |
+| student | nurul | Nurul Binti Rahman | Demo@2026 |
+| parent | parent01 | Hj Abdullah Bin Mahmud | parent123 |
+| parent | fatimah | Fatimah Binti Yusof | Demo@2026 |
 
 ## Hard Rules
 1. **All UI components MUST use Ant Design** — no native HTML date pickers, selects, etc.
