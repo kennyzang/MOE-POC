@@ -72,6 +72,9 @@ const ParentChildrenPage = lazy(() => import('@/pages/dashboard/ParentChildrenPa
 const ParentGradesPage = lazy(() => import('@/pages/dashboard/ParentGradesPage'))
 const ParentAttendancePage = lazy(() => import('@/pages/dashboard/ParentAttendancePage'))
 
+// Settings
+const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'))
+
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -130,7 +133,7 @@ export const router = createBrowserRouter([
       { path: 'parent/attendance', element: r(['parent'], <ParentAttendancePage />) },
 
       // Settings
-      { path: 'settings', element: r(['admin'], <DashboardPage />) },
+      { path: 'settings', element: r(['admin'], <SettingsPage />) },
     ],
   },
   { path: '*', element: <RoleRedirect /> },
