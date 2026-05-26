@@ -28,3 +28,4 @@
 | 2026-05-25 19:00 | [260525-1900.md](260525-1900.md) | Stage D 完成：SMS 课表自动生成 + 设施预约（2 新模型、5 API、TimetablePage 周视图、SchoolResourcesPage 预约Tab、TypeScript 零错误） | ~45k |
 | 2026-05-25 19:10 | [260525-1910.md](260525-1910.md) | Stage E 完成：SIS 录取 4 步 Wizard（年龄-年级校验、POST/PATCH status API、i18n 全覆盖、Playwright 验证通过） | ~60k |
 | 2026-05-26 08:20 | [260526-0820.md](260526-0820.md) | Stage G+H 完成：AI Chatbot（SSE流式\/Demo fallback）+ At-Risk仪表板（Ahmad HIGH RISK 82%✓）+ settings auto mode | ~120k |
+| 2026-05-26 08:54 | [260526-0854.md](260526-0854.md) | Stage F 补做完成：通知系统（铃铛 UI + Office365 SMTP 邮件）+ 6个业务事件触发点 + POST /finance/invoices | ~35k |
