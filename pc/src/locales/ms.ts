@@ -75,6 +75,7 @@ const ms = {
     studentGrades: 'Gred Saya',
     settings: 'Tetapan',
     aiAssistant: 'Pembantu AI',
+    atRisk: 'Pelajar Berisiko',
   },
   roles: {
     student: 'Pelajar',

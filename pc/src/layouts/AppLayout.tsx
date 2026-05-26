@@ -2,6 +2,7 @@ import { Layout } from 'antd'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
+import ChatWidget from '@/components/ChatWidget'
 import { useUIStore } from '@/stores/uiStore'
 
 const { Content } = Layout
@@ -31,6 +32,7 @@ const AppLayout = () => {
           <Outlet />
         </Content>
       </Layout>
+      <ChatWidget />
     </Layout>
   )
 }

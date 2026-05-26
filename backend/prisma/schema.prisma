@@ -364,3 +364,23 @@ model Notification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 }
+
+// ─── AI / Chatbot ────────────────────────────────────────────────
+
+model ChatbotConversation {
+  id             String   @id @default(uuid())
+  userId         String
+  messages       String   // JSON array of {role, content, timestamp}
+  contextData    String?  // JSON snapshot of context used
+  lastActivityAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+}
+
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -75,6 +75,7 @@ const en = {
     studentGrades: 'My Grades',
     settings: 'Settings',
     aiAssistant: 'AI Assistant',
+    atRisk: 'At-Risk Students',
   },
   roles: {
     student: 'Student',

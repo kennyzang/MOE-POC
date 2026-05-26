@@ -17,6 +17,7 @@ import {
   Bell,
   Settings,
   Calendar,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -45,7 +46,7 @@ const ROLE_HOME: Record<UserRole, string> = {
   student: '/student/dashboard',
   parent: '/parent/children',
   hod: '/ems/performance-evaluations',
-  principal: '/ems/performance-evaluations',
+  principal: '/dashboard/at-risk',
 }
 
 const Sidebar = () => {
@@ -65,6 +66,12 @@ const Sidebar = () => {
         label: t('nav.commandCenter'),
         icon: icon(LayoutDashboard),
         roles: ['admin', 'manager', 'finance'],
+      },
+      {
+        key: '/dashboard/at-risk',
+        label: t('nav.atRisk'),
+        icon: icon(AlertTriangle),
+        roles: ['admin', 'manager', 'principal'],
       },
       // SIS - Student Information System
       {

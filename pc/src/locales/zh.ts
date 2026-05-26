@@ -75,6 +75,7 @@ const zh = {
     studentGrades: '我的成绩',
     settings: '系统设置',
     aiAssistant: 'AI助手',
+    atRisk: '高风险学生',
   },
   roles: {
     student: '学生',
