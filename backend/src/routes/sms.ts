@@ -297,4 +297,68 @@ router.post(
   }
 )
 
+// ─── GET /sms/calendar-events ──────────────────────────────────────────────
+router.get('/calendar-events', authenticate, async (_req: AuthRequest, res: Response) => {
+  try {
+    const events = await prisma.schoolEvent.findMany({
+      orderBy: { date: 'asc' },
+    })
+    res.json({ success: true, data: events })
+  } catch (error) {
+    console.error('GET /sms/calendar-events error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── POST /sms/calendar-events ─────────────────────────────────────────────
+router.post(
+  '/calendar-events',
+  authenticate,
+  requireRole('admin', 'manager', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { title, date, endDate, type, description } = req.body as {
+        title: string
+        date: string
+        endDate?: string
+        type?: string
+        description?: string
+      }
+      if (!title || !date) {
+        res.status(400).json({ success: false, message: 'title and date are required' })
+        return
+      }
+      const event = await prisma.schoolEvent.create({
+        data: {
+          title,
+          date: new Date(date),
+          endDate: endDate ? new Date(endDate) : undefined,
+          type: type ?? 'event',
+          description,
+        },
+      })
+      res.status(201).json({ success: true, data: event })
+    } catch (error) {
+      console.error('POST /sms/calendar-events error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
+// ─── DELETE /sms/calendar-events/:id ───────────────────────────────────────
+router.delete(
+  '/calendar-events/:id',
+  authenticate,
+  requireRole('admin', 'manager', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      await prisma.schoolEvent.delete({ where: { id: req.params.id as string } })
+      res.json({ success: true })
+    } catch (error) {
+      console.error('DELETE /sms/calendar-events error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
 export default router

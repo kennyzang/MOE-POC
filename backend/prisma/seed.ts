@@ -1003,6 +1003,21 @@ async function main() {
     })
   }
 
+  // ─── School Calendar Events ─────────────────────────────────────
+  const schoolEvents = [
+    { title: 'Mid-Term Examinations', date: new Date('2026-05-20'), endDate: new Date('2026-05-22'), type: 'exam', description: 'Year 7-11 mid-term examinations' },
+    { title: 'Sports Day', date: new Date('2026-06-05'), type: 'activity', description: 'Annual school sports day — all students participate' },
+    { title: 'School Open Day', date: new Date('2026-06-10'), type: 'event', description: 'Annual school open day for parents and prospective students' },
+    { title: 'Hari Raya Aidiladha', date: new Date('2026-06-07'), endDate: new Date('2026-06-08'), type: 'holiday', description: 'Public holiday — school closed' },
+    { title: 'Final Examinations Begin', date: new Date('2026-07-06'), endDate: new Date('2026-07-17'), type: 'exam', description: 'End-of-year final examinations Year 7-11' },
+    { title: 'Science Fair', date: new Date('2026-05-30'), type: 'activity', description: 'Students present science projects to judges and parents' },
+    { title: 'Parent-Teacher Meeting', date: new Date('2026-06-20'), type: 'event', description: 'Semester 1 progress review with parents' },
+    { title: 'School Holiday (Semester Break)', date: new Date('2026-07-20'), endDate: new Date('2026-08-02'), type: 'holiday', description: 'Mid-year school holiday' },
+  ]
+  for (const ev of schoolEvents) {
+    await prisma.schoolEvent.create({ data: ev })
+  }
+
   console.log('Seed completed successfully!')
   console.log('Summary:')
   const userCount = await prisma.user.count()

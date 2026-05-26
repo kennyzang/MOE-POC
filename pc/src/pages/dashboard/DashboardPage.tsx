@@ -1,4 +1,4 @@
-import { Card, Row, Col, Typography, Tag, Spin, Statistic, Alert, Badge } from 'antd'
+import { Card, Row, Col, Typography, Tag, Spin, Statistic, Alert, Badge, List } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -13,6 +13,7 @@ import {
   BookMarked,
   AlertTriangle,
   CheckCircle,
+  ClipboardCheck,
 } from 'lucide-react'
 import {
   BarChart,
@@ -57,6 +58,24 @@ interface DashboardStats {
   }
 }
 
+interface TeacherDashboardStats {
+  myCourses: number
+  myStudents: number
+  upcomingSessions: Array<{
+    id: string
+    date: string
+    status: string
+    course: { id: string; code: string; name: string }
+  }>
+  recentGrades: Array<{
+    id: string
+    score: number | null
+    gradedAt: string
+    gradeItem: { name: string; courseId: string }
+    student: { user: { displayName: string } }
+  }>
+}
+
 const ADMISSION_STATUS_COLORS: Record<string, string> = {
   pending: 'orange',
   under_review: 'blue',
@@ -68,10 +87,13 @@ const DashboardPage = () => {
   const { t } = useTranslation()
   const { user } = useAuthStore()
 
+  const isTeacher = user?.role === 'teacher'
+
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const { data } = await api.get('/dashboard/stats')
+      if (isTeacher) return data.data as TeacherDashboardStats
       return data.data as DashboardStats
     },
   })
@@ -84,10 +106,114 @@ const DashboardPage = () => {
     )
   }
 
-  const enrollmentData = (stats?.enrollmentByGrade ?? []).map((item) => ({
+  // ── Teacher Dashboard ──────────────────────────────────────────
+  if (isTeacher) {
+    const teacherStats = stats as TeacherDashboardStats | undefined
+    return (
+      <div>
+        <Card style={{ marginBottom: 16 }}>
+          <Typography.Title level={4} style={{ margin: 0 }}>
+            {t('dashboard.welcomeBack', { name: user?.displayName ?? '' })}
+          </Typography.Title>
+          <Typography.Text type="secondary">{t('dashboard.teacherOverview')}</Typography.Text>
+        </Card>
+
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={24} sm={12}>
+            <Card>
+              <Statistic
+                title={t('dashboard.myCourses')}
+                value={teacherStats?.myCourses ?? 0}
+                prefix={<BookOpen size={18} style={{ color: '#165DFF' }} />}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Card>
+              <Statistic
+                title={t('dashboard.myStudents')}
+                value={teacherStats?.myStudents ?? 0}
+                prefix={<Users size={18} style={{ color: '#165DFF' }} />}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <CalendarCheck size={16} />
+                  {t('dashboard.todaySessions')}
+                </span>
+              }
+            >
+              <List
+                dataSource={teacherStats?.upcomingSessions ?? []}
+                locale={{ emptyText: t('common.noData') }}
+                renderItem={item => (
+                  <List.Item>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <div>
+                        <div style={{ fontWeight: 500 }}>{item.course.name}</div>
+                        <div style={{ fontSize: 12, color: '#00000073' }}>{item.course.code}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <Tag color={item.status === 'active' ? 'green' : 'default'}>{item.status}</Tag>
+                        <div style={{ fontSize: 12, color: '#00000073' }}>
+                          {new Date(item.date).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ClipboardCheck size={16} />
+                  {t('dashboard.recentGrades')}
+                </span>
+              }
+            >
+              <List
+                dataSource={teacherStats?.recentGrades ?? []}
+                locale={{ emptyText: t('common.noData') }}
+                renderItem={item => (
+                  <List.Item>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <div>
+                        <div style={{ fontWeight: 500 }}>{item.student.user.displayName}</div>
+                        <div style={{ fontSize: 12, color: '#00000073' }}>{item.gradeItem.name}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 600, color: '#165DFF' }}>
+                          {item.score != null ? item.score : '-'}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#00000073' }}>
+                          {new Date(item.gradedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
+    )
+  }
+
+  const adminStats = stats as DashboardStats | undefined
+  const enrollmentData = adminStats?.enrollmentByGrade?.map((item) => ({
     grade: item.gradeLevel,
     count: item.count,
-  }))
+  })) ?? []
 
   return (
     <div>
@@ -105,7 +231,7 @@ const DashboardPage = () => {
           <Card>
             <Statistic
               title={t('dashboard.totalStudents')}
-              value={stats?.totalStudents ?? 0}
+              value={adminStats?.totalStudents ?? 0}
               prefix={<Users size={18} style={{ color: '#165DFF' }} />}
             />
           </Card>
@@ -114,7 +240,7 @@ const DashboardPage = () => {
           <Card>
             <Statistic
               title={t('dashboard.totalTeachers')}
-              value={stats?.totalTeachers ?? 0}
+              value={adminStats?.totalTeachers ?? 0}
               prefix={<GraduationCap size={18} style={{ color: '#165DFF' }} />}
             />
           </Card>
@@ -123,7 +249,7 @@ const DashboardPage = () => {
           <Card>
             <Statistic
               title={t('dashboard.totalCourses')}
-              value={stats?.totalCourses ?? 0}
+              value={adminStats?.totalCourses ?? 0}
               prefix={<BookOpen size={18} style={{ color: '#165DFF' }} />}
             />
           </Card>
@@ -132,7 +258,7 @@ const DashboardPage = () => {
           <Card>
             <Statistic
               title={t('dashboard.attendanceRate')}
-              value={stats?.attendanceRate ?? 0}
+              value={adminStats?.attendanceRate ?? 0}
               suffix="%"
               precision={1}
               prefix={<CalendarCheck size={18} style={{ color: '#165DFF' }} />}
@@ -143,7 +269,7 @@ const DashboardPage = () => {
           <Card>
             <Statistic
               title={t('dashboard.pendingAdmissions')}
-              value={stats?.pendingAdmissions ?? 0}
+              value={adminStats?.pendingAdmissions ?? 0}
               prefix={<ClipboardList size={18} style={{ color: '#165DFF' }} />}
             />
           </Card>
@@ -151,7 +277,7 @@ const DashboardPage = () => {
       </Row>
 
       {/* Row 1b: Staff Status + Timetable Conflicts (admin/manager/principal only) */}
-      {stats?.staffStatus && (
+      {adminStats?.staffStatus && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col xs={24} lg={12}>
             <Card title={
@@ -165,7 +291,7 @@ const DashboardPage = () => {
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <UserCheck size={28} style={{ color: '#52c41a', marginBottom: 8 }} />
                     <div style={{ fontSize: 28, fontWeight: 700, color: '#52c41a', lineHeight: 1 }}>
-                      {stats.staffStatus.active}
+                      {adminStats.staffStatus.active}
                     </div>
                     <div style={{ fontSize: 12, color: '#00000073', marginTop: 4 }}>
                       {t('dashboard.staffActive')}
@@ -176,7 +302,7 @@ const DashboardPage = () => {
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <UserX size={28} style={{ color: '#faad14', marginBottom: 8 }} />
                     <div style={{ fontSize: 28, fontWeight: 700, color: '#faad14', lineHeight: 1 }}>
-                      {stats.staffStatus.onLeave}
+                      {adminStats.staffStatus.onLeave}
                     </div>
                     <div style={{ fontSize: 12, color: '#00000073', marginTop: 4 }}>
                       {t('dashboard.staffOnLeave')}
@@ -187,7 +313,7 @@ const DashboardPage = () => {
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <BookMarked size={28} style={{ color: '#165DFF', marginBottom: 8 }} />
                     <div style={{ fontSize: 28, fontWeight: 700, color: '#165DFF', lineHeight: 1 }}>
-                      {stats.staffStatus.inTraining}
+                      {adminStats.staffStatus.inTraining}
                     </div>
                     <div style={{ fontSize: 12, color: '#00000073', marginTop: 4 }}>
                       {t('dashboard.staffInTraining')}
@@ -200,17 +326,17 @@ const DashboardPage = () => {
           <Col xs={24} lg={12}>
             <Card title={
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {(stats.timetableConflicts?.count ?? 0) > 0
+                {(adminStats.timetableConflicts?.count ?? 0) > 0
                   ? <AlertTriangle size={16} style={{ color: '#ff4d4f' }} />
                   : <CheckCircle size={16} style={{ color: '#52c41a' }} />
                 }
                 {t('dashboard.timetableConflicts')}
-                {(stats.timetableConflicts?.count ?? 0) > 0 && (
-                  <Badge count={stats.timetableConflicts!.count} style={{ marginLeft: 4 }} />
+                {(adminStats.timetableConflicts?.count ?? 0) > 0 && (
+                  <Badge count={adminStats.timetableConflicts!.count} style={{ marginLeft: 4 }} />
                 )}
               </span>
             }>
-              {(stats.timetableConflicts?.count ?? 0) === 0 ? (
+              {(adminStats.timetableConflicts?.count ?? 0) === 0 ? (
                 <Alert
                   title={t('dashboard.noConflicts')}
                   type="success"
@@ -219,11 +345,11 @@ const DashboardPage = () => {
                 />
               ) : (
                 <div>
-                  {stats.timetableConflicts!.conflicts.slice(0, 4).map((c, idx) => (
+                  {adminStats.timetableConflicts!.conflicts.slice(0, 4).map((c, idx) => (
                     <div key={idx} style={{
                       display: 'flex', alignItems: 'center', gap: 8,
                       padding: '8px 0',
-                      borderBottom: idx < (stats.timetableConflicts!.conflicts.length - 1) ? '1px solid #f0f0f0' : 'none',
+                      borderBottom: idx < (adminStats.timetableConflicts!.conflicts.length - 1) ? '1px solid #f0f0f0' : 'none',
                     }}>
                       <AlertTriangle size={14} style={{ color: '#ff4d4f', flexShrink: 0 }} />
                       <span style={{ fontSize: 13 }}>
@@ -266,16 +392,16 @@ const DashboardPage = () => {
               }}
             >
               <Statistic
-                value={stats?.attendanceRate ?? 0}
+                value={adminStats?.attendanceRate ?? 0}
                 suffix="%"
                 precision={1}
                 styles={{
                   content: {
                     fontSize: 48,
                     color:
-                      (stats?.attendanceRate ?? 0) >= 80
+                      (adminStats?.attendanceRate ?? 0) >= 80
                         ? '#52c41a'
-                        : (stats?.attendanceRate ?? 0) >= 60
+                        : (adminStats?.attendanceRate ?? 0) >= 60
                           ? '#faad14'
                           : '#ff4d4f',
                   },
@@ -293,12 +419,12 @@ const DashboardPage = () => {
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col span={24}>
           <Card title={t('dashboard.recentAdmissions')}>
-            {(stats?.recentAdmissions ?? []).slice(0, 5).length === 0 ? (
+            {(adminStats?.recentAdmissions ?? []).slice(0, 5).length === 0 ? (
               <div style={{ color: '#00000040', textAlign: 'center', padding: '12px 0' }}>
                 {t('common.noData')}
               </div>
             ) : (
-              (stats?.recentAdmissions ?? []).slice(0, 5).map((item, idx, arr) => (
+              (adminStats?.recentAdmissions ?? []).slice(0, 5).map((item, idx, arr) => (
                 <div
                   key={item.id}
                   style={{
@@ -334,7 +460,7 @@ const DashboardPage = () => {
           <Card>
             <Statistic
               title={t('dashboard.totalFees')}
-              value={stats?.financeSummary?.totalFees ?? 0}
+              value={adminStats?.financeSummary?.totalFees ?? 0}
               prefix={<DollarSign size={16} style={{ color: '#165DFF' }} />}
               suffix="BND"
             />
@@ -344,7 +470,7 @@ const DashboardPage = () => {
           <Card>
             <Statistic
               title={t('dashboard.collected')}
-              value={stats?.financeSummary?.collected ?? 0}
+              value={adminStats?.financeSummary?.collected ?? 0}
               prefix={<DollarSign size={16} style={{ color: '#52c41a' }} />}
               suffix="BND"
               styles={{ content: { color: '#52c41a' } }}
@@ -355,7 +481,7 @@ const DashboardPage = () => {
           <Card>
             <Statistic
               title={t('dashboard.outstanding')}
-              value={stats?.financeSummary?.outstanding ?? 0}
+              value={adminStats?.financeSummary?.outstanding ?? 0}
               prefix={<DollarSign size={16} style={{ color: '#ff4d4f' }} />}
               suffix="BND"
               styles={{ content: { color: '#ff4d4f' } }}

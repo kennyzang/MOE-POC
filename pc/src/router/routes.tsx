@@ -57,6 +57,7 @@ const CourseManagementPage = lazy(() => import('@/pages/sms/CourseManagementPage
 const SchoolResourcesPage = lazy(() => import('@/pages/sms/SchoolResourcesPage'))
 const FinancialReportsPage = lazy(() => import('@/pages/sms/FinancialReportsPage'))
 const TimetablePage = lazy(() => import('@/pages/sms/TimetablePage'))
+const SchoolCalendarPage = lazy(() => import('@/pages/sms/SchoolCalendarPage'))
 
 // EGNC
 const EgncIntegrationPage = lazy(() => import('@/pages/egnc/EgncIntegrationPage'))
@@ -93,7 +94,7 @@ export const router = createBrowserRouter([
       // Command Center
       {
         path: 'dashboard',
-        element: r(['admin', 'manager', 'finance'], <DashboardPage />),
+        element: r(['admin', 'manager', 'finance', 'teacher', 'hod', 'principal'], <DashboardPage />),
       },
       {
         path: 'dashboard/at-risk',
@@ -116,6 +117,7 @@ export const router = createBrowserRouter([
       { path: 'sms/courses', element: r(['admin', 'manager'], <CourseManagementPage />) },
       { path: 'sms/resources', element: r(['admin', 'manager'], <SchoolResourcesPage />) },
       { path: 'sms/timetable', element: r(['admin', 'manager', 'principal'], <TimetablePage />) },
+      { path: 'sms/calendar', element: r(['admin', 'manager', 'principal', 'teacher', 'hod'], <SchoolCalendarPage />) },
       { path: 'sms/finance', element: r(['admin', 'manager', 'finance'], <FinancialReportsPage />) },
 
       // EGNC

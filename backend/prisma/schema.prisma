@@ -384,3 +384,16 @@ model SystemConfig {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// ─── School Calendar ─────────────────────────────────────────────
+
+model SchoolEvent {
+  id          String   @id @default(uuid())
+  title       String
+  date        DateTime
+  endDate     DateTime?
+  type        String   @default("event") // holiday, exam, activity, event
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
