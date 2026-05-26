@@ -77,6 +77,13 @@ const en = {
     aiAssistant: 'AI Assistant',
     atRisk: 'At-Risk Students',
   },
+  notifications: {
+    title: 'Notifications',
+    markAllRead: 'Mark all as read',
+    noNotifications: 'No notifications',
+    justNow: 'Just now',
+    unread: 'unread',
+  },
   roles: {
     student: 'Student',
     teacher: 'Teacher',

@@ -77,6 +77,13 @@ const ms = {
     aiAssistant: 'Pembantu AI',
     atRisk: 'Pelajar Berisiko',
   },
+  notifications: {
+    title: 'Pemberitahuan',
+    markAllRead: 'Tandakan semua dibaca',
+    noNotifications: 'Tiada pemberitahuan',
+    justNow: 'Baru sahaja',
+    unread: 'belum dibaca',
+  },
   roles: {
     student: 'Pelajar',
     teacher: 'Guru',

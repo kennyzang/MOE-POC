@@ -77,6 +77,13 @@ const zh = {
     aiAssistant: 'AI助手',
     atRisk: '高风险学生',
   },
+  notifications: {
+    title: '通知',
+    markAllRead: '全部标为已读',
+    noNotifications: '暂无通知',
+    justNow: '刚刚',
+    unread: '条未读',
+  },
   roles: {
     student: '学生',
     teacher: '教师',
