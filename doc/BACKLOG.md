@@ -1,7 +1,7 @@
 # MOE SERPS POC — 任务看板 & 进度存档
 
 > **演示日期**：2026-06-10（距今约 15 天）  
-> **最后更新**：2026-05-26 (第二次更新)  
+> **最后更新**：2026-05-26 (第三次更新)  
 > **项目入口**：`/Users/xiex/Documents/GIT/moe-poc-claude`  
 > **启动命令**：`./start.sh`（backend:4000 / pc:3000 / mobile:5173）
 
@@ -22,41 +22,22 @@
 ## 📊 总体进度
 
 ```
-已完成  ████████████████████  95%   (约 52/55 演示分钟)
-剩余    ░░░░░░░░░░░░░░░░░░░░   5%
+已完成  ████████████████████  100%  (约 55/55 演示分钟)
+剩余    ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
 | 优先级 | 任务数 | 说明 |
 |--------|--------|------|
-| 🔴 P0 必须 | 1 | 不做会有明显演示空洞 |
+| 🔴 P0 必须 | 0 | 全部完成 ✅ |
 | 🟡 P1 重要 | 0 | 全部完成 ✅ |
-| 🟢 P2 完善 | 4 | 质量和体验提升 |
-| ✅ 已完成 | 18 | 全部可演示 |
+| 🟢 P2 完善 | 2 | 人工验收（VERIFY-08/09 需人工联调） |
+| ✅ 已完成 | 21 | 全部可演示 |
 
 ---
 
 ## 🔴 P0 — 必须完成
 
-### [ ] PWA-01：Mobile PWA 离线 + Push 通知
-
-**演示影响**：演示脚本第 8 段（5分钟）"教师离线打卡 + 家长收到手机推送"——目前是纯 H5，此段无法演示
-
-**技术方案**：
-- `vite-plugin-pwa` + Workbox → 自动生成 Service Worker
-- 离线缓存：课表（TimetableSlot API）+ 成绩（Grades API）→ IndexedDB
-- Push Notification：VAPID Keys（后端生成）+ `web-push` npm 包 → 浏览器 Push API
-- iOS 限制：iOS 16.4+ 支持 PWA push，演示时用 Android 机或 Chrome 桌面
-
-**关键文件**：
-- `mobile/vite.config.ts` — 添加 vite-plugin-pwa 配置
-- `mobile/src/main.tsx` — 注册 Service Worker
-- `backend/src/services/pushService.ts` — 新建，Web Push 发送逻辑
-- `backend/src/routes/push.ts` — 新建，订阅/取消订阅接口
-- `backend/prisma/schema.prisma` — 新增 PushSubscription 模型
-
-**预计工作量**：1.5 天 AI 开发  
-**前置条件**：无  
-**状态**：`待开始`
+_全部完成 ✅_
 
 ---
 
@@ -154,25 +135,20 @@
 
 ## 🟢 P2 — 完善项
 
-### [ ] POLISH-06：CLAUDE.md 账号表更新
+### [x] POLISH-06：CLAUDE.md 账号表更新
 
-**问题**：CLAUDE.md 中的演示账号表密码还是 `Demo@2026`，但 seed.ts 已改为独立密码
-
-**操作**：直接编辑 `CLAUDE.md` 第"User Roles & Demo Accounts"表格，同步新账号（principal/hod01/teacher01/student001/parent01/admission/finance）
-
-**预计工作量**：15 分钟  
-**状态**：`待开始`
+验证 CLAUDE.md 账号表与 seed.ts 完全一致，无需改动。状态：`已验证`
 
 ---
 
-### [ ] POLISH-07：错误页面美化（404 / 无权限）
+### [x] POLISH-07：错误页面美化（404 / 无权限）
 
-**关键文件**：
-- `pc/src/pages/ErrorPage/index.tsx`（或类似路径）
-- `pc/src/router/index.tsx` — 404 catch-all 路由
+- `pc/src/pages/errors/NotFoundPage.tsx` — 404 页（FileQuestion 图标 + i18n）
+- `pc/src/pages/errors/UnauthorizedPage.tsx` — 403 页（ShieldAlert 图标 + i18n）
+- `pc/src/router/routes.tsx` — catch-all 改为渲染 NotFoundPage；RoleRoute 跳转 /unauthorized
+- i18n：en/zh/ms 三语 errors.* 键值
 
-**预计工作量**：0.5 天  
-**状态**：`待开始`
+状态：`已完成`
 
 ---
 
@@ -227,6 +203,9 @@
 | SMS-02 | 学校日历 | Ant Design Calendar + 8 条种子事件 + 增删 API | 260526 |
 | DEMO-04 | HOD 视图验证 | HOD 权限正确，无需修复 | 260526 |
 | DEMO-05 | 55分钟演示剧本 | `doc/demo-script-55min.md`，10 段逐步操作脚本 | 260526 |
+| PWA-01 | Mobile PWA | vite-plugin-pwa + Workbox 离线缓存 + Web Push 家长通知 + OfflineBanner + 订阅 UI | 260526 |
+| POLISH-06 | 账号表验证 | CLAUDE.md 账号表与 seed.ts 核对一致，无需改动 | 260526 |
+| POLISH-07 | 404/403 页面 | PC NotFoundPage + UnauthorizedPage，i18n 三语，路由整合 | 260526 |
 
 ---
 
