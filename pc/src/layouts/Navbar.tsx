@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useLanguageStore } from '@/stores/languageStore'
 import { LANGUAGES, type Language } from '@/lib/i18n'
+import NotificationBell from '@/components/NotificationBell'
 
 const { Header } = Layout
 
@@ -65,6 +66,7 @@ const Navbar = () => {
             label: l.nativeLabel,
           }))}
         />
+        <NotificationBell />
         <Dropdown menu={dropdownItems} placement="bottomRight">
           <Space style={{ cursor: 'pointer' }}>
             <Avatar
