@@ -169,13 +169,14 @@ _全部完成 ✅_
 
 ### [ ] VERIFY-09：Claude API Key 联调
 
-**说明**：AI Chatbot 有 fallback 模式，但演示时最好用真实 API
+**说明**：AI Chatbot 有 fallback 模式，但演示时最好用真实 API。现在支持**在线配置**（无需改 .env）。
 
-**操作步骤**：
-1. 编辑 `backend/.env`，填入 `CLAUDE_API_KEY=sk-ant-...`
-2. 重启 backend
-3. 以 adam 登录 → 点击 Chat 图标
-4. 输入问题，验证 SSE 流式回复正常
+**操作步骤**（已更新，不需要重启后端）：
+1. 以 admin 登录 → Settings → **AI Configuration** tab
+2. 填入 API Key（`sk-ant-...`）→ Save Configuration
+3. 点击 **Test Connection** 验证连通性
+4. 以 adam 登录 → 点击 Chat 图标
+5. 输入问题，验证 SSE 流式回复正常
 
 **状态**：`待验证`（需人工操作）
 
