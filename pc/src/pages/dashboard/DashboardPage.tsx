@@ -14,6 +14,8 @@ import {
   AlertTriangle,
   CheckCircle,
   ClipboardCheck,
+  School,
+  TrendingUp,
 } from 'lucide-react'
 import {
   BarChart,
@@ -83,6 +85,46 @@ const ADMISSION_STATUS_COLORS: Record<string, string> = {
   rejected: 'red',
 }
 
+interface KpiCardProps {
+  icon: React.ElementType
+  color: string
+  bg: string
+  title: string
+  value: number | string
+  suffix?: string
+  precision?: number
+}
+
+const KpiCard = ({ icon: Icon, color, bg, title, value, suffix, precision }: KpiCardProps) => (
+  <Card style={{ borderTop: `3px solid ${color}`, height: '100%' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: '#86909c', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {title}
+        </div>
+        <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1, color: '#1d2129' }}>
+          {precision !== undefined ? Number(value).toFixed(precision) : value}
+          {suffix && <span style={{ fontSize: 14, fontWeight: 500, marginLeft: 3, color: '#86909c' }}>{suffix}</span>}
+        </div>
+      </div>
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 10,
+          background: bg,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <Icon size={20} color={color} />
+      </div>
+    </div>
+  </Card>
+)
+
 const DashboardPage = () => {
   const { t } = useTranslation()
   const { user } = useAuthStore()
@@ -111,31 +153,47 @@ const DashboardPage = () => {
     const teacherStats = stats as TeacherDashboardStats | undefined
     return (
       <div>
-        <Card style={{ marginBottom: 16 }}>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            {t('dashboard.welcomeBack', { name: user?.displayName ?? '' })}
-          </Typography.Title>
-          <Typography.Text type="secondary">{t('dashboard.teacherOverview')}</Typography.Text>
-        </Card>
+        {/* Welcome Banner */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #002a5c 0%, #0040a0 65%, #165DFF 100%)',
+            borderRadius: 12,
+            padding: '20px 28px',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div>
+            <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+              {t('dashboard.welcomeBack', { name: user?.displayName ?? '' })}
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13 }}>
+              {t('dashboard.teacherOverview')}
+            </div>
+          </div>
+          <GraduationCap size={48} color="rgba(255,255,255,0.15)" />
+        </div>
 
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col xs={24} sm={12}>
-            <Card>
-              <Statistic
-                title={t('dashboard.myCourses')}
-                value={teacherStats?.myCourses ?? 0}
-                prefix={<BookOpen size={18} style={{ color: '#165DFF' }} />}
-              />
-            </Card>
+            <KpiCard
+              icon={BookOpen}
+              color="#165DFF"
+              bg="#EBF1FF"
+              title={t('dashboard.myCourses')}
+              value={teacherStats?.myCourses ?? 0}
+            />
           </Col>
           <Col xs={24} sm={12}>
-            <Card>
-              <Statistic
-                title={t('dashboard.myStudents')}
-                value={teacherStats?.myStudents ?? 0}
-                prefix={<Users size={18} style={{ color: '#165DFF' }} />}
-              />
-            </Card>
+            <KpiCard
+              icon={Users}
+              color="#722ED1"
+              bg="#F9F0FF"
+              title={t('dashboard.myStudents')}
+              value={teacherStats?.myStudents ?? 0}
+            />
           </Col>
         </Row>
 
@@ -218,65 +276,80 @@ const DashboardPage = () => {
   return (
     <div>
       {/* Welcome Banner */}
-      <Card style={{ marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>
-          {t('dashboard.welcomeBack', { name: user?.displayName ?? '' })}
-        </Title>
-        <Text type="secondary">{t('dashboard.overviewTitle')}</Text>
-      </Card>
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #002a5c 0%, #0040a0 65%, #165DFF 100%)',
+          borderRadius: 12,
+          padding: '20px 28px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div>
+          <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+            {t('dashboard.welcomeBack', { name: user?.displayName ?? '' })}
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13 }}>
+            {t('dashboard.overviewTitle')}
+          </div>
+        </div>
+        <School size={48} color="rgba(255,255,255,0.15)" />
+      </div>
 
-      {/* Row 1: Stat Cards */}
+      {/* Row 1: KPI Stat Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12} md={8} lg={4} xl={4}>
-          <Card>
-            <Statistic
-              title={t('dashboard.totalStudents')}
-              value={adminStats?.totalStudents ?? 0}
-              prefix={<Users size={18} style={{ color: '#165DFF' }} />}
-            />
-          </Card>
+          <KpiCard
+            icon={Users}
+            color="#165DFF"
+            bg="#EBF1FF"
+            title={t('dashboard.totalStudents')}
+            value={adminStats?.totalStudents ?? 0}
+          />
         </Col>
         <Col xs={24} sm={12} md={8} lg={5} xl={5}>
-          <Card>
-            <Statistic
-              title={t('dashboard.totalTeachers')}
-              value={adminStats?.totalTeachers ?? 0}
-              prefix={<GraduationCap size={18} style={{ color: '#165DFF' }} />}
-            />
-          </Card>
+          <KpiCard
+            icon={GraduationCap}
+            color="#722ED1"
+            bg="#F9F0FF"
+            title={t('dashboard.totalTeachers')}
+            value={adminStats?.totalTeachers ?? 0}
+          />
         </Col>
         <Col xs={24} sm={12} md={8} lg={5} xl={5}>
-          <Card>
-            <Statistic
-              title={t('dashboard.totalCourses')}
-              value={adminStats?.totalCourses ?? 0}
-              prefix={<BookOpen size={18} style={{ color: '#165DFF' }} />}
-            />
-          </Card>
+          <KpiCard
+            icon={BookOpen}
+            color="#13C2C2"
+            bg="#E6FFFB"
+            title={t('dashboard.totalCourses')}
+            value={adminStats?.totalCourses ?? 0}
+          />
         </Col>
         <Col xs={24} sm={12} md={8} lg={5} xl={5}>
-          <Card>
-            <Statistic
-              title={t('dashboard.attendanceRate')}
-              value={adminStats?.attendanceRate ?? 0}
-              suffix="%"
-              precision={1}
-              prefix={<CalendarCheck size={18} style={{ color: '#165DFF' }} />}
-            />
-          </Card>
+          <KpiCard
+            icon={TrendingUp}
+            color="#52C41A"
+            bg="#F6FFED"
+            title={t('dashboard.attendanceRate')}
+            value={adminStats?.attendanceRate ?? 0}
+            suffix="%"
+            precision={1}
+          />
         </Col>
         <Col xs={24} sm={12} md={8} lg={5} xl={5}>
-          <Card>
-            <Statistic
-              title={t('dashboard.pendingAdmissions')}
-              value={adminStats?.pendingAdmissions ?? 0}
-              prefix={<ClipboardList size={18} style={{ color: '#165DFF' }} />}
-            />
-          </Card>
+          <KpiCard
+            icon={ClipboardList}
+            color="#FA8C16"
+            bg="#FFF7E6"
+            title={t('dashboard.pendingAdmissions')}
+            value={adminStats?.pendingAdmissions ?? 0}
+          />
         </Col>
       </Row>
 
-      {/* Row 1b: Staff Status + Timetable Conflicts (admin/manager/principal only) */}
+      {/* Row 1b: Staff Status + Timetable Conflicts */}
       {adminStats?.staffStatus && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col xs={24} lg={12}>
@@ -371,10 +444,12 @@ const DashboardPage = () => {
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
                 <BarChart data={enrollmentData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="grade" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="grade" tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, border: '1px solid #e5e6eb' }}
+                  />
                   <Bar dataKey="count" fill="#165DFF" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -386,30 +461,61 @@ const DashboardPage = () => {
             <div
               style={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 height: 260,
+                gap: 8,
               }}
             >
-              <Statistic
-                value={adminStats?.attendanceRate ?? 0}
-                suffix="%"
-                precision={1}
-                styles={{
-                  content: {
-                    fontSize: 48,
+              <div
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: '50%',
+                  background:
+                    (adminStats?.attendanceRate ?? 0) >= 80
+                      ? 'linear-gradient(135deg, #d9f7be, #b7eb8f)'
+                      : (adminStats?.attendanceRate ?? 0) >= 60
+                        ? 'linear-gradient(135deg, #fff1b8, #ffd666)'
+                        : 'linear-gradient(135deg, #ffccc7, #ff7875)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                }}
+              >
+                <CalendarCheck
+                  size={28}
+                  color={
+                    (adminStats?.attendanceRate ?? 0) >= 80
+                      ? '#52c41a'
+                      : (adminStats?.attendanceRate ?? 0) >= 60
+                        ? '#faad14'
+                        : '#ff4d4f'
+                  }
+                />
+                <div
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 700,
                     color:
                       (adminStats?.attendanceRate ?? 0) >= 80
-                        ? '#52c41a'
+                        ? '#389e0d'
                         : (adminStats?.attendanceRate ?? 0) >= 60
-                          ? '#faad14'
-                          : '#ff4d4f',
-                  },
-                }}
-                prefix={
-                  <CalendarCheck size={36} style={{ marginRight: 8 }} />
-                }
-              />
+                          ? '#d46b08'
+                          : '#cf1322',
+                    lineHeight: 1.2,
+                    marginTop: 4,
+                  }}
+                >
+                  {(adminStats?.attendanceRate ?? 0).toFixed(1)}%
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: '#86909c', marginTop: 8 }}>
+                {t('dashboard.attendanceRate')}
+              </div>
             </div>
           </Card>
         </Col>
@@ -457,36 +563,31 @@ const DashboardPage = () => {
       {/* Row 4: Finance Summary */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title={t('dashboard.totalFees')}
-              value={adminStats?.financeSummary?.totalFees ?? 0}
-              prefix={<DollarSign size={16} style={{ color: '#165DFF' }} />}
-              suffix="BND"
-            />
-          </Card>
+          <KpiCard
+            icon={DollarSign}
+            color="#165DFF"
+            bg="#EBF1FF"
+            title={t('dashboard.totalFees')}
+            value={`${(adminStats?.financeSummary?.totalFees ?? 0).toLocaleString()} BND`}
+          />
         </Col>
         <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title={t('dashboard.collected')}
-              value={adminStats?.financeSummary?.collected ?? 0}
-              prefix={<DollarSign size={16} style={{ color: '#52c41a' }} />}
-              suffix="BND"
-              styles={{ content: { color: '#52c41a' } }}
-            />
-          </Card>
+          <KpiCard
+            icon={DollarSign}
+            color="#52C41A"
+            bg="#F6FFED"
+            title={t('dashboard.collected')}
+            value={`${(adminStats?.financeSummary?.collected ?? 0).toLocaleString()} BND`}
+          />
         </Col>
         <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title={t('dashboard.outstanding')}
-              value={adminStats?.financeSummary?.outstanding ?? 0}
-              prefix={<DollarSign size={16} style={{ color: '#ff4d4f' }} />}
-              suffix="BND"
-              styles={{ content: { color: '#ff4d4f' } }}
-            />
-          </Card>
+          <KpiCard
+            icon={DollarSign}
+            color="#F53F3F"
+            bg="#FFF2F0"
+            title={t('dashboard.outstanding')}
+            value={`${(adminStats?.financeSummary?.outstanding ?? 0).toLocaleString()} BND`}
+          />
         </Col>
       </Row>
     </div>

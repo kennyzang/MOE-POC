@@ -6,7 +6,7 @@
   --color-error: #F53F3F;
   --color-info: #165DFF;
 
-  --color-bg: #f5f7fa;
+  --color-bg: #f0f2f5;
   --color-bg-white: #ffffff;
   --color-bg-sidebar: #001529;
   --color-text: #1d2129;
@@ -17,6 +17,9 @@
   --sidebar-collapsed-width: 64px;
   --navbar-height: 56px;
   --border-radius: 8px;
+
+  --shadow-card: 0 1px 4px rgba(0, 21, 41, 0.08);
+  --shadow-elevated: 0 4px 12px rgba(0, 21, 41, 0.12);
 
   --font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
 }
@@ -58,4 +61,8 @@ a {
 /* Ant Design overrides */
 .ant-layout {
   background: var(--color-bg) !important;
+}
+
+.ant-card {
+  box-shadow: var(--shadow-card) !important;
 }

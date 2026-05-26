@@ -215,19 +215,60 @@ const Sidebar = () => {
     >
       <div
         style={{
-          height: 56,
+          height: 64,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontSize: collapsed ? 14 : 18,
-          fontWeight: 700,
+          padding: collapsed ? '0 14px' : '0 16px',
+          gap: 10,
           cursor: 'pointer',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          background: 'linear-gradient(180deg, #002a5c 0%, #001d42 100%)',
+          flexShrink: 0,
+          overflow: 'hidden',
         }}
         onClick={toggleSidebar}
       >
-        {collapsed ? 'MOE' : 'MOE SERPS'}
+        <div
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 8,
+            background: 'linear-gradient(135deg, #165DFF 0%, #0040cc 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(22, 93, 255, 0.45)',
+          }}
+        >
+          <School size={18} color="#fff" />
+        </div>
+        {!collapsed && (
+          <div style={{ overflow: 'hidden' }}>
+            <div
+              style={{
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 700,
+                letterSpacing: 0.3,
+                lineHeight: 1.25,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              MOE SERPS
+            </div>
+            <div
+              style={{
+                color: 'rgba(255,255,255,0.45)',
+                fontSize: 11,
+                marginTop: 1,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              School ERP System
+            </div>
+          </div>
+        )}
       </div>
       <Menu
         theme="dark"

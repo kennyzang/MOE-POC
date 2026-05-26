@@ -22,11 +22,9 @@ const AppLayout = () => {
         <Navbar />
         <Content
           style={{
-            margin: 16,
+            margin: '8px 16px 16px',
             padding: 24,
-            background: '#fff',
-            borderRadius: 8,
-            minHeight: 'calc(100vh - 88px)',
+            minHeight: 'calc(100vh - 80px)',
           }}
         >
           <Outlet />
