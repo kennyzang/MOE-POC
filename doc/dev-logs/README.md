@@ -27,3 +27,4 @@
 | 2026-05-25 18:00 | [260525-1800.md](260525-1800.md) | Stage C 完成：EMS CPD 追踪 + 绩效评估审批工作流（PerformanceEvaluation 模型、5 个 API、2 个前端页面更新、hod/principal 角色支持） | ~80k |
 | 2026-05-25 19:00 | [260525-1900.md](260525-1900.md) | Stage D 完成：SMS 课表自动生成 + 设施预约（2 新模型、5 API、TimetablePage 周视图、SchoolResourcesPage 预约Tab、TypeScript 零错误） | ~45k |
 | 2026-05-25 19:10 | [260525-1910.md](260525-1910.md) | Stage E 完成：SIS 录取 4 步 Wizard（年龄-年级校验、POST/PATCH status API、i18n 全覆盖、Playwright 验证通过） | ~60k |
+| 2026-05-26 08:20 | [260526-0820.md](260526-0820.md) | Stage G+H 完成：AI Chatbot（SSE流式\/Demo fallback）+ At-Risk仪表板（Ahmad HIGH RISK 82%✓）+ settings auto mode | ~120k |
