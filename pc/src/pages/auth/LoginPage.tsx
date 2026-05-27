@@ -11,12 +11,14 @@ import type { LoginRequest, LoginResponse } from '@/types'
 const { Title, Text } = Typography
 
 const DEMO_ACCOUNTS = [
-  { username: 'admin',    label: 'Admin',       color: '#722ED1', bg: '#F9F0FF' },
-  { username: 'manager',  label: 'Manager',     color: '#1677FF', bg: '#E6F4FF' },
-  { username: 'drsiti',   label: 'Teacher',     color: '#FA8C16', bg: '#FFF7E6' },
-  { username: 'adam',     label: 'Student',     color: '#52C41A', bg: '#F6FFED' },
-  { username: 'fatimah',  label: 'Parent',      color: '#EB2F96', bg: '#FFF0F6' },
-  { username: 'finance',  label: 'Finance',     color: '#13C2C2', bg: '#E6FFFB' },
+  { username: 'admin',     label: 'Admin',       password: 'admin123',    color: '#722ED1', bg: '#F9F0FF' },
+  { username: 'principal', label: 'Principal',   password: 'principal123', color: '#096DD9', bg: '#E6F4FF' },
+  { username: 'hod01',     label: 'HOD',         password: 'hod123',      color: '#531DAB', bg: '#F9F0FF' },
+  { username: 'manager',   label: 'Manager',     password: 'Demo@2026',   color: '#1677FF', bg: '#E6F4FF' },
+  { username: 'drsiti',    label: 'Teacher',     password: 'Demo@2026',   color: '#FA8C16', bg: '#FFF7E6' },
+  { username: 'adam',      label: 'Student',     password: 'Demo@2026',   color: '#52C41A', bg: '#F6FFED' },
+  { username: 'fatimah',   label: 'Parent',      password: 'Demo@2026',   color: '#EB2F96', bg: '#FFF0F6' },
+  { username: 'finance',   label: 'Finance',     password: 'finance123',  color: '#13C2C2', bg: '#E6FFFB' },
 ]
 
 const LoginPage = () => {
@@ -45,10 +47,10 @@ const LoginPage = () => {
     }
   }
 
-  const onQuickLogin = async (username: string) => {
+  const onQuickLogin = async (username: string, password: string) => {
     setQuickLoading(username)
     try {
-      await doLogin(username, 'Demo@2026')
+      await doLogin(username, password)
     } catch {
       message.error(t('auth.loginError'))
     } finally {
@@ -131,7 +133,7 @@ const LoginPage = () => {
                   size="small"
                   loading={quickLoading === account.username}
                   disabled={quickLoading !== null && quickLoading !== account.username}
-                  onClick={() => void onQuickLogin(account.username)}
+                  onClick={() => void onQuickLogin(account.username, account.password)}
                   style={{
                     color: account.color,
                     background: account.bg,

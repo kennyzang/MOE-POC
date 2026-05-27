@@ -60,10 +60,11 @@ interface StudentRisk {
 }
 
 const RiskBadge = ({ level }: { level: StudentRisk['riskLevel'] }) => {
+  const { t } = useTranslation()
   const config = {
-    HIGH:    { color: '#f53f3f', bg: '#fff1f0', label: 'HIGH RISK' },
-    MONITOR: { color: '#ff7d00', bg: '#fff7e6', label: 'MONITOR' },
-    OK:      { color: '#00b42a', bg: '#f0fff4', label: 'OK' },
+    HIGH:    { color: '#f53f3f', bg: '#fff1f0', label: t('atRisk.highRisk') },
+    MONITOR: { color: '#ff7d00', bg: '#fff7e6', label: t('atRisk.monitor') },
+    OK:      { color: '#00b42a', bg: '#f0fff4', label: t('atRisk.ok') },
   }[level]
 
   return (
@@ -87,6 +88,7 @@ const TrendIcon = ({ trend }: { trend: StudentRisk['gradesTrend'] }) => {
 }
 
 const StudentChart = ({ student }: { student: StudentRisk }) => {
+  const { t } = useTranslation()
   const weeks = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8']
   const data = weeks.map((week, i) => ({
     week,
@@ -96,7 +98,7 @@ const StudentChart = ({ student }: { student: StudentRisk }) => {
 
   return (
     <div style={{ padding: '12px 24px 12px 0' }}>
-      <Text type="secondary" style={{ fontSize: 12 }}>8-Week Trend: Attendance (%) & Score (%)</Text>
+      <Text type="secondary" style={{ fontSize: 12 }}>{t('atRisk.trendChart')}</Text>
       <ResponsiveContainer width="100%" height={160}>
         <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -145,9 +147,23 @@ const AtRiskPage = () => {
   const highCount = students.filter(s => s.riskLevel === 'HIGH').length
   const monitorCount = students.filter(s => s.riskLevel === 'MONITOR').length
 
+  // Pre-sorted by riskScore desc for stable ranking
+  const rankedStudents = [...students].sort((a, b) => b.riskScore - a.riskScore)
+  const rankMap = new Map(rankedStudents.map((s, i) => [s.studentDbId, i + 1]))
+
   const columns: ColumnsType<StudentRisk> = [
     {
-      title: 'Student',
+      title: t('atRisk.rank'),
+      key: 'rank',
+      width: 64,
+      render: (_: unknown, record: StudentRisk) => (
+        <Text strong style={{ color: rankMap.get(record.studentDbId) === 1 ? '#f53f3f' : undefined }}>
+          #{rankMap.get(record.studentDbId)}
+        </Text>
+      ),
+    },
+    {
+      title: t('atRisk.student'),
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
@@ -161,7 +177,7 @@ const AtRiskPage = () => {
       ),
     },
     {
-      title: 'Attendance',
+      title: t('atRisk.attendance'),
       dataIndex: 'attendanceRate',
       key: 'attendanceRate',
       width: 130,
@@ -182,7 +198,7 @@ const AtRiskPage = () => {
       ),
     },
     {
-      title: 'Grade Trend',
+      title: t('atRisk.gradeTrend'),
       dataIndex: 'gradesTrend',
       key: 'gradesTrend',
       width: 120,
@@ -197,7 +213,7 @@ const AtRiskPage = () => {
       ),
     },
     {
-      title: 'Risk Level',
+      title: t('atRisk.riskLevel'),
       dataIndex: 'riskLevel',
       key: 'riskLevel',
       width: 130,
@@ -215,25 +231,25 @@ const AtRiskPage = () => {
       render: (level: StudentRisk['riskLevel']) => <RiskBadge level={level} />,
     },
     {
-      title: 'Confidence',
+      title: t('atRisk.confidence'),
       dataIndex: 'confidence',
       key: 'confidence',
       width: 110,
       render: (confidence: number) => (
-        <Tooltip title="Based on volume of data available">
+        <Tooltip title={t('atRisk.confidenceTip')}>
           <Text style={{ fontSize: 13 }}>{confidence}%</Text>
         </Tooltip>
       ),
     },
     {
-      title: 'Status',
+      title: t('common.status'),
       key: 'status',
       width: 150,
       render: (_: unknown, record: StudentRisk) => (
         record.counselorNotified
           ? (
             <Tag icon={<UserCheck size={11} style={{ marginRight: 4 }} />} color="orange" style={{ fontSize: 11 }}>
-              Counselor Notified
+              {t('atRisk.counselorNotified')}
             </Tag>
           )
           : (
@@ -252,7 +268,7 @@ const AtRiskPage = () => {
             <AlertTriangle size={18} style={{ marginRight: 8, verticalAlign: 'middle', color: '#f53f3f' }} />
             {t('nav.atRisk')}
           </Title>
-          <Text type="secondary">AI-powered student risk prediction based on attendance and academic trends</Text>
+          <Text type="secondary">{t('atRisk.subtitle')}</Text>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Select
@@ -266,7 +282,7 @@ const AtRiskPage = () => {
             onClick={() => refetch()}
             loading={isFetching}
           >
-            Refresh
+            {t('atRisk.refresh')}
           </Button>
         </div>
       </div>
@@ -278,7 +294,7 @@ const AtRiskPage = () => {
             <AlertTriangle size={20} color="#f53f3f" />
             <div>
               <div style={{ fontSize: 22, fontWeight: 700, color: '#f53f3f', lineHeight: 1 }}>{highCount}</div>
-              <div style={{ fontSize: 12, color: '#86909c' }}>HIGH RISK</div>
+              <div style={{ fontSize: 12, color: '#86909c' }}>{t('atRisk.highRisk')}</div>
             </div>
           </div>
         </Card>
@@ -287,7 +303,7 @@ const AtRiskPage = () => {
             <AlertTriangle size={20} color="#ff7d00" />
             <div>
               <div style={{ fontSize: 22, fontWeight: 700, color: '#ff7d00', lineHeight: 1 }}>{monitorCount}</div>
-              <div style={{ fontSize: 12, color: '#86909c' }}>MONITOR</div>
+              <div style={{ fontSize: 12, color: '#86909c' }}>{t('atRisk.monitor')}</div>
             </div>
           </div>
         </Card>
@@ -298,14 +314,14 @@ const AtRiskPage = () => {
               <div style={{ fontSize: 22, fontWeight: 700, color: '#00b42a', lineHeight: 1 }}>
                 {students.length - highCount - monitorCount}
               </div>
-              <div style={{ fontSize: 12, color: '#86909c' }}>OK</div>
+              <div style={{ fontSize: 12, color: '#86909c' }}>{t('atRisk.ok')}</div>
             </div>
           </div>
         </Card>
         <Card size="small" style={{ flex: 1 }}>
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{students.length}</div>
-            <div style={{ fontSize: 12, color: '#86909c' }}>Total in {selectedGrade}</div>
+            <div style={{ fontSize: 12, color: '#86909c' }}>{t('atRisk.totalIn', { grade: selectedGrade })}</div>
           </div>
         </Card>
       </div>
@@ -314,11 +330,11 @@ const AtRiskPage = () => {
       <Card bodyStyle={{ padding: 0 }}>
         {isLoading ? (
           <div style={{ padding: 40, textAlign: 'center' }}>
-            <Spin size="large" tip="Analysing student data..." />
+            <Spin size="large" tip={t('atRisk.analysing')} />
           </div>
         ) : students.length === 0 ? (
           <Empty
-            description={`No enrolled students found in ${selectedGrade}`}
+            description={t('atRisk.noStudents', { grade: selectedGrade })}
             style={{ padding: 40 }}
           />
         ) : (
@@ -348,12 +364,12 @@ const AtRiskPage = () => {
 
       {/* Legend */}
       <div style={{ marginTop: 12, display: 'flex', gap: 16, fontSize: 12, color: '#86909c' }}>
-        <span>Algorithm factors:</span>
-        <span>• Attendance ≤60%: +40pts</span>
-        <span>• Attendance 60-75%: +20pts</span>
-        <span>• Declining grades: +30pts</span>
-        <span>• Low avg score (&lt;70%): +10-20pts</span>
-        <span>• Score ≥60 → HIGH RISK</span>
+        <span>{t('atRisk.factorTitle')}</span>
+        <span>• {t('atRisk.factorAtt60')}</span>
+        <span>• {t('atRisk.factorAtt75')}</span>
+        <span>• {t('atRisk.factorDeclining')}</span>
+        <span>• {t('atRisk.factorLowScore')}</span>
+        <span>• {t('atRisk.factorThreshold')}</span>
       </div>
 
       <style>{`
