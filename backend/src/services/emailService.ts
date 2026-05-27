@@ -42,9 +42,9 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
   const transporter = nodemailer.createTransport({
     host: cfg.host,
     port: cfg.port,
-    secure: false, // TLS via STARTTLS
+    secure: false, // STARTTLS on port 587
     auth: { user: cfg.user, pass: cfg.pass },
-    tls: { ciphers: 'SSLv3' },
+    tls: { minVersion: 'TLSv1.2' },
   })
 
   await transporter.sendMail({

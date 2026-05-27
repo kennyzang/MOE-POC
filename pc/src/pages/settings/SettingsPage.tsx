@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Form, Input, Button, Space, Typography, Divider, message, Tabs, Switch } from 'antd'
+import { Card, Form, Input, Button, Space, Typography, Divider, message, Tabs, Switch, Select, Slider, InputNumber, Row, Col } from 'antd'
 import { Settings, Mail, Send, Bot, Zap } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
@@ -18,6 +18,10 @@ interface AiConfig {
   provider: string
   model: string
   apiKey: string
+  baseUrl: string
+  temperature: number
+  maxTokens: number
+  systemPrompt: string
   enabled: boolean
 }
 
@@ -145,12 +149,19 @@ function SmtpTab() {
 
 // ─── AI Tab ──────────────────────────────────────────────────────
 
+const PROVIDER_OPTIONS = [
+  { value: 'anthropic', label: 'Anthropic (Claude)' },
+  { value: 'openai',    label: 'OpenAI (GPT)' },
+  { value: 'custom',    label: 'Custom / OpenAI-compatible (Ollama, DeepSeek, ...)' },
+]
+
 function AiTab() {
   const { t } = useTranslation()
   const [form] = Form.useForm<AiConfig>()
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [enabled, setEnabled] = useState(true)
+  const [temperature, setTemperature] = useState(0.7)
 
   useEffect(() => {
     api
@@ -159,6 +170,7 @@ function AiTab() {
         const cfg = res.data.data
         form.setFieldsValue({ ...cfg, apiKey: '' }) // never pre-fill key
         setEnabled(cfg.enabled)
+        setTemperature(cfg.temperature ?? 0.7)
       })
       .catch(() => {})
   }, [form])
@@ -167,8 +179,12 @@ function AiTab() {
     setSaving(true)
     try {
       const payload: Partial<AiConfig> = {
-        provider: values.provider,
-        model: values.model,
+        provider:     values.provider,
+        model:        values.model,
+        baseUrl:      values.baseUrl,
+        temperature,
+        maxTokens:    values.maxTokens,
+        systemPrompt: values.systemPrompt,
         enabled,
       }
       if (values.apiKey) payload.apiKey = values.apiKey
@@ -208,30 +224,97 @@ function AiTab() {
         {t('settings.aiConfigDesc')}
       </Text>
 
-      <Form form={form} layout="vertical" onFinish={handleSave} initialValues={{ provider: 'anthropic', model: 'claude-sonnet-4-6' }}>
-        <Form.Item label={t('settings.aiEnabled')} style={{ marginBottom: 16 }}>
-          <Switch
-            checked={enabled}
-            onChange={setEnabled}
-            checkedChildren="ON"
-            unCheckedChildren="OFF"
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSave}
+        initialValues={{ provider: 'custom', model: 'deepseek-chat', baseUrl: 'https://api.deepseek.com/v1', maxTokens: 2048 }}
+      >
+        {/* Enable toggle */}
+        <Form.Item label={t('settings.aiEnabled')} style={{ marginBottom: 20 }}>
+          <Space>
+            <Switch
+              checked={enabled}
+              onChange={setEnabled}
+              checkedChildren="ON"
+              unCheckedChildren="OFF"
+            />
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              {enabled ? t('settings.aiEnabledLabel') : t('settings.aiDisabledLabel')}
+            </Text>
+          </Space>
+        </Form.Item>
+
+        {/* Provider + API Key */}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label={t('settings.aiProvider')} name="provider" rules={[{ required: true }]}>
+              <Select options={PROVIDER_OPTIONS} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label={t('settings.aiApiKey')}
+              name="apiKey"
+              extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('settings.aiLeaveBlankKey')}</Text>}
+            >
+              <Input.Password placeholder={t('settings.aiApiKeyPlaceholder')} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Model + Base URL */}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label={t('settings.aiModel')} name="model" rules={[{ required: true }]}>
+              <Input placeholder="deepseek-chat" />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label={t('settings.aiBaseUrl')}
+              name="baseUrl"
+              extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('settings.aiBaseUrlPlaceholder')}</Text>}
+            >
+              <Input placeholder="https://api.deepseek.com/v1" />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Temperature + Max Tokens */}
+        <Row gutter={16}>
+          <Col span={16}>
+            <Form.Item
+              label={
+                <Space size={6}>
+                  <span>{t('settings.aiTemperature')}</span>
+                  <Text style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{temperature}</Text>
+                </Space>
+              }
+            >
+              <Slider
+                min={0}
+                max={1}
+                step={0.1}
+                value={temperature}
+                onChange={setTemperature}
+              />
+              <Text type="secondary" style={{ fontSize: 12 }}>{t('settings.aiTemperatureHint')}</Text>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label={t('settings.aiMaxTokens')} name="maxTokens">
+              <InputNumber min={256} max={8192} step={256} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* System Prompt */}
+        <Form.Item label={t('settings.aiSystemPrompt')} name="systemPrompt">
+          <Input.TextArea
+            rows={4}
+            placeholder={t('settings.aiSystemPromptPlaceholder')}
           />
-        </Form.Item>
-
-        <Form.Item label={t('settings.aiProvider')} name="provider" rules={[{ required: true }]}>
-          <Input placeholder="anthropic" />
-        </Form.Item>
-
-        <Form.Item label={t('settings.aiModel')} name="model" rules={[{ required: true }]}>
-          <Input placeholder="claude-sonnet-4-6" />
-        </Form.Item>
-
-        <Form.Item
-          label={t('settings.aiApiKey')}
-          name="apiKey"
-          extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('settings.aiLeaveBlankKey')}</Text>}
-        >
-          <Input.Password placeholder={t('settings.aiApiKeyPlaceholder')} />
         </Form.Item>
 
         <Form.Item style={{ marginBottom: 0 }}>

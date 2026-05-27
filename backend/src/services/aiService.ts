@@ -58,14 +58,14 @@ export async function loadAiConfig(): Promise<AiConfig> {
   const defaults = PROVIDER_DEFAULTS[provider] ?? PROVIDER_DEFAULTS.anthropic
 
   return {
-    enabled:      (map['ai_enabled'] ?? 'true') === 'true',
+    enabled:      (map['ai_enabled'] ?? process.env.AI_ENABLED ?? 'true') === 'true',
     provider,
-    apiKey:       map['ai_api_key']       ?? process.env.AI_API_KEY    ?? '',
-    model:        map['ai_model']         ?? process.env.AI_MODEL      ?? defaults.model,
-    baseUrl:      map['ai_base_url']      ?? process.env.AI_BASE_URL   ?? defaults.baseUrl,
-    systemPrompt: map['ai_system_prompt'] ?? DEFAULT_SYSTEM_PROMPT,
-    temperature:  parseFloat(map['ai_temperature'] ?? '0.7'),
-    maxTokens:    parseInt(map['ai_max_tokens']    ?? '2048', 10),
+    apiKey:       map['ai_api_key']       ?? process.env.AI_API_KEY      ?? '',
+    model:        map['ai_model']         ?? process.env.AI_MODEL        ?? defaults.model,
+    baseUrl:      map['ai_base_url']      ?? process.env.AI_BASE_URL     ?? defaults.baseUrl,
+    systemPrompt: map['ai_system_prompt'] ?? process.env.AI_SYSTEM_PROMPT ?? DEFAULT_SYSTEM_PROMPT,
+    temperature:  parseFloat(map['ai_temperature'] ?? process.env.AI_TEMPERATURE ?? '0.7'),
+    maxTokens:    parseInt(map['ai_max_tokens']    ?? process.env.AI_MAX_TOKENS   ?? '2048', 10),
   }
 }
 

@@ -1018,6 +1018,30 @@ async function main() {
     await prisma.schoolEvent.create({ data: ev })
   }
 
+  // ─── System Config defaults ────────────────────────────────────────────────
+  // Passwords / API keys are intentionally omitted here — set them in .env
+  const systemConfigs = [
+    // SMTP (non-sensitive)
+    { key: 'smtp_host', value: 'smtp.office365.com',              description: 'SMTP server host' },
+    { key: 'smtp_port', value: '587',                             description: 'SMTP server port' },
+    { key: 'smtp_user', value: 'kennytseng@easycraft.ai',         description: 'SMTP username / sender address' },
+    { key: 'smtp_from', value: 'MOE SERPS <kennytseng@easycraft.ai>', description: 'Sender display name and address' },
+    // AI (non-sensitive)
+    { key: 'ai_enabled',     value: 'true',                       description: 'AI features enabled' },
+    { key: 'ai_provider',    value: 'custom',                     description: 'AI provider (anthropic / openai / custom)' },
+    { key: 'ai_model',       value: 'deepseek-chat',              description: 'AI model ID' },
+    { key: 'ai_base_url',    value: 'https://api.deepseek.com/v1', description: 'Custom API base URL' },
+    { key: 'ai_temperature', value: '0.7',                        description: 'LLM temperature (0-1)' },
+    { key: 'ai_max_tokens',  value: '2048',                       description: 'Max tokens per response' },
+  ]
+  for (const cfg of systemConfigs) {
+    await prisma.systemConfig.upsert({
+      where:  { key: cfg.key },
+      create: cfg,
+      update: { value: cfg.value, description: cfg.description },
+    })
+  }
+
   console.log('Seed completed successfully!')
   console.log('Summary:')
   const userCount = await prisma.user.count()
