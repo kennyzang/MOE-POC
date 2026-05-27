@@ -156,6 +156,13 @@ const zh = {
     timetableConflicts: '课表冲突',
     noConflicts: '未检测到排课冲突',
     conflictDetail: '{{teacher}}：{{c1}} 与 {{c2}} 在 {{day}} 冲突',
+    pendingGrading: '待批改作业',
+    attendanceAlerts: '出勤异常提醒',
+    noAlerts: '暂无出勤异常',
+    myTimetable: '我的课表',
+    attendanceDetail: '考勤详情',
+    noSchedule: '未设置课表',
+    attendanceTrendWeekly: '每周出勤趋势',
   },
   students: {
     title: '学生名录',

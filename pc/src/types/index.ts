@@ -282,11 +282,35 @@ export interface AdminDashboardStats {
   financeSummary: { totalFees: number; collected: number; outstanding: number }
 }
 
+export interface CourseSchedule {
+  courseId: string
+  courseCode: string
+  courseName: string
+  gradeLevel: string
+  schedule: string | null
+}
+
+export interface AttendanceBreakdown {
+  present: number
+  absent: number
+  late: number
+  excused: number
+}
+
+export interface AttendanceAlert {
+  studentId: string
+  name: string
+  className: string
+  attendanceRate: number
+}
+
 export interface StudentDashboardStats {
   enrolledCourses: number
   attendanceRate: number
   gpa: number
   upcomingItems: GradeItem[]
+  courseSchedules: CourseSchedule[]
+  attendanceBreakdown: AttendanceBreakdown
 }
 
 export interface EgncService {

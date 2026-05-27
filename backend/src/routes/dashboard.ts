@@ -78,7 +78,10 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
     const { role, userId } = req.user!
 
     if (role === 'admin' || role === 'manager' || role === 'principal') {
-      const [totalStudents, totalTeachers, totalCourses, pendingAdmissions, allRecords, students, recentAdmissions, invoices, allTeachers, courseAssignments] =
+      const eightWeeksAgo = new Date()
+      eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56)
+
+      const [totalStudents, totalTeachers, totalCourses, pendingAdmissions, allRecords, students, recentAdmissions, invoices, allTeachers, courseAssignments, recentSessions] =
         await Promise.all([
           prisma.student.count(),
           prisma.teacher.count(),
@@ -94,6 +97,11 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
               course: { select: { name: true, code: true } },
               teacher: { include: { user: { select: { displayName: true } } } },
             },
+          }),
+          prisma.attendanceSession.findMany({
+            where: { date: { gte: eightWeeksAgo } },
+            include: { records: { select: { status: true } } },
+            orderBy: { date: 'asc' },
           }),
         ])
 
@@ -124,6 +132,21 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
 
       const timetableConflictList = detectTimetableConflicts(courseAssignments)
 
+      // Build weekly attendance trend (past 8 weeks)
+      const weekMap: Record<number, { total: number; present: number }> = {}
+      for (const session of recentSessions) {
+        const diffDays = Math.floor((session.date.getTime() - eightWeeksAgo.getTime()) / (24 * 3600 * 1000))
+        const weekIdx = Math.floor(diffDays / 7)
+        if (weekIdx < 0 || weekIdx >= 8) continue
+        if (!weekMap[weekIdx]) weekMap[weekIdx] = { total: 0, present: 0 }
+        weekMap[weekIdx].total += session.records.length
+        weekMap[weekIdx].present += session.records.filter(r => r.status === 'present' || r.status === 'late').length
+      }
+      const weeklyAttendance = Array.from({ length: 8 }, (_, i) => {
+        const w = weekMap[i]
+        return { week: `W${i + 1}`, rate: w && w.total > 0 ? Math.round((w.present / w.total) * 10000) / 100 : null }
+      })
+
       res.json({
         success: true,
         data: {
@@ -137,6 +160,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           financeSummary: { totalFees, collected, outstanding: totalFees - collected },
           staffStatus,
           timetableConflicts: { count: timetableConflictList.length, conflicts: timetableConflictList },
+          weeklyAttendance,
         },
       })
       return
@@ -149,7 +173,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
       })
       const courseIds = teacher ? teacher.courseAssignments.map((a) => a.courseId) : []
 
-      const [myStudents, upcomingSessions, recentGrades] = await Promise.all([
+      const [myStudents, upcomingSessions, recentGrades, gradeItemsWithCount, attendanceRecordsRaw] = await Promise.all([
         prisma.enrollment.count({ where: { courseId: { in: courseIds }, status: 'enrolled' } }),
         prisma.attendanceSession.findMany({
           where: { courseId: { in: courseIds }, status: 'active' },
@@ -166,7 +190,48 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           orderBy: { gradedAt: 'desc' },
           take: 10,
         }),
+        prisma.gradeItem.findMany({
+          where: { courseId: { in: courseIds } },
+          include: { _count: { select: { grades: true } } },
+        }),
+        prisma.attendanceRecord.findMany({
+          where: { session: { courseId: { in: courseIds } } },
+          select: {
+            studentId: true,
+            status: true,
+            student: { select: { user: { select: { displayName: true } }, className: true } },
+          },
+        }),
       ])
+
+      // Pending grading: grade items with 0 grades entered
+      const pendingGrading = gradeItemsWithCount.filter(item => item._count.grades === 0).length
+
+      // Attendance alerts: students with < 75% attendance
+      const studentAttMap = new Map<string, { name: string; className: string; total: number; present: number }>()
+      for (const r of attendanceRecordsRaw) {
+        if (!studentAttMap.has(r.studentId)) {
+          studentAttMap.set(r.studentId, {
+            name: r.student.user.displayName,
+            className: r.student.className ?? '',
+            total: 0,
+            present: 0,
+          })
+        }
+        const s = studentAttMap.get(r.studentId)!
+        s.total++
+        if (r.status === 'present' || r.status === 'late') s.present++
+      }
+      const attendanceAlerts = [...studentAttMap.entries()]
+        .filter(([, s]) => s.total >= 2 && (s.present / s.total) < 0.75)
+        .map(([studentId, s]) => ({
+          studentId,
+          name: s.name,
+          className: s.className,
+          attendanceRate: Math.round((s.present / s.total) * 10000) / 100,
+        }))
+        .sort((a, b) => a.attendanceRate - b.attendanceRate)
+        .slice(0, 5)
 
       res.json({
         success: true,
@@ -175,6 +240,8 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           myStudents,
           upcomingSessions,
           recentGrades,
+          pendingGrading,
+          attendanceAlerts,
         },
       })
       return
@@ -187,8 +254,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
         return
       }
 
-      const [enrolledCourses, attendanceRecords, grades, allGradeItems] = await Promise.all([
-        prisma.enrollment.count({ where: { studentId: student.id, status: 'enrolled' } }),
+      const [attendanceRecords, grades, enrollments] = await Promise.all([
         prisma.attendanceRecord.findMany({
           where: { studentId: student.id },
           select: { status: true },
@@ -197,14 +263,19 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           where: { studentId: student.id },
           include: { gradeItem: { select: { id: true, maxScore: true, weight: true, name: true, courseId: true } } },
         }),
-        // Get all grade items for enrolled courses to find upcoming items without grades
         prisma.enrollment.findMany({
           where: { studentId: student.id, status: 'enrolled' },
-          select: { courseId: true },
+          include: {
+            course: {
+              include: {
+                assignments: { select: { schedule: true, semester: true }, take: 1 },
+              },
+            },
+          },
         }),
       ])
 
-      const enrolledCourseIds = allGradeItems.map((e) => e.courseId)
+      const enrolledCourseIds = enrollments.map((e) => e.courseId)
       const gradedItemIds = new Set(grades.map((g) => g.gradeItemId))
 
       const upcomingItems = await prisma.gradeItem.findMany({
@@ -216,13 +287,32 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
         orderBy: { dueDate: 'asc' },
       })
 
+      // Course schedules
+      const courseSchedules = enrollments.map((e) => ({
+        courseId: e.course.id,
+        courseCode: e.course.code,
+        courseName: e.course.name,
+        gradeLevel: e.course.gradeLevel ?? '',
+        schedule: e.course.assignments[0]?.schedule ?? null,
+      }))
+
+      // Attendance breakdown
+      const attendanceBreakdown = { present: 0, absent: 0, late: 0, excused: 0 }
+      for (const r of attendanceRecords) {
+        if (r.status in attendanceBreakdown) {
+          attendanceBreakdown[r.status as keyof typeof attendanceBreakdown]++
+        }
+      }
+
       res.json({
         success: true,
         data: {
-          enrolledCourses,
+          enrolledCourses: enrollments.length,
           attendanceRate: calcAttendanceRate(attendanceRecords),
           gpa: calcWeightedGpa(grades),
           upcomingItems,
+          courseSchedules,
+          attendanceBreakdown,
         },
       })
       return

@@ -46,7 +46,7 @@ const ROLE_HOME: Record<UserRole, string> = {
   student: '/student/dashboard',
   parent: '/parent/children',
   hod: '/ems/performance-evaluations',
-  principal: '/dashboard/at-risk',
+  principal: '/dashboard',
 }
 
 const Sidebar = () => {
@@ -183,11 +183,12 @@ const Sidebar = () => {
 
   const selectedKey = useMemo(() => {
     const path = location.pathname
-    // Find the most specific match
     const allKeys = filteredItems.flatMap(item =>
       item.children ? item.children.map(c => c.key) : [item.key]
     )
-    return allKeys.find(key => path === key || path.startsWith(key + '/')) ?? path
+    // Sort longest first so more-specific paths match before shorter prefixes
+    const sorted = [...allKeys].sort((a, b) => b.length - a.length)
+    return sorted.find(key => path === key || path.startsWith(key + '/')) ?? path
   }, [location.pathname, filteredItems])
 
   const openKeys = useMemo(() => {

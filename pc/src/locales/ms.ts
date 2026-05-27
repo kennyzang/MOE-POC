@@ -156,6 +156,13 @@ const ms = {
     timetableConflicts: 'Konflik Jadual',
     noConflicts: 'Tiada konflik penjadualan dikesan',
     conflictDetail: '{{teacher}}: {{c1}} vs {{c2}} pada {{day}}',
+    pendingGrading: 'Gred Belum Dimasukkan',
+    attendanceAlerts: 'Amaran Kehadiran',
+    noAlerts: 'Tiada anomali kehadiran',
+    myTimetable: 'Jadual Saya',
+    attendanceDetail: 'Butiran Kehadiran',
+    noSchedule: 'Jadual belum ditetapkan',
+    attendanceTrendWeekly: 'Trend Kehadiran Mingguan',
   },
   students: {
     title: 'Direktori Pelajar',

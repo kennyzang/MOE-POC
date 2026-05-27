@@ -156,6 +156,13 @@ const en = {
     timetableConflicts: 'Timetable Conflicts',
     noConflicts: 'No scheduling conflicts detected',
     conflictDetail: '{{teacher}}: {{c1}} vs {{c2}} on {{day}}',
+    pendingGrading: 'Pending Grading',
+    attendanceAlerts: 'Attendance Alerts',
+    noAlerts: 'No attendance anomalies',
+    myTimetable: 'My Timetable',
+    attendanceDetail: 'Attendance Detail',
+    noSchedule: 'Schedule not set',
+    attendanceTrendWeekly: 'Weekly Attendance Trend',
   },
   students: {
     title: 'Student Directory',

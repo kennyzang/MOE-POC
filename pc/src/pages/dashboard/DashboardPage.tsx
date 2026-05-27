@@ -1,4 +1,4 @@
-import { Card, Row, Col, Typography, Tag, Spin, Statistic, Alert, Badge, List } from 'antd'
+import { Card, Row, Col, Typography, Tag, Spin, Alert, Badge, List, Progress } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   School,
   TrendingUp,
+  FileEdit,
 } from 'lucide-react'
 import {
   BarChart,
@@ -25,9 +26,12 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  AreaChart,
+  Area,
 } from 'recharts'
 import api from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
+import type { AttendanceAlert } from '../../types'
 
 const { Title, Text } = Typography
 
@@ -58,6 +62,7 @@ interface DashboardStats {
     count: number
     conflicts: { teacherName: string; course1: string; course2: string; day: string }[]
   }
+  weeklyAttendance?: { week: string; rate: number | null }[]
 }
 
 interface TeacherDashboardStats {
@@ -76,6 +81,8 @@ interface TeacherDashboardStats {
     gradeItem: { name: string; courseId: string }
     student: { user: { displayName: string } }
   }>
+  pendingGrading: number
+  attendanceAlerts: AttendanceAlert[]
 }
 
 const ADMISSION_STATUS_COLORS: Record<string, string> = {
@@ -177,7 +184,7 @@ const DashboardPage = () => {
         </div>
 
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={24} sm={12}>
+          <Col xs={24} sm={12} lg={6}>
             <KpiCard
               icon={BookOpen}
               color="#165DFF"
@@ -186,13 +193,31 @@ const DashboardPage = () => {
               value={teacherStats?.myCourses ?? 0}
             />
           </Col>
-          <Col xs={24} sm={12}>
+          <Col xs={24} sm={12} lg={6}>
             <KpiCard
               icon={Users}
               color="#722ED1"
               bg="#F9F0FF"
               title={t('dashboard.myStudents')}
               value={teacherStats?.myStudents ?? 0}
+            />
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <KpiCard
+              icon={FileEdit}
+              color="#FA8C16"
+              bg="#FFF7E6"
+              title={t('dashboard.pendingGrading')}
+              value={teacherStats?.pendingGrading ?? 0}
+            />
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <KpiCard
+              icon={AlertTriangle}
+              color="#F53F3F"
+              bg="#FFF2F0"
+              title={t('dashboard.attendanceAlerts')}
+              value={(teacherStats?.attendanceAlerts ?? []).length}
             />
           </Col>
         </Row>
@@ -233,33 +258,36 @@ const DashboardPage = () => {
             <Card
               title={
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ClipboardCheck size={16} />
-                  {t('dashboard.recentGrades')}
+                  <AlertTriangle size={16} color="#f53f3f" />
+                  {t('dashboard.attendanceAlerts')}
                 </span>
               }
             >
-              <List
-                dataSource={teacherStats?.recentGrades ?? []}
-                locale={{ emptyText: t('common.noData') }}
-                renderItem={item => (
-                  <List.Item>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                      <div>
-                        <div style={{ fontWeight: 500 }}>{item.student.user.displayName}</div>
-                        <div style={{ fontSize: 12, color: '#00000073' }}>{item.gradeItem.name}</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 600, color: '#165DFF' }}>
-                          {item.score != null ? item.score : '-'}
+              {(teacherStats?.attendanceAlerts ?? []).length === 0 ? (
+                <Alert message={t('dashboard.noAlerts')} type="success" showIcon style={{ border: 'none', background: '#f6ffed' }} />
+              ) : (
+                <List
+                  dataSource={teacherStats?.attendanceAlerts ?? []}
+                  renderItem={item => (
+                    <List.Item style={{ padding: '8px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
+                          <div style={{ fontSize: 11, color: '#86909c' }}>{item.className}</div>
                         </div>
-                        <div style={{ fontSize: 12, color: '#00000073' }}>
-                          {new Date(item.gradedAt).toLocaleDateString()}
+                        <div style={{ textAlign: 'right', minWidth: 80 }}>
+                          <div style={{ fontWeight: 700, color: item.attendanceRate < 60 ? '#f53f3f' : '#ff7d00', fontSize: 15 }}>
+                            {item.attendanceRate.toFixed(0)}%
+                          </div>
+                          <Progress percent={item.attendanceRate} size="small" showInfo={false}
+                            strokeColor={item.attendanceRate < 60 ? '#f53f3f' : '#ff7d00'}
+                            style={{ margin: 0, width: 80 }} />
                         </div>
                       </div>
-                    </div>
-                  </List.Item>
-                )}
-              />
+                    </List.Item>
+                  )}
+                />
+              )}
             </Card>
           </Col>
         </Row>
@@ -440,82 +468,50 @@ const DashboardPage = () => {
       {/* Row 2: Charts */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={14}>
-          <Card title={t('dashboard.enrollmentByGrade')}>
+          <Card title={t('dashboard.enrollmentByGrade')} style={{ height: '100%' }}>
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
-                <BarChart data={enrollmentData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="grade" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <BarChart data={enrollmentData} barCategoryGap="35%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="grade" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip
-                    contentStyle={{ borderRadius: 8, border: '1px solid #e5e6eb' }}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #e5e6eb', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                    cursor={{ fill: '#f0f4ff' }}
                   />
-                  <Bar dataKey="count" fill="#165DFF" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill="#165DFF" radius={[6, 6, 0, 0]}
+                    label={{ position: 'top', fontSize: 11, fill: '#86909c' }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </Card>
         </Col>
         <Col xs={24} lg={10}>
-          <Card title={t('dashboard.attendanceTrend')} style={{ height: '100%' }}>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: 260,
-                gap: 8,
-              }}
-            >
-              <div
-                style={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: '50%',
-                  background:
-                    (adminStats?.attendanceRate ?? 0) >= 80
-                      ? 'linear-gradient(135deg, #d9f7be, #b7eb8f)'
-                      : (adminStats?.attendanceRate ?? 0) >= 60
-                        ? 'linear-gradient(135deg, #fff1b8, #ffd666)'
-                        : 'linear-gradient(135deg, #ffccc7, #ff7875)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'column',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                }}
-              >
-                <CalendarCheck
-                  size={28}
-                  color={
-                    (adminStats?.attendanceRate ?? 0) >= 80
-                      ? '#52c41a'
-                      : (adminStats?.attendanceRate ?? 0) >= 60
-                        ? '#faad14'
-                        : '#ff4d4f'
-                  }
-                />
-                <div
-                  style={{
-                    fontSize: 22,
-                    fontWeight: 700,
-                    color:
-                      (adminStats?.attendanceRate ?? 0) >= 80
-                        ? '#389e0d'
-                        : (adminStats?.attendanceRate ?? 0) >= 60
-                          ? '#d46b08'
-                          : '#cf1322',
-                    lineHeight: 1.2,
-                    marginTop: 4,
-                  }}
+          <Card title={t('dashboard.attendanceTrendWeekly')} style={{ height: '100%' }}>
+            <div style={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer>
+                <AreaChart
+                  data={(adminStats?.weeklyAttendance ?? []).map(w => ({ ...w, rate: w.rate ?? undefined }))}
+                  margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
                 >
-                  {(adminStats?.attendanceRate ?? 0).toFixed(1)}%
-                </div>
-              </div>
-              <div style={{ fontSize: 13, color: '#86909c', marginTop: 8 }}>
-                {t('dashboard.attendanceRate')}
-              </div>
+                  <defs>
+                    <linearGradient id="attendGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#165DFF" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#165DFF" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false}
+                    tickFormatter={(v: number) => `${v}%`} />
+                  <Tooltip
+                    formatter={(v: number) => [`${v?.toFixed(1)}%`, t('dashboard.attendanceRate')]}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #e5e6eb', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                  />
+                  <Area type="monotone" dataKey="rate" stroke="#165DFF" strokeWidth={2}
+                    fill="url(#attendGrad)" dot={{ r: 4, fill: '#165DFF' }} connectNulls />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </Card>
         </Col>

@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Form, Input, Button, Typography, message, Space, Divider, Tooltip } from 'antd'
-import { Lock, User } from 'lucide-react'
+import { Card, Form, Input, Button, Typography, message, Space, Divider, Tooltip, Select } from 'antd'
+import { Lock, User, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
+import { useLanguageStore } from '@/stores/languageStore'
 import { ROLE_HOME } from '@/layouts/Sidebar'
+import { LANGUAGES, type Language } from '@/lib/i18n'
 import api from '@/lib/api'
 import type { LoginRequest, LoginResponse } from '@/types'
 
@@ -25,6 +27,7 @@ const LoginPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
+  const { language, setLanguage } = useLanguageStore()
   const [loading, setLoading] = useState(false)
   const [quickLoading, setQuickLoading] = useState<string | null>(null)
 
@@ -77,11 +80,23 @@ const LoginPage = () => {
         }}
       >
         <Space direction="vertical" size={20} style={{ width: '100%' }}>
-          <div style={{ textAlign: 'center' }}>
-            <Title level={3} style={{ marginBottom: 4 }}>
-              {t('auth.loginTitle')}
-            </Title>
-            <Text type="secondary">{t('auth.loginSubtitle')}</Text>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <Select
+                value={language}
+                onChange={(val: Language) => setLanguage(val)}
+                size="small"
+                style={{ width: 130 }}
+                suffixIcon={<Globe size={13} />}
+                options={LANGUAGES.map(l => ({ value: l.code, label: l.nativeLabel }))}
+              />
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <Title level={3} style={{ marginBottom: 4 }}>
+                {t('auth.loginTitle')}
+              </Title>
+              <Text type="secondary">{t('auth.loginSubtitle')}</Text>
+            </div>
           </div>
 
           <Form
