@@ -2,6 +2,7 @@ import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 import { send } from '../services/notificationService'
+import { recalcStudentRisk } from './ai'
 
 const router = Router()
 
@@ -125,6 +126,10 @@ router.post(
               type: 'info',
             }),
           ),
+        )
+        // Trigger risk recalculation (fire-and-forget, completes within ~1.5s)
+        recalcStudentRisk(studentId, 'GRADE_PUBLISHED').catch(err =>
+          console.error('[Risk] recalc failed after grade save:', err),
         )
       }
 

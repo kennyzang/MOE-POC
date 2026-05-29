@@ -2,6 +2,7 @@ import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 import { sendMany } from '../services/notificationService'
+import { broadcast } from './events'
 
 const router = Router()
 
@@ -436,6 +437,10 @@ router.post(
         },
       })
 
+      // SSE: pending applications widget increments
+      const newPendingCount = await prisma.admission.count({ where: { status: { in: ['draft', 'submitted', 'under_review'] } } })
+      broadcast('dashboard', 'dashboard.applications.changed', { pendingApplications: newPendingCount, delta: 1 })
+
       res.status(201).json({
         success: true,
         data: {
@@ -609,6 +614,12 @@ router.post(
           },
         })
       }
+
+      // SSE: update Command Center widgets in Browser 2
+      const newEnrolment = await prisma.student.count({ where: { enrollmentStatus: 'enrolled' } })
+      const newPending = await prisma.admission.count({ where: { status: { in: ['draft', 'submitted', 'under_review'] } } })
+      broadcast('dashboard', 'dashboard.enrolment.changed', { totalEnrolment: newEnrolment, delta: 1 })
+      broadcast('dashboard', 'dashboard.applications.changed', { pendingApplications: newPending, delta: -1 })
 
       res.json({
         success: true,

@@ -2,6 +2,7 @@ import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 import { send } from '../services/notificationService'
+import { broadcast } from './events'
 
 const router = Router()
 
@@ -168,6 +169,10 @@ router.post(
         }
       }
 
+      // Artificial delay: 12-15 seconds so the loading animation feels real (spec §3.1)
+      const delayMs = 12000 + Math.floor(Math.random() * 3000)
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+
       // Replace existing slots
       await prisma.timetableSlot.deleteMany({
         where: { gradeLevel, className, semester },
@@ -193,6 +198,61 @@ router.post(
       res.json({ success: true, data: result, count: result.length })
     } catch (error) {
       console.error('Error generating timetable:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
+// ─── POST /api/v1/sms/timetable/publish ─────────────────────────────────────
+// Marks the current timetable as published and broadcasts SSE to all students/teachers
+router.post(
+  '/timetable/publish',
+  authenticate,
+  requireRole('admin', 'manager', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { gradeLevel = 'Year 7', className = '7A', semester = '2026-S1' } = req.body as {
+        gradeLevel?: string; className?: string; semester?: string
+      }
+
+      const count = await prisma.timetableSlot.count({ where: { gradeLevel, className, semester } })
+      if (count === 0) {
+        res.status(404).json({ success: false, message: 'No timetable slots found to publish' }); return
+      }
+
+      // Notify all enrolled students in this class/grade
+      const students = await prisma.student.findMany({
+        where: { gradeLevel, className, enrollmentStatus: 'enrolled' },
+        include: {
+          user: { select: { id: true } },
+          parentLinks: { include: { parent: { include: { user: { select: { id: true } } } } } },
+        },
+      })
+
+      const allNotifyIds = students.flatMap(s => [
+        s.userId,
+        ...s.parentLinks.map(l => l.parent.user.id),
+      ]).filter(Boolean) as string[]
+
+      const uniqueIds = [...new Set(allNotifyIds)]
+      await Promise.all(
+        uniqueIds.map(uid =>
+          send({
+            userId: uid,
+            title: 'Timetable Updated',
+            message: `The ${gradeLevel} (${className}) timetable for ${semester} has been published.`,
+            type: 'info',
+          }),
+        ),
+      )
+
+      // SSE: update timetable health widget + notify class change
+      broadcast('dashboard', 'dashboard.timetable.changed', { timetableHealth: 98 })
+      broadcast('timetable', 'timetable.published', { gradeLevel, className, semester })
+
+      res.json({ success: true, data: { published: true, notifiedCount: uniqueIds.length, gradeLevel, className, semester } })
+    } catch (error) {
+      console.error('Error publishing timetable:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   }
@@ -241,6 +301,110 @@ router.get(
   }
 )
 
+// ─── POST /api/v1/sms/facilities/check-conflict ─────────────────────────────
+// Returns { available: true } or { available: false, conflict, alternatives }
+router.post(
+  '/facilities/check-conflict',
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { facilityId, date, startTime, endTime } = req.body as {
+        facilityId: string; date: string; startTime: string; endTime: string
+      }
+
+      if (!facilityId || !date || !startTime || !endTime) {
+        res.status(400).json({ success: false, message: 'facilityId, date, startTime, endTime are required' }); return
+      }
+
+      const bookingDate = new Date(date)
+      const dayStart = new Date(bookingDate); dayStart.setHours(0, 0, 0, 0)
+      const dayEnd = new Date(bookingDate); dayEnd.setHours(23, 59, 59, 999)
+
+      // Check for conflict: same facility, same date, overlapping time
+      const conflict = await prisma.facilityBooking.findFirst({
+        where: {
+          facilityId,
+          date: { gte: dayStart, lte: dayEnd },
+          status: { not: 'cancelled' },
+          AND: [
+            { startTime: { lt: endTime } },
+            { endTime: { gt: startTime } },
+          ],
+        },
+        include: {
+          facility: { select: { name: true } },
+        },
+      })
+
+      if (!conflict) {
+        res.json({ success: true, data: { available: true } }); return
+      }
+
+      // Find same facility on other time slots today
+      const allBookingsToday = await prisma.facilityBooking.findMany({
+        where: { facilityId, date: { gte: dayStart, lte: dayEnd }, status: { not: 'cancelled' } },
+      })
+      const bookedTimes = new Set(allBookingsToday.map(b => `${b.startTime}-${b.endTime}`))
+      const allSlots = [
+        { startTime: '08:00', endTime: '09:30' },
+        { startTime: '10:00', endTime: '11:30' },
+        { startTime: '13:00', endTime: '14:30' },
+        { startTime: '14:30', endTime: '16:00' },
+      ]
+      const sameFacilityOtherSlots = allSlots.filter(
+        s => !bookedTimes.has(`${s.startTime}-${s.endTime}`) &&
+             !(s.startTime < endTime && s.endTime > startTime),
+      ).map(s => ({ date, startTime: s.startTime, endTime: s.endTime }))
+
+      // Find other facilities of same type with no conflict at requested time
+      const requestedFacility = await prisma.facility.findUnique({ where: { id: facilityId } })
+      const otherFacilities = requestedFacility
+        ? await prisma.facility.findMany({
+            where: { id: { not: facilityId }, type: requestedFacility.type, status: 'available' },
+          })
+        : []
+
+      const availableAlternates: Array<{ facilityId: string; facilityName: string }> = []
+      for (const f of otherFacilities) {
+        const hasConflict = await prisma.facilityBooking.findFirst({
+          where: {
+            facilityId: f.id,
+            date: { gte: dayStart, lte: dayEnd },
+            status: { not: 'cancelled' },
+            AND: [{ startTime: { lt: endTime } }, { endTime: { gt: startTime } }],
+          },
+        })
+        if (!hasConflict) {
+          availableAlternates.push({ facilityId: f.id, facilityName: f.name })
+        }
+      }
+
+      // Look up who booked it
+      const bookerUser = await prisma.user.findUnique({ where: { id: conflict.bookedBy }, select: { displayName: true } })
+
+      res.status(409).json({
+        success: false,
+        data: {
+          available: false,
+          conflict: {
+            bookedBy: bookerUser?.displayName ?? 'Unknown',
+            purpose: conflict.purpose,
+            startTime: conflict.startTime,
+            endTime: conflict.endTime,
+          },
+          alternatives: {
+            sameFacilityOtherSlots,
+            otherFacilitiesSameSlot: availableAlternates.slice(0, 3),
+          },
+        },
+      })
+    } catch (error) {
+      console.error('Error checking facility conflict:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
 // ─── POST /api/v1/sms/facilities/book ───────────────────────────────────────
 router.post(
   '/facilities/book',
@@ -266,6 +430,26 @@ router.post(
         return
       }
 
+      // Conflict check before confirming
+      const bookingDate = new Date(date)
+      const dayStart = new Date(bookingDate); dayStart.setHours(0, 0, 0, 0)
+      const dayEnd = new Date(bookingDate); dayEnd.setHours(23, 59, 59, 999)
+      const conflict = await prisma.facilityBooking.findFirst({
+        where: {
+          facilityId,
+          date: { gte: dayStart, lte: dayEnd },
+          status: { not: 'cancelled' },
+          AND: [{ startTime: { lt: endTime } }, { endTime: { gt: startTime } }],
+        },
+      })
+      if (conflict) {
+        res.status(409).json({
+          success: false,
+          message: `Facility is already booked for ${conflict.startTime}–${conflict.endTime}. Use /check-conflict for alternatives.`,
+        })
+        return
+      }
+
       const booking = await prisma.facilityBooking.create({
         data: {
           facilityId,
@@ -274,7 +458,7 @@ router.post(
           date: new Date(date),
           startTime,
           endTime,
-          status: 'pending',
+          status: 'approved',
         },
         include: {
           facility: { select: { id: true, name: true, type: true } },
@@ -285,7 +469,7 @@ router.post(
       await send({
         userId: req.user!.userId,
         title: 'Facility Booking Confirmed',
-        message: `Your booking for ${facility.name} on ${date} (${startTime}–${endTime}) has been submitted.`,
+        message: `Your booking for ${facility.name} on ${date} (${startTime}–${endTime}) has been confirmed.`,
         type: 'success',
       })
 

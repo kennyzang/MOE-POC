@@ -3,6 +3,8 @@ import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 import { send } from '../services/notificationService'
 import { sendPushToUser } from '../services/pushService'
+import { broadcast } from './events'
+import { recalcStudentRisk } from './ai'
 
 const router = Router()
 
@@ -172,7 +174,7 @@ router.post(
         ),
       )
 
-      // Notify absent students and their parents
+      // Notify absent students and their parents; cascade absence thresholds
       const absentRecords = records.filter(r => r.status === 'absent')
       if (absentRecords.length > 0) {
         const absentStudentIds = absentRecords.map(r => r.studentId)
@@ -181,8 +183,16 @@ router.post(
           include: {
             user: { select: { id: true, displayName: true } },
             parentLinks: { include: { parent: { include: { user: { select: { id: true } } } } } },
+            attendances: {
+              include: { session: true },
+              orderBy: { session: { date: 'desc' } },
+            },
           },
         })
+
+        const cutoff14 = new Date()
+        cutoff14.setDate(cutoff14.getDate() - 14)
+
         await Promise.all(
           students.flatMap(student => {
             const parentUserIds = student.parentLinks.map(l => l.parent.user.id)
@@ -195,7 +205,7 @@ router.post(
                 type: 'warning',
               }),
             )
-            // Also send Web Push to parents
+            // Web Push to parents (30s scheduled notification per spec — immediate for now)
             const pushAlerts = parentUserIds.map(uid =>
               sendPushToUser(uid, {
                 title: 'Attendance Alert',
@@ -203,10 +213,62 @@ router.post(
                 url: '/parent/attendance',
               }).catch(err => console.error('[Push] Failed to send to parent:', err)),
             )
-            return [...inAppAlerts, ...pushAlerts]
+
+            // Rolling 14-day absence count
+            const recentAbsences = student.attendances.filter(
+              a => a.status === 'absent' && new Date(a.session.date) >= cutoff14,
+            ).length
+
+            // Threshold cascade: 5+ absences → open CounselorCase
+            const casePromise = recentAbsences >= 5
+              ? (async () => {
+                  const existing = await prisma.counselorCase.findFirst({
+                    where: { studentId: student.id, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+                  })
+                  if (!existing) {
+                    const counselorUser = await prisma.user.findFirst({ where: { role: 'counselor' } })
+                    await prisma.counselorCase.create({
+                      data: {
+                        studentId: student.id,
+                        counselorUserId: counselorUser?.id ?? null,
+                        openedReason: 'AUTO_ABSENCE_THRESHOLD',
+                        status: 'OPEN',
+                      },
+                    })
+                    if (counselorUser) {
+                      await send({
+                        userId: counselorUser.id,
+                        title: 'Absence Threshold Alert',
+                        message: `${student.user.displayName} has ${recentAbsences} absences in the last 14 days. A counselor case has been opened.`,
+                        type: 'warning',
+                      })
+                    }
+                  }
+                })()
+              : Promise.resolve()
+
+            // Risk recalc (fire-and-forget)
+            recalcStudentRisk(student.id, 'ATTENDANCE_MARKED').catch(err =>
+              console.error('[Risk] recalc failed after attendance:', err),
+            )
+
+            return [...inAppAlerts, ...pushAlerts, casePromise]
           }),
         )
       }
+
+      // SSE: update attendance widget
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
+      const todayRecords = await prisma.attendanceRecord.findMany({
+        where: { session: { date: { gte: todayStart, lte: todayEnd } } },
+        select: { status: true },
+      })
+      const presentToday = todayRecords.filter(r => r.status === 'present').length
+      const attendanceRate = todayRecords.length > 0
+        ? Math.round((presentToday / todayRecords.length) * 1000) / 10
+        : 0
+      broadcast('dashboard', 'dashboard.attendance.changed', { attendanceRate })
 
       res.json({ success: true, data: upserted })
     } catch (error) {

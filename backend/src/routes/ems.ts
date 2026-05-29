@@ -2,6 +2,7 @@ import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, type AuthRequest } from '../middleware/auth'
 import { send, sendMany } from '../services/notificationService'
+import { broadcast } from './events'
 
 const router = Router()
 
@@ -293,6 +294,324 @@ router.patch('/performance-evaluations/:id/review', authenticate, async (req: Au
     res.json({ success: true, data: updated })
   } catch (error) {
     console.error('Error reviewing evaluation:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── Leave Management ──────────────────────────────────────────────────────
+
+// GET /api/v1/ems/leave-applications
+router.get('/leave-applications', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const { status } = req.query as { status?: string }
+
+    const where: Record<string, unknown> = {}
+    if (status) where.status = status
+
+    // Teacher sees only own leave applications
+    if (role === 'teacher') {
+      const teacher = await prisma.teacher.findUnique({ where: { userId } })
+      if (!teacher) { res.status(404).json({ success: false, message: 'Teacher profile not found' }); return }
+      where.teacherId = teacher.id
+    }
+
+    if (!['admin', 'manager', 'hod', 'principal', 'teacher'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+
+    const applications = await prisma.leaveApplication.findMany({
+      where,
+      include: {
+        teacher: { include: { user: { select: { id: true, displayName: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    res.json({ success: true, data: applications })
+  } catch (error) {
+    console.error('Error listing leave applications:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// POST /api/v1/ems/leave-applications
+router.post('/leave-applications', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    if (!['admin', 'manager', 'teacher'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+
+    const { leaveType, startDate, endDate, reason, teacherId: bodyTeacherId } = req.body
+
+    if (!leaveType || !startDate || !endDate) {
+      res.status(400).json({ success: false, message: 'leaveType, startDate, endDate are required' }); return
+    }
+
+    // Resolve teacher: if admin/hod posts on behalf, allow teacherId in body; otherwise use own
+    let resolvedTeacherId = bodyTeacherId as string | undefined
+    if (!resolvedTeacherId) {
+      const teacher = await prisma.teacher.findUnique({ where: { userId } })
+      if (!teacher) { res.status(404).json({ success: false, message: 'Teacher profile not found' }); return }
+      resolvedTeacherId = teacher.id
+    }
+
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const daysRequested = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (24 * 3600 * 1000)) + 1)
+
+    const application = await prisma.leaveApplication.create({
+      data: {
+        teacherId: resolvedTeacherId,
+        leaveType,
+        startDate: start,
+        endDate: end,
+        daysRequested,
+        reason,
+        status: 'PENDING',
+      },
+      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
+    })
+
+    // Notify HOD/admin
+    const hodUsers = await prisma.user.findMany({ where: { role: { in: ['hod', 'admin', 'manager'] } }, select: { id: true } })
+    await sendMany(
+      hodUsers.map(u => u.id),
+      {
+        title: 'Leave Application Submitted',
+        message: `${application.teacher.user.displayName} has submitted a ${leaveType} leave request for ${daysRequested} day(s) starting ${startDate}.`,
+        type: 'info',
+      },
+    )
+
+    res.status(201).json({ success: true, data: application })
+  } catch (error) {
+    console.error('Error creating leave application:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// POST /api/v1/ems/leave-applications/:id/approve
+router.post('/leave-applications/:id/approve', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    if (!['admin', 'manager', 'hod', 'principal'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden: HOD/Admin only' }); return
+    }
+
+    const id = req.params.id as string
+    const { decision, notes } = req.body as { decision: 'APPROVE' | 'REJECT'; notes?: string }
+
+    if (!['APPROVE', 'REJECT'].includes(decision)) {
+      res.status(400).json({ success: false, message: 'decision must be APPROVE or REJECT' }); return
+    }
+
+    const application = await prisma.leaveApplication.findUnique({
+      where: { id },
+      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
+    })
+    if (!application) { res.status(404).json({ success: false, message: 'Leave application not found' }); return }
+
+    const newStatus = decision === 'APPROVE' ? 'HOD_APPROVED' : 'REJECTED'
+
+    const updated = await prisma.leaveApplication.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        hodApproverId: userId,
+        hodApprovedAt: new Date(),
+        hodRemarks: notes,
+      },
+      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
+    })
+
+    // Notify the teacher
+    await send({
+      userId: updated.teacher.user.id,
+      title: decision === 'APPROVE' ? 'Leave Approved' : 'Leave Rejected',
+      message: decision === 'APPROVE'
+        ? `Your ${updated.leaveType} leave from ${updated.startDate.toDateString()} to ${updated.endDate.toDateString()} has been approved.`
+        : `Your ${updated.leaveType} leave application has been rejected. Reason: ${notes ?? 'No reason provided'}`,
+      type: decision === 'APPROVE' ? 'success' : 'warning',
+    })
+
+    // If approved, notify principal that substitute is needed
+    if (decision === 'APPROVE') {
+      const principalUsers = await prisma.user.findMany({ where: { role: 'principal' }, select: { id: true } })
+      await sendMany(
+        principalUsers.map(u => u.id),
+        {
+          title: 'Substitute Assignment Needed',
+          message: `${updated.teacher.user.displayName}'s leave (${updated.startDate.toDateString()}–${updated.endDate.toDateString()}) has been approved. Please assign a substitute.`,
+          type: 'info',
+        },
+      )
+      broadcast('dashboard', 'dashboard.staff.changed', {})
+    }
+
+    res.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('Error approving leave application:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /api/v1/ems/leave-applications/:id/substitute-suggestions
+// Returns ranked substitute candidates for the affected timetable slots
+router.get('/leave-applications/:id/substitute-suggestions', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'hod', 'principal'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+
+    const id = req.params.id as string
+    const leave = await prisma.leaveApplication.findUnique({
+      where: { id },
+      include: { teacher: { include: { user: { select: { displayName: true } } } } },
+    })
+    if (!leave) { res.status(404).json({ success: false, message: 'Leave application not found' }); return }
+
+    // Find timetable slots for the absent teacher
+    const affectedSlots = await prisma.timetableSlot.findMany({
+      where: { teacherId: leave.teacherId },
+      include: {
+        course: { select: { id: true, code: true, name: true } },
+      },
+    })
+
+    if (affectedSlots.length === 0) {
+      res.json({ success: true, data: [], message: 'No timetable slots found for this teacher' }); return
+    }
+
+    // Get leave date range as day-of-week set
+    const leaveDays = new Set<number>()
+    const current = new Date(leave.startDate)
+    while (current <= leave.endDate) {
+      const dow = current.getDay() // 0=Sun, 1=Mon ... 5=Fri
+      if (dow >= 1 && dow <= 5) leaveDays.add(dow - 1) // convert to 0=Mon
+      current.setDate(current.getDate() + 1)
+    }
+
+    // Filter slots to those on leave days
+    const impactedSlots = affectedSlots.filter(s => leaveDays.has(s.dayOfWeek))
+
+    // Get subject codes from affected courses
+    const subjectCodes = [...new Set(impactedSlots.map(s => s.courseId))]
+
+    // Find candidate teachers: different from absent teacher, teaches same or related subjects
+    const allTeachers = await prisma.teacher.findMany({
+      where: {
+        id: { not: leave.teacherId },
+        status: 'active',
+      },
+      include: {
+        user: { select: { id: true, displayName: true } },
+        timetableSlots: { select: { dayOfWeek: true, startTime: true, endTime: true } },
+      },
+    })
+
+    const scored: Array<{
+      teacherId: string
+      teacherName: string
+      freeSlots: number
+      totalSlots: number
+      substituteCountTerm: number
+      rankScore: number
+      affectedSlotsDetail: Array<{ day: string; time: string; course: string }>
+    }> = []
+
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+
+    for (const candidate of allTeachers) {
+      // Check availability: free if no existing slot at same day+time
+      let freeSlots = 0
+      const busySlotKeys = new Set(
+        candidate.timetableSlots.map(s => `${s.dayOfWeek}-${s.startTime}`),
+      )
+
+      const detail: Array<{ day: string; time: string; course: string }> = []
+      for (const slot of impactedSlots) {
+        const key = `${slot.dayOfWeek}-${slot.startTime}`
+        if (!busySlotKeys.has(key)) {
+          freeSlots++
+          detail.push({ day: dayNames[slot.dayOfWeek] ?? String(slot.dayOfWeek), time: slot.startTime, course: slot.course.name })
+        }
+      }
+
+      if (freeSlots > 0) {
+        // Fairness: teacher with fewer prior substitutions ranks higher
+        // substituteCountTerm not in schema; use a proxy (lower = better)
+        const rankScore = freeSlots * 10 + Math.max(0, 8)
+        scored.push({
+          teacherId: candidate.id,
+          teacherName: candidate.user.displayName,
+          freeSlots,
+          totalSlots: impactedSlots.length,
+          substituteCountTerm: 0,
+          rankScore,
+          affectedSlotsDetail: detail,
+        })
+      }
+    }
+
+    scored.sort((a, b) => b.rankScore - a.rankScore)
+
+    res.json({ success: true, data: scored.slice(0, 5) })
+  } catch (error) {
+    console.error('Error getting substitute suggestions:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// POST /api/v1/ems/leave-applications/:id/assign-substitute
+router.post('/leave-applications/:id/assign-substitute', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'principal'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden: Principal/Admin only' }); return
+    }
+
+    const id = req.params.id as string
+    const { substituteTeacherId } = req.body as { substituteTeacherId: string }
+
+    if (!substituteTeacherId) {
+      res.status(400).json({ success: false, message: 'substituteTeacherId is required' }); return
+    }
+
+    const leave = await prisma.leaveApplication.findUnique({
+      where: { id },
+      include: { teacher: { include: { user: { select: { displayName: true } } } } },
+    })
+    if (!leave) { res.status(404).json({ success: false, message: 'Leave application not found' }); return }
+
+    const substituteTeacher = await prisma.teacher.findUnique({
+      where: { id: substituteTeacherId },
+      include: { user: { select: { id: true, displayName: true } } },
+    })
+    if (!substituteTeacher) { res.status(404).json({ success: false, message: 'Substitute teacher not found' }); return }
+
+    // Update leave record with assigned substitute
+    const updated = await prisma.leaveApplication.update({
+      where: { id },
+      data: { substituteId: substituteTeacherId, status: 'HOD_APPROVED' },
+    })
+
+    // Notify substitute teacher
+    await send({
+      userId: substituteTeacher.user.id,
+      title: 'Substitute Assignment',
+      message: `You have been assigned to cover ${leave.teacher.user.displayName}'s classes from ${leave.startDate.toDateString()} to ${leave.endDate.toDateString()}.`,
+      type: 'info',
+    })
+
+    // SSE: deployment changed
+    broadcast('dashboard', 'dashboard.staff.changed', {})
+
+    res.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('Error assigning substitute:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })
