@@ -414,6 +414,7 @@ router.get('/command-center', authenticate, requireRole('admin', 'principal', 'm
       totalTimetableSlots,
       allBookings,
       allFacilities,
+      outstandingFeeInvoices,
     ] = await Promise.all([
       // Widget 1: Total Enrolment
       prisma.student.count({ where: { enrollmentStatus: 'enrolled' } }),
@@ -445,6 +446,8 @@ router.get('/command-center', authenticate, requireRole('admin', 'principal', 'm
         select: { startTime: true, endTime: true, facilityId: true },
       }),
       prisma.facility.count({ where: { status: 'available' } }),
+      // Widget 9: Outstanding Fee Invoices
+      prisma.feeInvoice.count({ where: { status: { in: ['unpaid', 'overdue'] } } }),
     ])
 
     // Compute Widget 3: attendance rate
@@ -487,6 +490,7 @@ router.get('/command-center', authenticate, requireRole('admin', 'principal', 'm
         studentsAtRisk: atRiskCount,
         timetableHealth,
         facilityUtilization,
+        outstandingFeeInvoices,
         lastUpdated: new Date().toISOString(),
       },
     })

@@ -13,6 +13,8 @@ import {
   Typography,
   Button,
   List,
+  Tooltip,
+  Progress,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +22,13 @@ import { useQuery } from '@tanstack/react-query'
 import { Users, Search, Eye } from 'lucide-react'
 import api from '../../lib/api'
 import type { Student } from '../../types'
+
+const STANDING_CONFIG: Record<string, { color: string; label: string }> = {
+  GOOD_STANDING: { color: 'success', label: 'Good Standing' },
+  ACADEMIC_WATCH: { color: 'warning', label: 'Academic Watch' },
+  PROBATION:      { color: 'error',   label: 'Probation' },
+  AT_RISK:        { color: 'error',   label: 'At Risk' },
+}
 
 const { Title } = Typography
 
@@ -71,6 +80,17 @@ const StudentDirectoryPage = () => {
     new Set(students.map((s) => s.className).filter(Boolean))
   ).sort()
 
+  // Class capacity data for selected grade level
+  const { data: rosterData } = useQuery<Array<{ className: string; enrolled: number; capacity: number; percentage: number; colour: string }>>({
+    queryKey: ['class-roster', gradeLevel],
+    queryFn: async () => {
+      if (!gradeLevel) return []
+      const res = await api.get(`/admissions/class-roster/${encodeURIComponent(gradeLevel)}`)
+      return res.data.data ?? []
+    },
+    enabled: !!gradeLevel,
+  })
+
   const handleView = (student: Student) => {
     setSelectedStudent(student)
     setDetailOpen(true)
@@ -120,6 +140,22 @@ const StudentDirectoryPage = () => {
       ),
     },
     {
+      title: 'Academic Standing',
+      dataIndex: 'academicStanding',
+      key: 'academicStanding',
+      width: 150,
+      render: (val: string) => {
+        const cfg = STANDING_CONFIG[val] ?? STANDING_CONFIG.GOOD_STANDING
+        if (val === 'GOOD_STANDING' || !val) return null
+        return <Tag color={cfg.color}>{cfg.label}</Tag>
+      },
+      filters: [
+        { text: 'Academic Watch', value: 'ACADEMIC_WATCH' },
+        { text: 'Probation', value: 'PROBATION' },
+      ],
+      onFilter: (value, record) => (record as any).academicStanding === value,
+    },
+    {
       title: t('common.actions'),
       key: 'actions',
       width: 100,
@@ -149,6 +185,26 @@ const StudentDirectoryPage = () => {
           </Space>
         </Col>
       </Row>
+
+      {/* Class Capacity Panel — shows when a grade is selected */}
+      {gradeLevel && rosterData && rosterData.length > 0 && (
+        <Card size="small" style={{ marginBottom: 12, background: '#f9fafb' }}>
+          <Space size={6} wrap>
+            <Typography.Text type="secondary" style={{ fontSize: 12, marginRight: 4 }}>Class Capacity:</Typography.Text>
+            {rosterData.map(r => (
+              <Tooltip key={r.className} title={`${r.enrolled}/${r.capacity} students enrolled`}>
+                <Tag
+                  color={r.colour === 'red' ? 'error' : r.colour === 'orange' ? 'warning' : 'success'}
+                  style={{ cursor: 'pointer', fontWeight: r.colour !== 'green' ? 700 : 400 }}
+                  onClick={() => setClassName(r.className)}
+                >
+                  {r.className} {r.enrolled}/{r.capacity}
+                </Tag>
+              </Tooltip>
+            ))}
+          </Space>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card size="small" style={{ marginBottom: 16 }}>

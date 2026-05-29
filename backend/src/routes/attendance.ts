@@ -5,6 +5,7 @@ import { send } from '../services/notificationService'
 import { sendPushToUser } from '../services/pushService'
 import { broadcast } from './events'
 import { recalcStudentRisk } from './ai'
+import { getConfigInt } from '../lib/config'
 
 const router = Router()
 
@@ -192,6 +193,7 @@ router.post(
 
         const cutoff14 = new Date()
         cutoff14.setDate(cutoff14.getDate() - 14)
+        const counselorThreshold = await getConfigInt('absence_counselor_threshold', 5)
 
         await Promise.all(
           students.flatMap(student => {
@@ -219,8 +221,8 @@ router.post(
               a => a.status === 'absent' && new Date(a.session.date) >= cutoff14,
             ).length
 
-            // Threshold cascade: 5+ absences → open CounselorCase
-            const casePromise = recentAbsences >= 5
+            // Threshold cascade: configurable absence count → open CounselorCase
+            const casePromise = recentAbsences >= counselorThreshold
               ? (async () => {
                   const existing = await prisma.counselorCase.findFirst({
                     where: { studentId: student.id, status: { in: ['OPEN', 'IN_PROGRESS'] } },

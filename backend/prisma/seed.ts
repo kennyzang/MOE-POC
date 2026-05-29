@@ -966,6 +966,186 @@ async function main() {
     ],
   })
 
+  // ─── Fee Types ────────────────────────────────────────────────────────────
+
+  for (const ft of [
+    { code: 'TUITION',     name: 'Tuition Fee',     amount: 200, gradeLevel: 'Year 7', description: 'Academic instruction fee' },
+    { code: 'ACTIVITY',    name: 'Activity Fee',    amount: 50,  gradeLevel: null as string | null, description: 'Co-curricular activities' },
+    { code: 'LIBRARY',     name: 'Library Fee',     amount: 20,  gradeLevel: null as string | null, description: 'Library access and resources' },
+    { code: 'EXAMINATION', name: 'Examination Fee', amount: 30,  gradeLevel: 'Year 7', description: 'Semester examination administration' },
+  ]) {
+    await prisma.feeType.upsert({ where: { code: ft.code }, create: ft, update: { amount: ft.amount } })
+  }
+
+  // Seed Adam's existing fee invoice as overdue with hold active (edge-case demo)
+  const adamFeeInvoice = await prisma.feeInvoice.findFirst({ where: { studentId: adam.id } })
+  if (adamFeeInvoice) {
+    await prisma.feeInvoice.update({
+      where: { id: adamFeeInvoice.id },
+      data: { status: 'overdue', holdActive: true, holdReason: 'Payment overdue by 60+ days', dueDate: daysAgo(65) },
+    })
+  } else {
+    // Create it if not present
+    await prisma.feeInvoice.create({
+      data: {
+        studentId: adam.id,
+        invoiceNumber: 'INV-2026-ADAM01',
+        semester: '2025-S2',
+        amount: 300,
+        status: 'overdue',
+        holdActive: true,
+        holdReason: 'Payment overdue by 60+ days',
+        dueDate: daysAgo(65),
+        description: 'Year 7 Enrolment Fees — Semester 2 (OVERDUE)',
+        lineItems: JSON.stringify([
+          { code: 'TUITION', name: 'Tuition Fee', amount: 200 },
+          { code: 'ACTIVITY', name: 'Activity Fee', amount: 50 },
+          { code: 'LIBRARY', name: 'Library Fee', amount: 20 },
+          { code: 'EXAMINATION', name: 'Examination Fee', amount: 30 },
+        ]),
+      },
+    })
+  }
+
+  // ─── Class Rosters ────────────────────────────────────────────────────────
+
+  const PROGRAMMES = { A: 'Academic', B: 'Academic', C: 'Academic', D: 'Academic', E: 'Academic',
+                       F: 'Vocational', G: 'Vocational', H: 'Vocational', I: 'Vocational', J: 'Vocational',
+                       K: 'Religious', L: 'Religious', M: 'Religious', N: 'Religious', O: 'Religious' }
+  const CLASS_LETTERS_SEED = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O']
+  for (const yearLabel of ['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'Year 12']) {
+    const gradeNum = parseInt(yearLabel.replace('Year ', ''))
+    for (const letter of CLASS_LETTERS_SEED) {
+      // Year 7A is the demo focal class with capacity 35 (31 students, Ahmad adds 32nd)
+      // All other classes have capacity 40 to reflect existing legacy distribution (~38-39 per class)
+      const isDemoClass = (yearLabel === 'Year 7' && letter === 'A')
+      await prisma.classRoster.upsert({
+        where: { className_academicYear: { className: `${gradeNum}${letter}`, academicYear: '2025/2026' } },
+        create: {
+          gradeLevel: yearLabel,
+          className: `${gradeNum}${letter}`,
+          academicYear: '2025/2026',
+          capacity: isDemoClass ? 35 : 40,
+          programme: PROGRAMMES[letter as keyof typeof PROGRAMMES],
+          formTeacherId: isDemoClass ? teacher01.id : undefined,
+        },
+        update: {},
+      })
+    }
+  }
+
+  // ─── Teacher Leave Balances ────────────────────────────────────────────────
+
+  await prisma.teacher.update({ where: { id: teacher01.id }, data: { annualLeaveBalance: 14, medicalLeaveBalance: 14 } })
+
+  // ─── Ahmad Academic Standing pre-seed ────────────────────────────────────
+
+  await prisma.student.update({
+    where: { id: ahmad.id },
+    data: { academicStanding: 'ACADEMIC_WATCH', academicStandingUpdatedAt: daysAgo(7) },
+  })
+  await prisma.academicStandingHistory.create({
+    data: {
+      studentId: ahmad.id,
+      previousStanding: 'GOOD_STANDING',
+      newStanding: 'ACADEMIC_WATCH',
+      trigger: 'GRADE_UPDATE',
+      gradeAvg: 69.2,
+      thresholdUsed: 60,
+      createdAt: daysAgo(7),
+    },
+  })
+
+  // ─── Aminah Expiring Certification ────────────────────────────────────────
+
+  await prisma.certification.create({
+    data: {
+      teacherId: teacher01.id,
+      name: 'First Aid & CPR Certificate',
+      issuedBy: 'Red Crescent Society of Brunei',
+      issuedDate: new Date('2023-06-01'),
+      expiryDate: new Date(Date.now() + 45 * 24 * 3600 * 1000),  // expires in 45 days
+      status: 'active',
+    },
+  })
+
+  // ─── Hafiz Probation-Trigger Grade ────────────────────────────────────────
+
+  // Find a math course for Hafiz's grade (Year 9)
+  const hafizMathCourse = await prisma.course.findFirst({ where: { gradeLevel: 'Year 9' } })
+    ?? await prisma.course.findFirst({ where: { code: 'MATH701' } })
+  if (hafizMathCourse) {
+    const hafizItem = await prisma.gradeItem.create({
+      data: {
+        courseId: hafizMathCourse.id,
+        name: 'End of Year Mathematics Exam',
+        type: 'exam',
+        maxScore: 100,
+        weight: 0.5,
+        dueDate: daysAgo(20),
+      },
+    })
+    const hafizEnrollment = await prisma.enrollment.findFirst({ where: { studentId: hafiz.id, courseId: hafizMathCourse.id } })
+    if (hafizEnrollment) {
+      await prisma.grade.upsert({
+        where: { studentId_gradeItemId: { studentId: hafiz.id, gradeItemId: hafizItem.id } },
+        create: { studentId: hafiz.id, gradeItemId: hafizItem.id, score: 42, letterGrade: 'F', gradedAt: daysAgo(14) },
+        update: { score: 42, letterGrade: 'F' },
+      })
+    }
+    await prisma.student.update({ where: { id: hafiz.id }, data: { academicStanding: 'PROBATION' } })
+  }
+
+  // ─── Approval Inbox pre-seeded items (for HOD demo) ───────────────────────
+
+  // Sports equipment expense
+  const sportsExpense = await prisma.schoolExpense.create({
+    data: {
+      category: 'supplies',
+      description: 'Sports equipment for annual field day',
+      amount: 1500,
+      date: daysAgo(3),
+      status: 'pending',
+      submittedBy: adminUser.id,
+    },
+  })
+  await prisma.approvalRequest.create({
+    data: {
+      entityType: 'SchoolExpense',
+      entityId: sportsExpense.id,
+      requestedBy: adminUser.id,
+      currentLevel: 1,
+      levelsRequired: 2,
+      status: 'PENDING',
+      metadata: JSON.stringify({ amount: 1500, description: 'Sports equipment for annual field day', category: 'supplies' }),
+      createdAt: daysAgo(3),
+    },
+  })
+
+  // Library shelving expense
+  const libraryExpense = await prisma.schoolExpense.create({
+    data: {
+      category: 'supplies',
+      description: 'Library shelving replacement — Block B',
+      amount: 1200,
+      date: daysAgo(2),
+      status: 'pending',
+      submittedBy: adminUser.id,
+    },
+  })
+  await prisma.approvalRequest.create({
+    data: {
+      entityType: 'SchoolExpense',
+      entityId: libraryExpense.id,
+      requestedBy: adminUser.id,
+      currentLevel: 1,
+      levelsRequired: 1,
+      status: 'PENDING',
+      metadata: JSON.stringify({ amount: 1200, description: 'Library shelving replacement — Block B', category: 'supplies' }),
+      createdAt: daysAgo(2),
+    },
+  })
+
   // ─── System Config ─────────────────────────────────────────────────────────
 
   const systemConfigs = [
@@ -987,6 +1167,17 @@ async function main() {
     { key: 'demo_timetable_gen_min', value: '12', description: 'Demo: timetable generation min time (seconds)' },
     { key: 'demo_timetable_gen_max', value: '15', description: 'Demo: timetable generation max time (seconds)' },
     { key: 'demo_risk_recalc_delay', value: '1500', description: 'Demo: risk recalculation delay (ms)' },
+    // Operational thresholds (configurable via admin UI)
+    { key: 'risk_threshold_high',          value: '0.7',  description: 'Risk score threshold for HIGH_RISK band' },
+    { key: 'risk_threshold_monitor',       value: '0.4',  description: 'Risk score threshold for MONITOR band' },
+    { key: 'cpd_annual_target',            value: '20',   description: 'CPD annual target hours for all teachers' },
+    { key: 'class_capacity_max',           value: '35',   description: 'Hard cap — blocks new enrolment if reached' },
+    { key: 'class_capacity_warning',       value: '32',   description: 'Class shows amber badge at this count' },
+    { key: 'absence_counselor_threshold',  value: '5',    description: 'Rolling 14-day absences to open counselor case' },
+    { key: 'absence_parent_threshold',     value: '3',    description: 'Absences in 14 days before parent notification' },
+    { key: 'fee_hold_overdue_days',        value: '30',   description: 'Days overdue before fee hold activates' },
+    { key: 'academic_watch_threshold',     value: '60',   description: 'Grade average below which = Academic Watch' },
+    { key: 'academic_probation_threshold', value: '50',   description: 'Grade average below which = Probation' },
   ]
 
   for (const cfg of systemConfigs) {

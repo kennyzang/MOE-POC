@@ -39,6 +39,8 @@ model Student {
   gradeLevel    String?  // e.g. "Year 7"
   className     String?  // e.g. "7A"
   enrollmentStatus String @default("pending") // pending, enrolled, graduated
+  academicStanding String @default("GOOD_STANDING") // GOOD_STANDING, ACADEMIC_WATCH, PROBATION, AT_RISK
+  academicStandingUpdatedAt DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -49,6 +51,8 @@ model Student {
   grades        Grade[]
   riskScores    RiskScore[]
   counselorCases CounselorCase[]
+  feeInvoices   FeeInvoice[]
+  standingHistory AcademicStandingHistory[]
 }
 
 // ─── Teacher ────────────────────────────────────────────────────
@@ -66,6 +70,9 @@ model Teacher {
   cpdHours         Float    @default(0)      // CPD completed hours
   cpdTarget        Float    @default(20)     // CPD annual target (default 20h)
   employmentStatus String   @default("active") // active | onLeave | inTraining
+  annualLeaveBalance  Int   @default(14)     // remaining annual leave days this year
+  medicalLeaveBalance Int   @default(14)     // remaining medical leave days this year
+  leaveBalanceYear    String @default("2025/2026")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -309,26 +316,34 @@ model AdmissionDocument {
 // ─── Finance (SMS) ──────────────────────────────────────────────
 
 model FeeInvoice {
-  id          String   @id @default(uuid())
-  studentId   String
-  semester    String?
-  amount      Float
-  status      String   @default("unpaid") // unpaid, paid, overdue
-  dueDate     DateTime?
-  paidAt      DateTime?
-  description String?
-  createdAt   DateTime @default(now())
+  id               String   @id @default(uuid())
+  studentId        String
+  student          Student  @relation(fields: [studentId], references: [id])
+  invoiceNumber    String?  @unique
+  semester         String?
+  amount           Float
+  status           String   @default("unpaid") // unpaid, paid, overdue
+  dueDate          DateTime?
+  paidAt           DateTime?
+  description      String?
+  lineItems        String?  // JSON: [{code, name, amount}]
+  holdActive       Boolean  @default(false)
+  holdReason       String?
+  overdueNotifiedAt DateTime?
+  createdAt        DateTime @default(now())
 }
 
 model SchoolExpense {
-  id          String   @id @default(uuid())
-  category    String   // supplies, maintenance, salary, utilities
-  description String
-  amount      Float
-  date        DateTime
-  approvedBy  String?
-  status      String   @default("pending") // pending, approved, rejected
-  createdAt   DateTime @default(now())
+  id                String   @id @default(uuid())
+  category          String   // supplies, maintenance, salary, utilities
+  description       String
+  amount            Float
+  date              DateTime
+  approvedBy        String?
+  status            String   @default("pending") // pending, approved, rejected
+  approvalRequestId String?  // links to ApprovalRequest if routing required
+  submittedBy       String?  // User.id of submitter
+  createdAt         DateTime @default(now())
 }
 
 // ─── School Resources (SMS) ─────────────────────────────────────
@@ -497,6 +512,89 @@ model AuditEvent {
   action      String   // APPLICATION_SUBMITTED, APPLICATION_DECIDED, STUDENT_ENROLLED, etc.
   entityType  String?  // Admission, Student, Teacher, etc.
   entityId    String?
-  details     String?  // JSON string with additional context
+  details     String?  // JSON string with additional context (may include before/after values)
   createdAt   DateTime @default(now())
+}
+
+// ─── Fee Types (Financial Enforcement) ───────────────────────────
+
+model FeeType {
+  id          String   @id @default(uuid())
+  code        String   @unique  // TUITION, ACTIVITY, LIBRARY, EXAMINATION
+  name        String
+  amount      Float
+  gradeLevel  String?           // null = applies to all grades; "Year 7" = Year 7 only
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Class Roster (Capacity Enforcement) ─────────────────────────
+
+model ClassRoster {
+  id            String   @id @default(uuid())
+  gradeLevel    String   // "Year 7"
+  className     String   // "7A"
+  academicYear  String   // "2025/2026"
+  capacity      Int      @default(35)
+  programme     String?  // Academic, Vocational, Religious
+  formTeacherId String?  // Teacher.id
+
+  @@unique([className, academicYear])
+}
+
+// ─── Academic Standing History ────────────────────────────────────
+
+model AcademicStandingHistory {
+  id               String   @id @default(uuid())
+  studentId        String
+  student          Student  @relation(fields: [studentId], references: [id])
+  previousStanding String
+  newStanding      String
+  trigger          String   // GRADE_UPDATE, MANUAL, TERM_CLOSE
+  gradeAvg         Float
+  thresholdUsed    Float
+  createdAt        DateTime @default(now())
+}
+
+// ─── Approval Requests (Multi-Level Workflow) ─────────────────────
+
+model ApprovalRequest {
+  id               String   @id @default(uuid())
+  entityType       String   // SchoolExpense, GradeAmendment, LeaveApplication
+  entityId         String
+  requestedBy      String   // User.id
+  currentLevel     Int      @default(1)    // 1 = HOD, 2 = Principal
+  levelsRequired   Int      @default(1)
+  status           String   @default("PENDING") // PENDING, LEVEL1_APPROVED, LEVEL2_APPROVED, FULLY_APPROVED, REJECTED
+  level1ApproverId String?
+  level1ApprovedAt DateTime?
+  level1Remarks    String?
+  level2ApproverId String?
+  level2ApprovedAt DateTime?
+  level2Remarks    String?
+  rejectedBy       String?
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  metadata         String?  // JSON: { amount, description, entitySummary }
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ─── Grade Amendments ─────────────────────────────────────────────
+
+model GradeAmendment {
+  id              String   @id @default(uuid())
+  gradeId         String
+  teacherId       String
+  originalScore   Float
+  proposedScore   Float
+  reason          String
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  approverId      String?
+  approvedAt      DateTime?
+  approverRemarks String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

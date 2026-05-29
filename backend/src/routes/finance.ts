@@ -166,4 +166,81 @@ router.post(
   },
 )
 
+// PATCH /finance/invoices/:id/pay — simulate payment (clears holdActive)
+router.patch(
+  '/invoices/:id/pay',
+  authenticate,
+  requireRole(...financeRoles, 'principal', 'admin'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const id = req.params.id as string
+      const invoice = await prisma.feeInvoice.findUnique({ where: { id } })
+      if (!invoice) { res.status(404).json({ success: false, message: 'Invoice not found' }); return }
+
+      const updated = await prisma.feeInvoice.update({
+        where: { id },
+        data: { status: 'paid', paidAt: new Date(), holdActive: false, holdReason: null },
+        include: { student: { select: { id: true, enrollmentStatus: true } } },
+      })
+
+      // Broadcast updated outstanding count
+      const { broadcast } = await import('./events')
+      const outstandingCount = await prisma.feeInvoice.count({ where: { status: { in: ['unpaid', 'overdue'] } } })
+      broadcast('dashboard', 'dashboard.fees.changed', { outstandingFeeInvoices: outstandingCount })
+
+      res.json({ success: true, data: updated })
+    } catch (error) {
+      console.error('PATCH /finance/invoices/:id/pay error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// GET /finance/invoices/student/:studentId — all invoices for a student + hold status
+router.get(
+  '/invoices/student/:studentId',
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { studentId } = req.params as { studentId: string }
+      const invoices = await prisma.feeInvoice.findMany({
+        where: { studentId },
+        orderBy: { createdAt: 'desc' },
+      })
+      const holdActive = invoices.some(inv => inv.holdActive)
+      const outstanding = invoices.filter(inv => inv.status !== 'paid').reduce((s, inv) => s + inv.amount, 0)
+      res.json({ success: true, data: { invoices, holdActive, outstanding } })
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// POST /finance/fees/check-overdue — scan and flag overdue invoices
+router.post(
+  '/fees/check-overdue',
+  authenticate,
+  requireRole('admin', 'finance', 'manager'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const { getConfigInt } = await import('../lib/config')
+      const holdDays = await getConfigInt('fee_hold_overdue_days', 30)
+      const cutoff = new Date(Date.now() - holdDays * 24 * 3600 * 1000)
+
+      const updated = await prisma.feeInvoice.updateMany({
+        where: { status: 'unpaid', dueDate: { lt: cutoff } },
+        data: { status: 'overdue', holdActive: true, holdReason: `Payment overdue by more than ${holdDays} days` },
+      })
+
+      const { broadcast } = await import('./events')
+      const outstandingCount = await prisma.feeInvoice.count({ where: { status: { in: ['unpaid', 'overdue'] } } })
+      broadcast('dashboard', 'dashboard.fees.changed', { outstandingFeeInvoices: outstandingCount })
+
+      res.json({ success: true, data: { flagged: updated.count } })
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
 export default router

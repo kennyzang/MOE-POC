@@ -18,6 +18,9 @@ import {
   Settings,
   Calendar,
   AlertTriangle,
+  CheckSquare,
+  SlidersHorizontal,
+  Receipt,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -91,6 +94,7 @@ const Sidebar = () => {
           { key: '/sis/admissions', label: t('nav.sisAdmissions'), roles: ['admin', 'manager', 'admissions'] },
           { key: '/sis/grades', label: t('nav.sisGrades'), roles: ['admin', 'manager', 'teacher'] },
           { key: '/sis/attendance', label: t('nav.sisAttendance'), roles: ['admin', 'manager', 'teacher'] },
+          { key: '/sis/fees', label: t('nav.sisFees', { defaultValue: 'Fee Invoices' }), icon: icon(Receipt), roles: ['admin', 'manager', 'finance', 'principal'] },
         ],
       },
       // EMS - Educator Management System
@@ -155,12 +159,23 @@ const Sidebar = () => {
           { key: '/parent/attendance', label: t('nav.parentAttendance'), roles: ['parent'] },
         ],
       },
+      // Approvals
+      {
+        key: '/approvals',
+        label: t('nav.approvals', { defaultValue: 'Approvals Inbox' }),
+        icon: icon(CheckSquare),
+        roles: ['admin', 'manager', 'hod', 'principal'],
+      },
       // Settings
       {
         key: '/settings',
         label: t('nav.settings'),
         icon: icon(Settings),
         roles: ['admin'],
+        children: [
+          { key: '/settings', label: t('nav.settingsGeneral', { defaultValue: 'General' }), roles: ['admin'] },
+          { key: '/admin/settings/thresholds', label: t('nav.settingsThresholds', { defaultValue: 'System Thresholds' }), icon: icon(SlidersHorizontal), roles: ['admin'] },
+        ],
       },
     ],
     [t]

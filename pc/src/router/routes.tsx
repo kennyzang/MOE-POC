@@ -74,6 +74,13 @@ const ParentAttendancePage = lazy(() => import('@/pages/dashboard/ParentAttendan
 
 // Settings
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'))
+const ThresholdsPage = lazy(() => import('@/pages/settings/ThresholdsPage'))
+
+// SIS - Fees
+const FeesPage = lazy(() => import('@/pages/sis/FeesPage'))
+
+// Approvals
+const ApprovalsInboxPage = lazy(() => import('@/pages/approvals/ApprovalsInboxPage'))
 
 // Error pages
 const NotFoundPage = lazy(() => import('@/pages/errors/NotFoundPage'))
@@ -113,6 +120,7 @@ export const router = createBrowserRouter([
       { path: 'sis/admissions', element: r(['admin', 'manager', 'admissions'], <AdmissionsPage />) },
       { path: 'sis/grades', element: r(['admin', 'manager', 'teacher'], <GradeManagementPage />) },
       { path: 'sis/attendance', element: r(['admin', 'manager', 'teacher'], <AttendanceTrackingPage />) },
+      { path: 'sis/fees', element: r(['admin', 'manager', 'finance', 'principal'], <FeesPage />) },
 
       // EMS
       { path: 'ems/teachers', element: r(['admin', 'manager'], <TeacherDirectoryPage />) },
@@ -141,8 +149,12 @@ export const router = createBrowserRouter([
       { path: 'parent/grades', element: r(['parent'], <ParentGradesPage />) },
       { path: 'parent/attendance', element: r(['parent'], <ParentAttendancePage />) },
 
+      // Approvals Inbox
+      { path: 'approvals', element: r(['admin', 'manager', 'hod', 'principal'], <ApprovalsInboxPage />) },
+
       // Settings
       { path: 'settings', element: r(['admin'], <SettingsPage />) },
+      { path: 'admin/settings/thresholds', element: r(['admin'], <ThresholdsPage />) },
     ],
   },
   { path: '/unauthorized', element: wrap(<UnauthorizedPage />) },

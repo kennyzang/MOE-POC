@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   CalendarRange,
   Building2,
+  DollarSign,
   TrendingUp,
   TrendingDown,
   Minus,
@@ -33,11 +34,12 @@ interface CommandCenterData {
   studentsAtRisk: number
   timetableHealth: number
   facilityUtilization: number
+  outstandingFeeInvoices: number
   lastUpdated: string
 }
 
 interface KpiWidget {
-  key: keyof Omit<CommandCenterData, 'attendanceBreakdown' | 'lastUpdated'>
+  key: keyof Omit<CommandCenterData, 'attendanceBreakdown' | 'lastUpdated' | 'outstandingFeeInvoices'> | 'outstandingFeeInvoices'
   label: string
   icon: React.ComponentType<{ size?: number; className?: string }>
   color: string
@@ -121,6 +123,14 @@ const WIDGETS: KpiWidget[] = [
     bg: '#E8F0FA',
     format: 'percent',
     suffix: '%',
+  },
+  {
+    key: 'outstandingFeeInvoices',
+    label: 'commandCenter.outstandingFeeInvoices',
+    icon: DollarSign,
+    color: '#8B1A1A',
+    bg: '#FDECEA',
+    format: 'number',
   },
 ]
 
@@ -211,6 +221,8 @@ export default function CommandCenterPage() {
         'dashboard.risk.changed',
         'dashboard.timetable.changed',
         'dashboard.facility.changed',
+        'dashboard.fees.changed',
+        'dashboard.standing.changed',
       ]
       topics.forEach((topic) => es.addEventListener(topic, handleDashboardEvent))
 

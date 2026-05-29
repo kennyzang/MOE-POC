@@ -296,6 +296,36 @@ const TeacherDirectoryPage = () => {
               })()}
             </div>
           </div>
+          {/* Leave Balances */}
+          <div style={{ marginTop: 16 }}>
+            <Typography.Text strong>Leave Balances</Typography.Text>
+            <div style={{ marginTop: 8 }}>
+              <Space direction="vertical" style={{ width: '100%' }} size={6}>
+                {[
+                  { label: 'Annual Leave', field: 'annualLeaveBalance' as const, total: 14, color: '#1A6B3A' },
+                  { label: 'Medical Leave', field: 'medicalLeaveBalance' as const, total: 14, color: '#2E5A8E' },
+                ].map(({ label, field, total, color }) => {
+                  const balance = (teacherDetail as any)[field] ?? total
+                  const used = total - balance
+                  const pct = Math.round((balance / total) * 100)
+                  return (
+                    <div key={field}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 2 }}>
+                        <Typography.Text style={{ fontSize: 12 }}>{label}</Typography.Text>
+                        <Typography.Text strong style={{ fontSize: 12 }}>{balance}/{total} days remaining</Typography.Text>
+                      </div>
+                      <Progress
+                        percent={pct}
+                        size="small"
+                        strokeColor={pct > 50 ? color : pct > 20 ? '#fa8c16' : '#ff4d4f'}
+                        showInfo={false}
+                      />
+                    </div>
+                  )
+                })}
+              </Space>
+            </div>
+          </div>
         </div>
       ) : null,
     },

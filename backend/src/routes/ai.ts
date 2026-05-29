@@ -11,7 +11,8 @@ import {
   computeRiskForGrade,
 } from '../services/aiService'
 import { broadcast } from './events'
-import { send } from '../services/notificationService'
+import { send, sendMany } from '../services/notificationService'
+import { getConfigFloat } from '../lib/config'
 
 // ── Risk formula (spec Section 9.2, demo-tuned weights) ──────────────────────
 function computeRiskScore(input: {
@@ -20,6 +21,8 @@ function computeRiskScore(input: {
   currentGradeAvg: number
   previousGradeAvg: number | null
   cohortMedianGradeAvg: number
+  highThreshold?: number
+  monitorThreshold?: number
 }): { score: number; band: 'ON_TRACK' | 'MONITOR' | 'HIGH_RISK'; factors: object } {
   const attendanceFactor = Math.max(0, Math.min(1, (100 - input.attendanceRatePercent) / 30))
   const gradeTrendFactor = input.previousGradeAvg !== null
@@ -35,7 +38,9 @@ function computeRiskScore(input: {
     0.05 * cohortFactor
 
   const rounded = Math.round(score * 100) / 100
-  const band = rounded >= 0.7 ? 'HIGH_RISK' : rounded >= 0.4 ? 'MONITOR' : 'ON_TRACK'
+  const high = input.highThreshold ?? 0.7
+  const monitor = input.monitorThreshold ?? 0.4
+  const band = rounded >= high ? 'HIGH_RISK' : rounded >= monitor ? 'MONITOR' : 'ON_TRACK'
 
   return {
     score: rounded,
@@ -112,12 +117,18 @@ export async function recalcStudentRisk(studentDbId: string, triggerEvent: strin
       )
     : 70
 
+  const [highThreshold, monitorThreshold] = await Promise.all([
+    getConfigFloat('risk_threshold_high', 0.7),
+    getConfigFloat('risk_threshold_monitor', 0.4),
+  ])
   const { score, band, factors } = computeRiskScore({
     attendanceRatePercent,
     recentAbsenceCount,
     currentGradeAvg,
     previousGradeAvg,
     cohortMedianGradeAvg,
+    highThreshold,
+    monitorThreshold,
   })
 
   // Get previous band to detect threshold crossing
@@ -186,6 +197,69 @@ export async function recalcStudentRisk(studentDbId: string, triggerEvent: strin
     select: { studentId: true },
   })
   broadcast('dashboard', 'dashboard.risk.changed', { studentsAtRisk: atRiskCount.length })
+
+  // Academic standing side-effect (fire-and-forget safe, errors logged not thrown)
+  updateAcademicStanding(studentDbId, currentGradeAvg).catch(err =>
+    console.error('[Standing] updateAcademicStanding failed:', err),
+  )
+}
+
+// ── Academic Standing Engine ──────────────────────────────────────────────────
+export async function updateAcademicStanding(studentDbId: string, gradeAvg: number): Promise<void> {
+  const [watchThreshold, probationThreshold] = await Promise.all([
+    getConfigFloat('academic_watch_threshold', 60),
+    getConfigFloat('academic_probation_threshold', 50),
+  ])
+
+  const newStanding =
+    gradeAvg < probationThreshold ? 'PROBATION' :
+    gradeAvg < watchThreshold    ? 'ACADEMIC_WATCH' :
+                                    'GOOD_STANDING'
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentDbId },
+    include: {
+      user: { select: { id: true, displayName: true } },
+      parentLinks: { include: { parent: { include: { user: { select: { id: true } } } } } },
+    },
+  })
+  if (!student) return
+  if (newStanding === student.academicStanding) return  // no change
+
+  const previousStanding = student.academicStanding
+
+  await prisma.student.update({
+    where: { id: studentDbId },
+    data: { academicStanding: newStanding, academicStandingUpdatedAt: new Date() },
+  })
+
+  await prisma.academicStandingHistory.create({
+    data: {
+      studentId: studentDbId,
+      previousStanding,
+      newStanding,
+      trigger: 'GRADE_UPDATE',
+      gradeAvg,
+      thresholdUsed: newStanding === 'PROBATION' ? probationThreshold : watchThreshold,
+    },
+  })
+
+  // Only notify if standing worsened
+  const standingOrder = ['GOOD_STANDING', 'ACADEMIC_WATCH', 'PROBATION', 'AT_RISK']
+  const prevIdx = standingOrder.indexOf(previousStanding)
+  const newIdx = standingOrder.indexOf(newStanding)
+  if (newIdx > prevIdx) {
+    const counselorUser = await prisma.user.findFirst({ where: { role: 'counselor' } })
+    const parentIds = student.parentLinks.map(l => l.parent.user.id)
+    const notifyIds = [...parentIds, ...(counselorUser ? [counselorUser.id] : [])]
+    const standingLabel = newStanding === 'ACADEMIC_WATCH' ? 'Academic Watch' : 'Probation'
+    await sendMany(notifyIds, {
+      title: `Academic Standing: ${standingLabel}`,
+      message: `${student.user.displayName}'s grade average has dropped to ${gradeAvg.toFixed(1)}%. Standing updated to ${standingLabel}.`,
+      type: 'warning',
+    })
+    broadcast('dashboard', 'dashboard.standing.changed', { studentId: studentDbId, newStanding, gradeAvg })
+  }
 }
 
 const router = Router()

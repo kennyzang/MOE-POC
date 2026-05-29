@@ -3,6 +3,7 @@ import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 import { sendMany } from '../services/notificationService'
 import { broadcast } from './events'
+import { getConfigInt } from '../lib/config'
 
 const router = Router()
 
@@ -322,6 +323,97 @@ router.patch(
   },
 )
 
+// ─── Helper: class allocation algorithm ──────────────────────────
+async function allocateClass(
+  gradeNum: number,
+  siblingStudentId: string | null,
+  programmeStream: string | null,
+): Promise<{ className: string; waitlisted: boolean }> {
+  const maxCapacity = await getConfigInt('class_capacity_max', 35)
+  const gradeLevel = `Year ${gradeNum}`
+  const academicYear = '2025/2026'
+
+  const rosters = await prisma.classRoster.findMany({
+    where: { gradeLevel, academicYear },
+    orderBy: { className: 'asc' },
+  })
+
+  if (rosters.length === 0) {
+    // No roster configured — fall back to legacy 7A allocation
+    return { className: `${gradeNum}A`, waitlisted: false }
+  }
+
+  // Find sibling's class for the +30 bonus
+  let siblingClass: string | null = null
+  if (siblingStudentId) {
+    const sibling = await prisma.student.findUnique({ where: { id: siblingStudentId } })
+    siblingClass = sibling?.className ?? null
+  }
+
+  let bestRoster: { name: string; score: number } | null = null
+
+  for (const roster of rosters) {
+    const enrolledCount = await prisma.student.count({
+      where: { className: roster.className, enrollmentStatus: 'enrolled' },
+    })
+    if (enrolledCount >= maxCapacity) continue
+
+    let score = (maxCapacity - enrolledCount) * 2  // prefer less-full
+    if (siblingClass === roster.className) score += 30
+    if (programmeStream && roster.programme === programmeStream) score += 20
+
+    if (!bestRoster || score > bestRoster.score) {
+      bestRoster = { name: roster.className, score }
+    }
+  }
+
+  if (!bestRoster) {
+    return { className: `${gradeNum}W`, waitlisted: true }  // W = waitlisted
+  }
+  return { className: bestRoster.name, waitlisted: false }
+}
+
+// ─── GET /class-roster/:gradeLevel ───────────────────────────────
+router.get(
+  '/class-roster/:gradeLevel',
+  authenticate,
+  requireRole('admin', 'manager', 'admissions', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const gradeLevel = decodeURIComponent(req.params.gradeLevel as string)
+      const maxCapacity = await getConfigInt('class_capacity_max', 35)
+      const warningThreshold = await getConfigInt('class_capacity_warning', 32)
+
+      const rosters = await prisma.classRoster.findMany({
+        where: { gradeLevel, academicYear: '2025/2026' },
+        orderBy: { className: 'asc' },
+      })
+
+      const result = await Promise.all(
+        rosters.map(async (r) => {
+          const enrolled = await prisma.student.count({
+            where: { className: r.className, enrollmentStatus: 'enrolled' },
+          })
+          const pct = Math.round((enrolled / r.capacity) * 100)
+          return {
+            className: r.className,
+            gradeLevel: r.gradeLevel,
+            programme: r.programme,
+            enrolled,
+            capacity: r.capacity,
+            percentage: pct,
+            colour: enrolled >= r.capacity ? 'red' : enrolled >= warningThreshold ? 'orange' : 'green',
+          }
+        }),
+      )
+
+      res.json({ success: true, data: result })
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
 // ─── Helper: compute eligibility score ───────────────────────────
 function computeEligibilityScore(input: {
   previousAcademicAvg: number | null
@@ -549,12 +641,25 @@ router.post(
 
       const gradeNum = parseInt(String(application.gradeApplied).replace(/\D/g, '')) || 7
 
-      // Determine class name for student ID (allocate to grade A class)
-      const className = `${gradeNum}A`
+      // Class allocation via scoring algorithm (sibling +30, programme +20, balance scoring)
+      const { className, waitlisted } = await allocateClass(
+        gradeNum,
+        (application as any).siblingStudentId ?? null,
+        (application as any).programmeStream ?? null,
+      )
+
+      if (waitlisted) {
+        await prisma.admission.update({ where: { id }, data: { status: 'waitlisted' } })
+        res.status(409).json({
+          success: false,
+          message: `All Year ${gradeNum} classes are at full capacity (${await getConfigInt('class_capacity_max', 35)} students). Ahmad has been placed on the waitlist.`,
+        })
+        return
+      }
 
       // Count existing students in that class to generate sequential ID
       const classCount = await prisma.student.count({ where: { className } })
-      const studentId = `${new Date().getFullYear()}-${gradeNum}A-${String(classCount + 1).padStart(3, '0')}`
+      const studentId = `${new Date().getFullYear()}-${className}-${String(classCount + 1).padStart(3, '0')}`
 
       // Create User + Student
       const bcrypt = await import('bcryptjs')
@@ -588,6 +693,35 @@ router.post(
         where: { id },
         data: { status: 'offer_accepted', decidedAt: new Date() },
       })
+
+      // Auto-generate fee invoice for this enrolment
+      try {
+        const gradeLevel = `Year ${gradeNum}`
+        const feeTypes = await prisma.feeType.findMany({
+          where: { isActive: true, OR: [{ gradeLevel }, { gradeLevel: null }] },
+        })
+        if (feeTypes.length > 0) {
+          const totalAmount = feeTypes.reduce((s, f) => s + f.amount, 0)
+          const invoiceCount = await prisma.feeInvoice.count()
+          const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(5, '0')}`
+          await prisma.feeInvoice.create({
+            data: {
+              studentId: newStudent.id,
+              invoiceNumber,
+              semester: '2026-S1',
+              amount: totalAmount,
+              dueDate: new Date(Date.now() + 30 * 24 * 3600 * 1000),
+              description: `${gradeLevel} Enrolment Fees — Semester 1`,
+              lineItems: JSON.stringify(feeTypes.map(f => ({ code: f.code, name: f.name, amount: f.amount }))),
+              status: 'unpaid',
+            },
+          })
+          const outstandingCount = await prisma.feeInvoice.count({ where: { status: { in: ['unpaid', 'overdue'] } } })
+          broadcast('dashboard', 'dashboard.fees.changed', { outstandingFeeInvoices: outstandingCount })
+        }
+      } catch (feeErr) {
+        console.error('[Fee] Invoice generation failed (non-fatal):', feeErr)
+      }
 
       // Library provision mock
       const libraryId = `KOHA-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 99999)).padStart(5, '0')}`
@@ -625,7 +759,7 @@ router.post(
         success: true,
         data: {
           studentId,
-          allocatedClass: { name: `Year ${className}`, grade: gradeNum, section: 'A' },
+          allocatedClass: { name: `Year ${gradeNum} (${className})`, className, grade: gradeNum },
           credentialsSentTo: application.parentEmail,
           libraryId,
           timetableGenerated: true,

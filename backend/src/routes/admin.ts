@@ -55,6 +55,9 @@ router.post(
       // Delete all transactional data in reverse dependency order
       await prisma.$transaction([
         prisma.auditEvent.deleteMany(),
+        prisma.gradeAmendment.deleteMany(),
+        prisma.approvalRequest.deleteMany(),
+        prisma.academicStandingHistory.deleteMany(),
         prisma.counselorCase.deleteMany(),
         prisma.riskScore.deleteMany(),
         prisma.leaveApplication.deleteMany(),
@@ -77,7 +80,9 @@ router.post(
         prisma.certification.deleteMany(),
         prisma.performanceEvaluation.deleteMany(),
         prisma.feeInvoice.deleteMany(),
+        prisma.feeType.deleteMany(),
         prisma.schoolExpense.deleteMany(),
+        prisma.classRoster.deleteMany(),
         prisma.systemConfig.deleteMany(),
         prisma.parentStudent.deleteMany(),
         prisma.parent.deleteMany(),

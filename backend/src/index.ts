@@ -24,6 +24,7 @@ import configRoutes from './routes/config'
 import pushRoutes from './routes/push'
 import adminRoutes from './routes/admin'
 import eventsRoutes from './routes/events'
+import approvalsRoutes from './routes/approvals'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
 const app = express()
@@ -70,6 +71,7 @@ app.use('/api/v1/config', configRoutes)
 app.use('/api/v1/push', pushRoutes)
 app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/events', eventsRoutes)
+app.use('/api/v1/approvals', approvalsRoutes)
 
 // Error handling
 app.use(notFound)

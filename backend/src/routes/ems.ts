@@ -3,6 +3,7 @@ import prisma from '../lib/prisma'
 import { authenticate, type AuthRequest } from '../middleware/auth'
 import { send, sendMany } from '../services/notificationService'
 import { broadcast } from './events'
+import { getConfigFloat } from '../lib/config'
 
 const router = Router()
 
@@ -48,17 +49,23 @@ router.get('/cpd-summary', authenticate, async (req: AuthRequest, res: Response)
       orderBy: { staffId: 'asc' },
     })
 
-    const summary = teachers.map(t => ({
-      id: t.id,
-      staffId: t.staffId,
-      displayName: t.user.displayName,
-      department: t.department,
-      cpdHours: t.cpdHours,
-      cpdTarget: t.cpdTarget,
-      employmentStatus: t.employmentStatus,
-      cpdPercentage: Math.min(Math.round((t.cpdHours / t.cpdTarget) * 100), 100),
-      belowTarget: t.cpdHours < t.cpdTarget,
-    }))
+    const cpdAnnualTarget = await getConfigFloat('cpd_annual_target', 20)
+    const summary = teachers.map(t => {
+      const effectiveTarget = t.cpdTarget || cpdAnnualTarget
+      return {
+        id: t.id,
+        staffId: t.staffId,
+        displayName: t.user.displayName,
+        department: t.department,
+        cpdHours: t.cpdHours,
+        cpdTarget: effectiveTarget,
+        employmentStatus: t.employmentStatus,
+        annualLeaveBalance: t.annualLeaveBalance,
+        medicalLeaveBalance: t.medicalLeaveBalance,
+        cpdPercentage: Math.min(Math.round((t.cpdHours / effectiveTarget) * 100), 100),
+        belowTarget: t.cpdHours < effectiveTarget,
+      }
+    })
 
     res.json({ success: true, data: summary })
   } catch (error) {
@@ -361,6 +368,22 @@ router.post('/leave-applications', authenticate, async (req: AuthRequest, res: R
     const end = new Date(endDate)
     const daysRequested = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (24 * 3600 * 1000)) + 1)
 
+    // Balance check before creating application
+    const teacherForBalance = await prisma.teacher.findUnique({ where: { id: resolvedTeacherId } })
+    if (teacherForBalance) {
+      const balanceField = leaveType === 'ANNUAL' ? 'annualLeaveBalance' : leaveType === 'MEDICAL' ? 'medicalLeaveBalance' : null
+      if (balanceField) {
+        const available = teacherForBalance[balanceField as 'annualLeaveBalance' | 'medicalLeaveBalance'] ?? 14
+        if (available < daysRequested) {
+          res.status(400).json({
+            success: false,
+            message: `Insufficient ${leaveType.toLowerCase()} leave balance. Available: ${available} day(s), Requested: ${daysRequested} day(s).`,
+          })
+          return
+        }
+      }
+    }
+
     const application = await prisma.leaveApplication.create({
       data: {
         teacherId: resolvedTeacherId,
@@ -435,6 +458,22 @@ router.post('/leave-applications/:id/approve', authenticate, async (req: AuthReq
         : `Your ${updated.leaveType} leave application has been rejected. Reason: ${notes ?? 'No reason provided'}`,
       type: decision === 'APPROVE' ? 'success' : 'warning',
     })
+
+    // Deduct leave balance on approval
+    if (decision === 'APPROVE') {
+      const teacherRec = await prisma.teacher.findUnique({ where: { id: application.teacherId } })
+      if (teacherRec) {
+        const balanceField = application.leaveType === 'ANNUAL' ? 'annualLeaveBalance' :
+                             application.leaveType === 'MEDICAL' ? 'medicalLeaveBalance' : null
+        if (balanceField) {
+          const current = teacherRec[balanceField as 'annualLeaveBalance' | 'medicalLeaveBalance'] ?? 14
+          await prisma.teacher.update({
+            where: { id: application.teacherId },
+            data: { [balanceField]: Math.max(0, current - application.daysRequested) },
+          })
+        }
+      }
+    }
 
     // If approved, notify principal that substitute is needed
     if (decision === 'APPROVE') {
