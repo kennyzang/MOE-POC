@@ -37,3 +37,4 @@
 | 2026-05-27 10:30 | [260527-1030.md](260527-1030.md) | 修复验收问题：登录快捷登录密码独立（+Principal/HOD）+ AtRisk面板 i18n 全覆盖 + 排名列 | ~12k |
 | 2026-05-27 11:30 | [260527-1130.md](260527-1130.md) | 第二轮验收：登录语言切换 + nav高亮修复 + principal KPI + 教师/学生仪表盘补全 + 管理员图表优化 | ~25k |
 | 2026-05-27 14:00 | [260527-1400.md](260527-1400.md) | AI配置UI升级（Base URL/Temperature/MaxTokens/SystemPrompt）+ seed默认值 + Office365 SMTP排查 | ~18k |
+| 2026-05-29 11:00 | [260529-1100.md](260529-1100.md) | Phase 1+2 spec实现：3456学生seed、Command Center 8-KPI精确、SSE Live指示器、Demo Reset、招生向导修复 | ~180k |
