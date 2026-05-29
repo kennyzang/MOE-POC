@@ -1,7 +1,7 @@
 # MOE SERPS POC — 任务看板 & 进度存档
 
-> **演示日期**：2026-06-10（距今约 15 天）  
-> **最后更新**：2026-05-26 (第三次更新)  
+> **演示日期**：2026-06-10（距今约 12 天）  
+> **最后更新**：2026-05-29（今日更新）  
 > **项目入口**：`/Users/xiex/Documents/GIT/moe-poc-claude`  
 > **启动命令**：`./start.sh`（backend:4000 / pc:3000 / mobile:5173）
 
@@ -29,9 +29,54 @@
 | 优先级 | 任务数 | 说明 |
 |--------|--------|------|
 | 🔴 P0 必须 | 0 | 全部完成 ✅ |
-| 🟡 P1 重要 | 0 | 全部完成 ✅ |
-| 🟢 P2 完善 | 2 | 人工验收（VERIFY-08/09 需人工联调） |
-| ✅ 已完成 | 21 | 全部可演示 |
+| 🟡 P1 重要 | 2 | Ahmad 验收链路 + SSE 广播接入 |
+| 🟢 P2 完善 | 2 | Leave Application UI + SMTP 联调（需公网） |
+| ✅ 已完成 | 23 | 全部可演示，Command Center 8-KPI 精确 |
+
+---
+
+## 👥 周末接手指南（需求方同事适用）
+
+> 本节为非开发背景同事准备。使用 Claude Code 时，把下面任务描述直接贴给 AI 即可。
+
+### 可以做的事（验收测试）
+
+1. **验收 Ahmad 全流程**（最重要）
+   - 启动系统后登录 `admission / admission123`
+   - 找到 Ahmad Bin Abdullah 的 Draft 申请，点 Submit → Review → Accept
+   - 切换到 admin，进 Command Center，确认 Enrolment 变成 3,457、Pending 变成 11
+   - 再登录 `adam / Demo@2026`（学生账号），确认他能看到自己的成绩和课程
+
+2. **验收演示剧本**（`doc/demo-script-55min.md`）
+   - 按剧本第 1-3 段走一遍，记录哪里卡顿、哪里数据不对
+   - 不用走完全部，重点看 SIS 入学（8 分钟段）和 Command Center（8 分钟段）
+
+3. **反馈 Bug**
+   - 发现问题直接告诉 Claude："第 X 步，点了 Y 按钮，出现了 Z"
+   - 不需要自己改代码，让 AI 修
+
+### 不建议做的事
+
+- ❌ 不要改 `CLAUDE.md`、`prisma/schema.prisma`、任何 `.env` 文件
+- ❌ 不要运行 `git push --force` 或 `prisma db push --force-reset`（会丢数据）
+- ❌ 如果 AI 提议"重构 XX 模块"或"优化架构"——拒绝，演示前只修 Bug
+
+### 启动系统（复制粘贴运行）
+
+```bash
+cd /Users/xiex/Documents/GIT/moe-poc-claude
+./start.sh
+# 然后打开 http://localhost:3000
+```
+
+如果 start.sh 不好使，分别启动：
+```bash
+# 终端 1
+cd backend && npm run dev
+
+# 终端 2
+cd pc && npm run dev
+```
 
 ---
 
@@ -41,7 +86,40 @@ _全部完成 ✅_
 
 ---
 
-## 🟡 P1 — 重要功能
+## 🟡 P1 — 重要功能（260529 新增）
+
+### [ ] SPEC-P1-A：Ahmad accept-offer 触发链路验证
+
+**演示影响**：演示第 1 段核心动作——接受 Ahmad 申请后，Command Center 实时更新
+
+**需验证/修复的变化链**：
+- Enrolment: 3,456 → 3,457
+- Pending Applications: 12 → 11
+- Counselor Cases: 4 → 5（Ahmad 入学后 risk 变 HIGH，自动开 case）
+- Ahmad risk score: 0.21 → ~0.74
+
+**关键文件**：
+- `backend/src/routes/admissions.ts` — `POST /:id/accept-offer` 端点（已建，需测试）
+- `backend/prisma/seed.ts` — Ahmad 的历史出勤/成绩数据（risk 计算依赖）
+
+**状态**：`待验证`
+
+---
+
+### [ ] SPEC-P1-B：SSE broadcast 接入业务路由
+
+**演示影响**：Browser 2 的 Command Center 需要在 Browser 1 操作后实时跳数字
+
+**方案**：在 `admissions.ts` 的 accept-offer 和 `attendance.ts` 的打卡接口中调用 `broadcast('dashboard', ...)`
+
+**关键文件**：
+- `backend/src/routes/events.ts` — `broadcast()` 函数（已建，无调用）
+- `backend/src/routes/admissions.ts` — accept-offer 处理完后加一行 broadcast
+- `backend/src/routes/attendance.ts` — 打卡记录写入后 broadcast attendance 变化
+
+**状态**：`待开发`
+
+---
 
 ### [x] SMS-02：School Calendar（学校日历）页面
 
@@ -154,31 +232,35 @@ _全部完成 ✅_
 
 ### [ ] VERIFY-08：SMTP 真实邮件联调
 
-**说明**：代码完整，需要真实 Office365 账号在数据库中配置，发一封测试邮件确认链路通
+**说明**：代码完整，但 Office365 SMTP 需要**公网环境**才能测试（本地/内网会被防火墙拦截）
 
 **操作步骤**：
-1. 以 admin 登录 → Settings → SMTP Configuration
-2. 填入真实 SMTP 信息（Host / Port / User / Pass）
-3. 点击 Send Test Email
-4. 收件箱确认收到
+1. 在**公网机器**上启动 backend（或部署后测试）
+2. 以 admin 登录 → Settings → SMTP Configuration
+3. 填入真实 SMTP 信息（Host / Port / User / Pass）
+4. 点击 Send Test Email → 收件箱确认
 
-**注意**：凭证只填入数据库，**绝不写入任何 git 文件**（参考 CLAUDE.md Secrets 规则）  
-**状态**：`待验证`（需人工操作，AI 无法完成）
+**注意**：凭证只填入数据库，**绝不写入任何 git 文件**  
+**状态**：`待联调`（需公网环境 + 人工操作）
 
 ---
 
-### [ ] VERIFY-09：Claude API Key 联调
+### [x] VERIFY-09：Claude API Key 联调
 
-**说明**：AI Chatbot 有 fallback 模式，但演示时最好用真实 API。现在支持**在线配置**（无需改 .env）。
+**状态**：`已验收` ✅（2026-05-29 人工验证通过）
 
-**操作步骤**（已更新，不需要重启后端）：
-1. 以 admin 登录 → Settings → **AI Configuration** tab
-2. 填入 API Key（`sk-ant-...`）→ Save Configuration
-3. 点击 **Test Connection** 验证连通性
-4. 以 adam 登录 → 点击 Chat 图标
-5. 输入问题，验证 SSE 流式回复正常
+---
 
-**状态**：`待验证`（需人工操作）
+### [ ] SPEC-P2-A：Leave Application UI（教师请假申请）
+
+**演示影响**：Spec Phase 4 item，演示剧本第 3 段（EMS）可能涉及
+
+**方案**：
+- LeaveApplication 模型已在 schema（leaveType / startDate / endDate / reason / status）
+- 需建：`GET/POST /api/v1/ems/leave-applications`（教师提交）、`PATCH /:id/approve`（HOD审批）
+- 前端：EMS → 教师页面新增"请假记录"Tab
+
+**状态**：`待开发`（优先级较低，演示剧本若不涉及可跳过）
 
 ---
 
@@ -207,6 +289,10 @@ _全部完成 ✅_
 | PWA-01 | Mobile PWA | vite-plugin-pwa + Workbox 离线缓存 + Web Push 家长通知 + OfflineBanner + 订阅 UI | 260526 |
 | POLISH-06 | 账号表验证 | CLAUDE.md 账号表与 seed.ts 核对一致，无需改动 | 260526 |
 | POLISH-07 | 404/403 页面 | PC NotFoundPage + UnauthorizedPage，i18n 三语，路由整合 | 260526 |
+| SPEC-P1 | Command Center 精确数据 | 3456学生/12申请/92.6%出勤/4高风险，seed off-by-1 修复 | 260529 |
+| SPEC-P2 | Demo Reset 修复 | tsx seed re-run + school.deleteMany() 补全，测试通过 | 260529 |
+| SPEC-P3 | SSE Live 指示器 | /api/v1/events/stream + ● Live 绿色指示器 | 260529 |
+| VERIFY-09 | AI Chat 验收 | Claude SSE 流式回复人工验收通过 | 260529 |
 
 ---
 
@@ -214,9 +300,9 @@ _全部完成 ✅_
 
 演示日（6/10）前 2 天完成以下操作：
 
-- [ ] 配置真实 SMTP（admin → Settings → SMTP Configuration）并发送测试邮件
-- [ ] 配置 Claude API Key（`backend/.env`）并测试 AI 聊天
-- [ ] 重置数据库（`cd backend && npx prisma migrate reset`）确保种子数据干净
+- [ ] 配置真实 SMTP（需公网环境，admin → Settings → SMTP Configuration）并发送测试邮件
+- [x] ~~配置 Claude API Key~~ — 已验收通过 ✅
+- [ ] 重置数据库（`cd backend && npx prisma db push --force-reset && npx tsx prisma/seed.ts`）确保种子数据干净
 - [ ] 运行 `npx tsc --noEmit`（pc 和 mobile 目录），确认 0 TypeScript 错误
 - [ ] 按 `doc/acceptance-checklist-manual.md` 走完完整人工验收
 - [ ] 按演示剧本（DEMO-05 完成后）完整预演一次，计时 ≤ 55 分钟
