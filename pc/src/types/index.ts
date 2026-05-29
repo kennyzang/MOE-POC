@@ -8,6 +8,7 @@ export type UserRole =
   | 'admissions'
   | 'hod'
   | 'principal'
+  | 'counselor'
 
 export interface User {
   id: string
@@ -162,6 +163,7 @@ export interface AttendanceRecord {
 
 export interface Admission {
   id: string
+  applicationNumber?: string
   applicantName: string
   dateOfBirth?: string
   gender?: string
@@ -173,6 +175,14 @@ export interface Admission {
   parentRelationship?: string
   gradeApplied: string
   previousSchool?: string
+  programmeStream?: string
+  medicalConditions?: string
+  previousAcademicAvg?: number
+  hasSiblingPriority?: boolean
+  siblingName?: string
+  siblingStudentId?: string
+  docsComplete?: boolean
+  eligibilityScore?: number
   status: string
   submittedAt: string
   decidedAt?: string

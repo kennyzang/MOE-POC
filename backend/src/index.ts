@@ -22,6 +22,8 @@ import aiRoutes from './routes/ai'
 import notificationRoutes from './routes/notifications'
 import configRoutes from './routes/config'
 import pushRoutes from './routes/push'
+import adminRoutes from './routes/admin'
+import eventsRoutes from './routes/events'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
 const app = express()
@@ -66,6 +68,8 @@ app.use('/api/v1/ai', aiRoutes)
 app.use('/api/v1/notifications', notificationRoutes)
 app.use('/api/v1/config', configRoutes)
 app.use('/api/v1/push', pushRoutes)
+app.use('/api/v1/admin', adminRoutes)
+app.use('/api/v1/events', eventsRoutes)
 
 // Error handling
 app.use(notFound)

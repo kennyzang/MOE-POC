@@ -47,6 +47,8 @@ model Student {
   enrollments   Enrollment[]
   attendances   AttendanceRecord[]
   grades        Grade[]
+  riskScores    RiskScore[]
+  counselorCases CounselorCase[]
 }
 
 // ─── Teacher ────────────────────────────────────────────────────
@@ -72,6 +74,7 @@ model Teacher {
   courseAssignments CourseAssignment[]
   performanceEvaluations PerformanceEvaluation[]
   timetableSlots  TimetableSlot[]
+  leaveApplications LeaveApplication[]
 }
 
 // ─── Parent ─────────────────────────────────────────────────────
@@ -261,23 +264,46 @@ model PerformanceEvaluation {
 // ─── Admissions ─────────────────────────────────────────────────
 
 model Admission {
-  id              String   @id @default(uuid())
-  applicantName   String
-  dateOfBirth     DateTime?
-  gender          String?
-  icNumber        String?
-  nationality     String?
-  parentName      String?
-  parentPhone     String?
-  parentEmail     String?
-  gradeApplied    String   // which year/grade
-  previousSchool  String?
-  status          String   @default("pending") // pending, under_review, accepted, rejected
-  submittedAt     DateTime @default(now())
-  decidedAt       DateTime?
-  remarks         String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  applicationNumber   String   @unique @default(uuid()) // e.g. APP-2026-00012
+  applicantName       String
+  dateOfBirth         DateTime?
+  gender              String?
+  icNumber            String?
+  nationality         String?
+  parentName          String?
+  parentPhone         String?
+  parentEmail         String?
+  guardianUserId      String?  // links to User (parent)
+  gradeApplied        String   // which year/grade
+  programmeStream     String?  // Academic / Vocational / Religious
+  previousSchool      String?
+  medicalConditions   String?
+  status              String   @default("draft") // draft, submitted, under_review, offer_issued, offer_accepted, rejected, waitlisted
+  eligibilityScore    Float?   // computed on submit: 0-100
+  hasSiblingPriority  Boolean  @default(false)
+  siblingName         String?
+  siblingStudentId    String?  // matched Student.id
+  docsComplete        Boolean  @default(false)
+  previousAcademicAvg Float?   // 0-100, from report card
+  offerLetterPath     String?  // path to generated PDF
+  submittedAt         DateTime?
+  decidedAt           DateTime?
+  remarks             String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  documents           AdmissionDocument[]
+}
+
+model AdmissionDocument {
+  id            String   @id @default(uuid())
+  admissionId   String
+  admission     Admission @relation(fields: [admissionId], references: [id])
+  type          String   // BIRTH_CERTIFICATE, REPORT_CARD, IC_COPY, OTHER
+  filename      String
+  filePath      String?
+  uploadedAt    DateTime @default(now())
 }
 
 // ─── Finance (SMS) ──────────────────────────────────────────────
@@ -408,4 +434,69 @@ model SchoolEvent {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ─── Risk Scores (AI layer) ──────────────────────────────────────
+
+model RiskScore {
+  id          String   @id @default(uuid())
+  studentId   String
+  score       Float    // 0.0 to 1.0
+  band        String   // LOW_RISK, MEDIUM_RISK, HIGH_RISK
+  absences14d Int      @default(0)   // rolling 14-day absence count
+  gradeAvg    Float?   // current term average
+  gradeTrend  Float?   // delta from previous term
+  computedAt  DateTime @default(now())
+
+  student     Student  @relation(fields: [studentId], references: [id])
+}
+
+// ─── Counselor Cases ─────────────────────────────────────────────
+
+model CounselorCase {
+  id              String   @id @default(uuid())
+  studentId       String
+  counselorUserId String?  // assigned counselor User.id
+  openedReason    String   // AUTO_RISK_THRESHOLD, AUTO_ABSENCE_THRESHOLD, TEACHER_REFERRAL, PARENT_REQUEST
+  status          String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  notes           String?
+  openedAt        DateTime @default(now())
+  resolvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  student         Student  @relation(fields: [studentId], references: [id])
+}
+
+// ─── Leave Applications (EMS) ────────────────────────────────────
+
+model LeaveApplication {
+  id              String   @id @default(uuid())
+  teacherId       String
+  leaveType       String   // ANNUAL, MEDICAL, MATERNITY, PATERNITY, EMERGENCY
+  startDate       DateTime
+  endDate         DateTime
+  daysRequested   Int
+  reason          String?
+  status          String   @default("PENDING") // PENDING, HOD_APPROVED, PRINCIPAL_APPROVED, REJECTED
+  hodApproverId   String?
+  hodApprovedAt   DateTime?
+  hodRemarks      String?
+  substituteId    String?  // assigned substitute Teacher.id
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  teacher         Teacher  @relation(fields: [teacherId], references: [id])
+}
+
+// ─── Audit Events ─────────────────────────────────────────────────
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  actorUserId String
+  action      String   // APPLICATION_SUBMITTED, APPLICATION_DECIDED, STUDENT_ENROLLED, etc.
+  entityType  String?  // Admission, Student, Teacher, etc.
+  entityId    String?
+  details     String?  // JSON string with additional context
+  createdAt   DateTime @default(now())
 }

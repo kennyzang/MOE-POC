@@ -37,6 +37,7 @@ const r = (roles: UserRole[], el: React.ReactNode) =>
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'))
 const AtRiskPage = lazy(() => import('@/pages/dashboard/AtRiskPage'))
+const CommandCenterPage = lazy(() => import('@/pages/dashboard/CommandCenterPage'))
 
 // SIS
 const StudentDirectoryPage = lazy(() => import('@/pages/sis/StudentDirectoryPage'))
@@ -101,6 +102,10 @@ export const router = createBrowserRouter([
       {
         path: 'dashboard/at-risk',
         element: r(['admin', 'manager', 'principal'], <AtRiskPage />),
+      },
+      {
+        path: 'admin/command-center',
+        element: r(['admin', 'principal'], <CommandCenterPage />),
       },
 
       // SIS

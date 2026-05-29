@@ -47,6 +47,7 @@ const ROLE_HOME: Record<UserRole, string> = {
   parent: '/parent/children',
   hod: '/ems/performance-evaluations',
   principal: '/dashboard',
+  counselor: '/dashboard',
 }
 
 const Sidebar = () => {
@@ -66,6 +67,12 @@ const Sidebar = () => {
         label: t('nav.commandCenter'),
         icon: icon(LayoutDashboard),
         roles: ['admin', 'manager', 'finance', 'teacher', 'hod', 'principal'],
+      },
+      {
+        key: '/admin/command-center',
+        label: t('nav.commandCenterKpi', { defaultValue: 'Command Center' }),
+        icon: icon(LayoutDashboard),
+        roles: ['admin', 'principal'],
       },
       {
         key: '/dashboard/at-risk',

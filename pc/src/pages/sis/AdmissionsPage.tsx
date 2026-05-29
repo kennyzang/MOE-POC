@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import {
   Table,
   Input,
@@ -17,23 +17,41 @@ import {
   Form,
   DatePicker,
   Alert,
+  Progress,
+  InputNumber,
+  Badge,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ClipboardList, Search, Eye, CheckCircle, XCircle, Plus, ArrowLeft, ArrowRight } from 'lucide-react'
+import {
+  ClipboardList,
+  Search,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Plus,
+  ArrowLeft,
+  ArrowRight,
+  Gavel,
+} from 'lucide-react'
 import dayjs from 'dayjs'
 import api from '../../lib/api'
 import type { Admission } from '../../types'
 
 const STATUS_TAG_COLORS: Record<string, string> = {
+  draft: 'default',
   pending: 'orange',
+  submitted: 'orange',
   under_review: 'blue',
+  offer_issued: 'cyan',
+  offer_accepted: 'green',
   accepted: 'green',
   rejected: 'red',
+  waitlisted: 'purple',
 }
 
-// Age-grade compatibility: [minBirthYear, maxBirthYear] relative to 2026
+// Age-grade compatibility: [min, max] age for grade
 const GRADE_AGE_RANGES: Record<string, { min: number; max: number }> = {
   'Year 7': { min: 11, max: 13 },
   'Year 8': { min: 12, max: 14 },
@@ -52,21 +70,66 @@ function genRefId(): string {
   return `ADM-2026-${num}`
 }
 
+interface SiblingLookupResult {
+  matched: boolean
+  siblingStudentId?: string
+  siblingName?: string
+  siblingClass?: string
+}
+
 interface WizardFormData {
-  // Step 1
+  // Step 1 — Applicant Info
   applicantName: string
   icNumber?: string
   dateOfBirth?: dayjs.Dayjs
   gender: string
   nationality: string
-  // Step 2
-  gradeApplied: string
-  previousSchool?: string
-  // Step 3
+  // Step 2 — Guardian Info
   parentName: string
   parentPhone: string
   parentEmail?: string
   parentRelationship?: string
+  siblingName?: string
+  hasSiblingPriority?: boolean
+  siblingStudentId?: string
+  siblingMatchedClass?: string
+  // Step 3 — Academic Info
+  gradeApplied: string
+  previousSchool?: string
+  programmeStream?: string
+  medicalConditions?: string
+  previousAcademicAvg?: number
+}
+
+function computeFrontendScore(data: Partial<WizardFormData>): number {
+  const academic = data.previousAcademicAvg ?? 50
+  const dob = data.dateOfBirth
+  const gradeApplied = data.gradeApplied ?? ''
+  const range = GRADE_AGE_RANGES[gradeApplied]
+  let ageGradeMatch = false
+  if (range && dob) {
+    const age = calcAge(dob)
+    ageGradeMatch = age >= range.min && age <= range.max
+  }
+  const sibling = data.hasSiblingPriority ? 100 : 0
+  const docs = 60 // unknown at this stage — use 60 as default
+  return Math.round(0.4 * academic + 0.3 * (ageGradeMatch ? 100 : 0) + 0.15 * sibling + 0.15 * docs)
+}
+
+function EligibilityProgressBar({ score }: { score?: number }) {
+  if (score === undefined || score === null) return <span>-</span>
+  const color = score >= 80 ? '#52c41a' : score >= 60 ? '#fa8c16' : '#f5222d'
+  return (
+    <Space direction="vertical" size={0} style={{ width: 100 }}>
+      <Progress
+        percent={score}
+        size="small"
+        strokeColor={color}
+        format={(p) => `${p}`}
+        style={{ margin: 0 }}
+      />
+    </Space>
+  )
 }
 
 const AdmissionsPage = () => {
@@ -83,6 +146,11 @@ const AdmissionsPage = () => {
   const [actionType, setActionType] = useState<'accepted' | 'rejected' | null>(null)
   const [remarks, setRemarks] = useState('')
 
+  // Decide modal state
+  const [decideOpen, setDecideOpen] = useState(false)
+  const [decideDecision, setDecideDecision] = useState<string>('')
+  const [decideNotes, setDecideNotes] = useState('')
+
   // Wizard state
   const [wizardOpen, setWizardOpen] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
@@ -91,6 +159,9 @@ const AdmissionsPage = () => {
     nationality: 'Bruneian',
   })
   const [ageMismatch, setAgeMismatch] = useState<string | null>(null)
+  const [siblingLookup, setSiblingLookup] = useState<SiblingLookupResult | null>(null)
+  const [siblingLookupLoading, setSiblingLookupLoading] = useState(false)
+  const siblingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [form1] = Form.useForm()
   const [form2] = Form.useForm()
@@ -133,13 +204,53 @@ const AdmissionsPage = () => {
 
   const createMutation = useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
-      const { data } = await api.post('/admissions', body)
+      const { data } = await api.post('/admissions/applications', body)
+      return data
+    },
+    onSuccess: (data) => {
+      const score = data?.data?.eligibilityScore
+      if (score !== undefined) {
+        message.success(
+          t('admissions.submitSuccessScore', {
+            score,
+            defaultValue: `Application submitted. Eligibility Score: ${score}`,
+          })
+        )
+      } else {
+        message.success(t('admissions.wizard.submitSuccess'))
+      }
+      queryClient.invalidateQueries({ queryKey: ['admissions'] })
+      handleCloseWizard()
+    },
+    onError: () => {
+      message.error(t('common.error'))
+    },
+  })
+
+  const decideMutation = useMutation({
+    mutationFn: async ({
+      id,
+      decision,
+      notes,
+    }: {
+      id: string
+      decision: string
+      notes?: string
+    }) => {
+      const { data } = await api.post(`/admissions/applications/${id}/decide`, {
+        decision,
+        notes,
+      })
       return data
     },
     onSuccess: () => {
-      message.success(t('admissions.wizard.submitSuccess'))
+      message.success(t('admissions.decideSuccess', { defaultValue: 'Decision recorded successfully' }))
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
-      handleCloseWizard()
+      setDecideOpen(false)
+      setDecideDecision('')
+      setDecideNotes('')
+      setDetailOpen(false)
+      setSelectedAdmission(null)
     },
     onError: () => {
       message.error(t('common.error'))
@@ -149,9 +260,11 @@ const AdmissionsPage = () => {
   // Compute stats from data
   const totalCount = admissions.length
   const pendingCount = admissions.filter(
-    (a) => a.status === 'pending' || a.status === 'under_review'
+    (a) => a.status === 'pending' || a.status === 'submitted' || a.status === 'under_review'
   ).length
-  const acceptedCount = admissions.filter((a) => a.status === 'accepted').length
+  const acceptedCount = admissions.filter(
+    (a) => a.status === 'accepted' || a.status === 'offer_issued' || a.status === 'offer_accepted'
+  ).length
   const rejectedCount = admissions.filter((a) => a.status === 'rejected').length
 
   const handleReview = (admission: Admission) => {
@@ -169,12 +282,32 @@ const AdmissionsPage = () => {
     })
   }
 
+  const handleOpenDecide = () => {
+    setDecideDecision('')
+    setDecideNotes('')
+    setDecideOpen(true)
+  }
+
+  const handleConfirmDecide = () => {
+    if (!selectedAdmission || !decideDecision) return
+    decideMutation.mutate({
+      id: selectedAdmission.id,
+      decision: decideDecision,
+      notes: decideNotes,
+    })
+  }
+
   const statusLabel = (val: string) => {
     const keyMap: Record<string, string> = {
+      draft: 'admissions.statusDraft',
       pending: 'admissions.statusPending',
+      submitted: 'admissions.statusSubmitted',
       under_review: 'admissions.statusUnderReview',
+      offer_issued: 'admissions.statusOfferIssued',
+      offer_accepted: 'admissions.statusOfferAccepted',
       accepted: 'admissions.statusAccepted',
       rejected: 'admissions.statusRejected',
+      waitlisted: 'admissions.statusWaitlisted',
     }
     return t(keyMap[val] ?? val)
   }
@@ -184,6 +317,7 @@ const AdmissionsPage = () => {
     setCurrentStep(0)
     setWizardData({ nationality: 'Bruneian' })
     setAgeMismatch(null)
+    setSiblingLookup(null)
     form1.resetFields()
     form2.resetFields()
     form3.resetFields()
@@ -195,6 +329,7 @@ const AdmissionsPage = () => {
     setCurrentStep(0)
     setWizardData({ nationality: 'Bruneian' })
     setAgeMismatch(null)
+    setSiblingLookup(null)
     form1.resetFields()
     form2.resetFields()
     form3.resetFields()
@@ -225,6 +360,50 @@ const AdmissionsPage = () => {
     }
   }
 
+  // Debounced sibling lookup
+  const handleSiblingNameChange = (value: string) => {
+    if (siblingDebounceRef.current) clearTimeout(siblingDebounceRef.current)
+    if (!value || value.trim().length < 2) {
+      setSiblingLookup(null)
+      setWizardData((prev) => ({
+        ...prev,
+        hasSiblingPriority: false,
+        siblingStudentId: undefined,
+        siblingMatchedClass: undefined,
+      }))
+      return
+    }
+    siblingDebounceRef.current = setTimeout(async () => {
+      setSiblingLookupLoading(true)
+      try {
+        const { data } = await api.get(
+          `/admissions/sibling-lookup?name=${encodeURIComponent(value.trim())}`
+        )
+        const result: SiblingLookupResult = data.data
+        setSiblingLookup(result)
+        if (result.matched) {
+          setWizardData((prev) => ({
+            ...prev,
+            hasSiblingPriority: true,
+            siblingStudentId: result.siblingStudentId,
+            siblingMatchedClass: result.siblingClass,
+          }))
+        } else {
+          setWizardData((prev) => ({
+            ...prev,
+            hasSiblingPriority: false,
+            siblingStudentId: undefined,
+            siblingMatchedClass: undefined,
+          }))
+        }
+      } catch {
+        setSiblingLookup(null)
+      } finally {
+        setSiblingLookupLoading(false)
+      }
+    }, 500)
+  }
+
   const handleNextStep = async () => {
     if (currentStep === 0) {
       try {
@@ -238,9 +417,6 @@ const AdmissionsPage = () => {
       try {
         const values = await form2.validateFields()
         setWizardData((prev) => ({ ...prev, ...values }))
-        // check age/grade mismatch with stored dob
-        const dob = wizardData.dateOfBirth ?? form1.getFieldValue('dateOfBirth')
-        checkAgeMismatch(values.gradeApplied, dob)
         setCurrentStep(2)
       } catch {
         // validation failed
@@ -249,6 +425,9 @@ const AdmissionsPage = () => {
       try {
         const values = await form3.validateFields()
         setWizardData((prev) => ({ ...prev, ...values }))
+        // check age/grade mismatch with stored dob
+        const dob = wizardData.dateOfBirth ?? form1.getFieldValue('dateOfBirth')
+        checkAgeMismatch(values.gradeApplied, dob)
         setCurrentStep(3)
       } catch {
         // validation failed
@@ -269,18 +448,42 @@ const AdmissionsPage = () => {
         : undefined,
       gender: wizardData.gender,
       nationality: wizardData.nationality,
+      guardianName: wizardData.parentName,
+      guardianPhone: wizardData.parentPhone,
+      guardianEmail: wizardData.parentEmail,
+      guardianRelation: wizardData.parentRelationship,
+      siblingName: wizardData.siblingName,
+      siblingStudentId: wizardData.siblingStudentId,
+      hasSiblingPriority: wizardData.hasSiblingPriority ?? false,
       gradeApplied: wizardData.gradeApplied,
       previousSchool: wizardData.previousSchool,
-      parentName: wizardData.parentName,
-      parentPhone: wizardData.parentPhone,
-      parentEmail: wizardData.parentEmail,
-      parentRelationship: wizardData.parentRelationship,
+      programmeStream: wizardData.programmeStream,
+      medicalConditions: wizardData.medicalConditions,
+      previousAcademicAvg: wizardData.previousAcademicAvg,
+      documentsComplete: false,
     }
     createMutation.mutate(payload)
   }
 
   // Merged wizard data for review step (step 4)
   const reviewData = useMemo(() => wizardData, [wizardData])
+  const estimatedScore = useMemo(() => computeFrontendScore(wizardData), [wizardData])
+
+  const gradeOptions = ['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11'].map(
+    (g) => ({ label: g, value: g })
+  )
+
+  const relationshipOptions = [
+    { label: t('admissions.relationshipFather'), value: 'father' },
+    { label: t('admissions.relationshipMother'), value: 'mother' },
+    { label: t('admissions.relationshipGuardian'), value: 'guardian' },
+  ]
+
+  const programmeStreamOptions = [
+    { label: t('admissions.streamAcademic', { defaultValue: 'Academic' }), value: 'academic' },
+    { label: t('admissions.streamVocational', { defaultValue: 'Vocational' }), value: 'vocational' },
+    { label: t('admissions.streamReligious', { defaultValue: 'Religious' }), value: 'religious' },
+  ]
 
   const columns: ColumnsType<Admission> = [
     {
@@ -312,6 +515,13 @@ const AdmissionsPage = () => {
       key: 'previousSchool',
     },
     {
+      title: t('admissions.eligibilityScore', { defaultValue: 'Eligibility Score' }),
+      dataIndex: 'eligibilityScore',
+      key: 'eligibilityScore',
+      width: 150,
+      render: (val: number | undefined) => <EligibilityProgressBar score={val} />,
+    },
+    {
       title: t('admissions.submittedAt'),
       dataIndex: 'submittedAt',
       key: 'submittedAt',
@@ -322,7 +532,7 @@ const AdmissionsPage = () => {
       title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
-      width: 130,
+      width: 140,
       render: (val: string) => (
         <Tag color={STATUS_TAG_COLORS[val] ?? 'default'}>{statusLabel(val)}</Tag>
       ),
@@ -343,8 +553,8 @@ const AdmissionsPage = () => {
     },
   ]
 
-  const canDecide =
-    selectedAdmission?.status === 'pending' ||
+  const canDecide = selectedAdmission?.status === 'pending' ||
+    selectedAdmission?.status === 'submitted' ||
     selectedAdmission?.status === 'under_review'
 
   const wizardSteps = [
@@ -354,15 +564,20 @@ const AdmissionsPage = () => {
     { title: t('admissions.wizard.step4') },
   ]
 
-  const gradeOptions = ['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11'].map(
-    (g) => ({ label: g, value: g })
-  )
-
-  const relationshipOptions = [
-    { label: t('admissions.relationshipFather'), value: 'father' },
-    { label: t('admissions.relationshipMother'), value: 'mother' },
-    { label: t('admissions.relationshipGuardian'), value: 'guardian' },
-  ]
+  // Score card row helper
+  const scoreCardItems = useMemo(() => {
+    const academic = reviewData.previousAcademicAvg ?? 50
+    const dob = reviewData.dateOfBirth
+    const grade = reviewData.gradeApplied ?? ''
+    const range = GRADE_AGE_RANGES[grade]
+    let ageGradeMatch = false
+    if (range && dob) {
+      const age = calcAge(dob)
+      ageGradeMatch = age >= range.min && age <= range.max
+    }
+    const sibling = reviewData.hasSiblingPriority ?? false
+    return { academic, ageGradeMatch, sibling }
+  }, [reviewData])
 
   return (
     <div>
@@ -449,10 +664,15 @@ const AdmissionsPage = () => {
               value={statusFilter || undefined}
               onChange={(val) => setStatusFilter(val ?? '')}
               options={[
+                { label: t('admissions.statusDraft', { defaultValue: 'Draft' }), value: 'draft' },
                 { label: t('admissions.statusPending'), value: 'pending' },
+                { label: t('admissions.statusSubmitted', { defaultValue: 'Submitted' }), value: 'submitted' },
                 { label: t('admissions.statusUnderReview'), value: 'under_review' },
+                { label: t('admissions.statusOfferIssued', { defaultValue: 'Offer Issued' }), value: 'offer_issued' },
+                { label: t('admissions.statusOfferAccepted', { defaultValue: 'Offer Accepted' }), value: 'offer_accepted' },
                 { label: t('admissions.statusAccepted'), value: 'accepted' },
                 { label: t('admissions.statusRejected'), value: 'rejected' },
+                { label: t('admissions.statusWaitlisted', { defaultValue: 'Waitlisted' }), value: 'waitlisted' },
               ]}
             />
           </Col>
@@ -485,7 +705,7 @@ const AdmissionsPage = () => {
           setRemarks('')
         }}
         footer={null}
-        width={680}
+        width={720}
         destroyOnHidden
       >
         {selectedAdmission && (
@@ -524,8 +744,45 @@ const AdmissionsPage = () => {
               <Descriptions.Item label={t('admissions.previousSchool')}>
                 {selectedAdmission.previousSchool ?? '-'}
               </Descriptions.Item>
+              {selectedAdmission.programmeStream && (
+                <Descriptions.Item label={t('admissions.programmeStream', { defaultValue: 'Programme Stream' })}>
+                  {selectedAdmission.programmeStream}
+                </Descriptions.Item>
+              )}
+              {selectedAdmission.previousAcademicAvg !== undefined && (
+                <Descriptions.Item label={t('admissions.previousAcademicAvg', { defaultValue: 'Academic Average (%)' })}>
+                  {selectedAdmission.previousAcademicAvg}%
+                </Descriptions.Item>
+              )}
+              {selectedAdmission.hasSiblingPriority && (
+                <Descriptions.Item
+                  label={t('admissions.siblingName', { defaultValue: 'Sibling Priority' })}
+                  span={2}
+                >
+                  <Badge
+                    color="green"
+                    text={`${selectedAdmission.siblingName ?? '-'}`}
+                  />
+                </Descriptions.Item>
+              )}
+              {selectedAdmission.medicalConditions && (
+                <Descriptions.Item
+                  label={t('admissions.medicalConditions', { defaultValue: 'Medical Conditions' })}
+                  span={2}
+                >
+                  {selectedAdmission.medicalConditions}
+                </Descriptions.Item>
+              )}
+              {selectedAdmission.eligibilityScore !== undefined && (
+                <Descriptions.Item
+                  label={t('admissions.eligibilityScore', { defaultValue: 'Eligibility Score' })}
+                  span={2}
+                >
+                  <EligibilityProgressBar score={selectedAdmission.eligibilityScore} />
+                </Descriptions.Item>
+              )}
               <Descriptions.Item label={t('admissions.submittedAt')}>
-                {new Date(selectedAdmission.submittedAt).toLocaleDateString()}
+                {selectedAdmission.submittedAt ? new Date(selectedAdmission.submittedAt).toLocaleDateString() : '—'}
               </Descriptions.Item>
               <Descriptions.Item label={t('common.status')}>
                 <Tag color={STATUS_TAG_COLORS[selectedAdmission.status] ?? 'default'}>
@@ -544,8 +801,15 @@ const AdmissionsPage = () => {
               )}
             </Descriptions>
 
+            {/* Decide button (new spec endpoint) */}
             {canDecide && !actionType && (
-              <Space style={{ width: '100%', justifyContent: 'center' }}>
+              <Space style={{ width: '100%', justifyContent: 'center', marginBottom: 8 }}>
+                <Button
+                  icon={<Gavel size={16} />}
+                  onClick={handleOpenDecide}
+                >
+                  {t('admissions.decideAction', { defaultValue: 'Decide' })}
+                </Button>
                 <Button
                   type="primary"
                   icon={<CheckCircle size={16} />}
@@ -598,6 +862,59 @@ const AdmissionsPage = () => {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Decide Modal */}
+      <Modal
+        title={t('admissions.decideTitle', { defaultValue: 'Application Decision' })}
+        open={decideOpen}
+        onCancel={() => {
+          setDecideOpen(false)
+          setDecideDecision('')
+          setDecideNotes('')
+        }}
+        onOk={handleConfirmDecide}
+        okButtonProps={{
+          loading: decideMutation.isPending,
+          disabled: !decideDecision,
+        }}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        destroyOnHidden
+      >
+        <Form layout="vertical">
+          <Form.Item
+            label={t('admissions.decideDecision', { defaultValue: 'Decision' })}
+            required
+          >
+            <Select
+              value={decideDecision || undefined}
+              onChange={(val) => setDecideDecision(val)}
+              options={[
+                {
+                  label: t('admissions.decideAccept', { defaultValue: 'Accept' }),
+                  value: 'ACCEPT',
+                },
+                {
+                  label: t('admissions.decideReject', { defaultValue: 'Reject' }),
+                  value: 'REJECT',
+                },
+                {
+                  label: t('admissions.decideWaitlist', { defaultValue: 'Waitlist' }),
+                  value: 'WAITLIST',
+                },
+              ]}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item label={t('admissions.decideNotes', { defaultValue: 'Notes' })}>
+            <Input.TextArea
+              rows={3}
+              value={decideNotes}
+              onChange={(e) => setDecideNotes(e.target.value)}
+            />
+          </Form.Item>
+        </Form>
       </Modal>
 
       {/* New Application Wizard Modal */}
@@ -675,45 +992,9 @@ const AdmissionsPage = () => {
           </Form>
         )}
 
-        {/* Step 2: Academic Information */}
+        {/* Step 2: Guardian Information (with sibling lookup) */}
         {currentStep === 1 && (
           <Form form={form2} layout="vertical">
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="gradeApplied"
-                  label={t('admissions.gradeApplied')}
-                  rules={[{ required: true, message: t('common.required') }]}
-                >
-                  <Select
-                    options={gradeOptions}
-                    onChange={(val) => {
-                      const dob = wizardData.dateOfBirth
-                      checkAgeMismatch(val, dob)
-                    }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="previousSchool" label={t('admissions.previousSchool')}>
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-            {ageMismatch && (
-              <Alert
-                type="warning"
-                title={ageMismatch}
-                showIcon
-                style={{ marginTop: 8 }}
-              />
-            )}
-          </Form>
-        )}
-
-        {/* Step 3: Parent/Guardian Information */}
-        {currentStep === 2 && (
-          <Form form={form3} layout="vertical">
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
@@ -753,6 +1034,108 @@ const AdmissionsPage = () => {
                 </Form.Item>
               </Col>
             </Row>
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  name="siblingName"
+                  label={t('admissions.siblingName', { defaultValue: 'Sibling Name (if enrolled)' })}
+                  extra={
+                    siblingLookupLoading
+                      ? t('common.loading')
+                      : siblingLookup?.matched
+                        ? undefined
+                        : siblingLookup?.matched === false
+                          ? undefined
+                          : undefined
+                  }
+                >
+                  <Input
+                    onChange={(e) => handleSiblingNameChange(e.target.value)}
+                    placeholder="e.g. Ahmad Bin Abdullah"
+                  />
+                </Form.Item>
+                {siblingLookup?.matched && (
+                  <div style={{ marginTop: -12, marginBottom: 12 }}>
+                    <Badge
+                      color="green"
+                      text={
+                        <span style={{ color: '#52c41a', fontWeight: 500 }}>
+                          {t('admissions.siblingPriorityEligible', {
+                            name: siblingLookup.siblingName,
+                            class: siblingLookup.siblingClass,
+                            defaultValue: `Sibling Priority eligible — ${siblingLookup.siblingName}, ${siblingLookup.siblingClass}`,
+                          })}
+                        </span>
+                      }
+                    />
+                  </div>
+                )}
+              </Col>
+            </Row>
+          </Form>
+        )}
+
+        {/* Step 3: Academic Background */}
+        {currentStep === 2 && (
+          <Form form={form3} layout="vertical">
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="gradeApplied"
+                  label={t('admissions.gradeApplied')}
+                  rules={[{ required: true, message: t('common.required') }]}
+                >
+                  <Select
+                    options={gradeOptions}
+                    onChange={(val) => {
+                      const dob = wizardData.dateOfBirth
+                      checkAgeMismatch(val, dob)
+                    }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="previousSchool" label={t('admissions.previousSchool')}>
+                  <Input />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="programmeStream"
+                  label={t('admissions.programmeStream', { defaultValue: 'Programme Stream' })}
+                >
+                  <Select options={programmeStreamOptions} allowClear />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="previousAcademicAvg"
+                  label={t('admissions.previousAcademicAvg', { defaultValue: 'Previous Academic Average (%)' })}
+                >
+                  <InputNumber min={0} max={100} style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  name="medicalConditions"
+                  label={t('admissions.medicalConditions', { defaultValue: 'Medical Conditions / Special Needs' })}
+                >
+                  <Input.TextArea rows={3} />
+                </Form.Item>
+              </Col>
+            </Row>
+            {ageMismatch && (
+              <Alert
+                type="warning"
+                message={ageMismatch}
+                showIcon
+                style={{ marginTop: 8 }}
+              />
+            )}
           </Form>
         )}
 
@@ -806,21 +1189,6 @@ const AdmissionsPage = () => {
               title={t('admissions.wizard.step2')}
               style={{ marginBottom: 16 }}
             >
-              <Descriptions.Item label={t('admissions.gradeApplied')}>
-                {reviewData.gradeApplied ?? '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('admissions.previousSchool')}>
-                {reviewData.previousSchool ?? '-'}
-              </Descriptions.Item>
-            </Descriptions>
-
-            <Descriptions
-              bordered
-              column={2}
-              size="small"
-              title={t('admissions.wizard.step3')}
-              style={{ marginBottom: 16 }}
-            >
               <Descriptions.Item label={t('admissions.parentName')}>
                 {reviewData.parentName ?? '-'}
               </Descriptions.Item>
@@ -832,15 +1200,133 @@ const AdmissionsPage = () => {
               </Descriptions.Item>
               <Descriptions.Item label={t('admissions.relationship')}>
                 {reviewData.parentRelationship
-                  ? t(`admissions.relationship${reviewData.parentRelationship.charAt(0).toUpperCase() + reviewData.parentRelationship.slice(1)}`)
+                  ? t(
+                      `admissions.relationship${reviewData.parentRelationship.charAt(0).toUpperCase() + reviewData.parentRelationship.slice(1)}`
+                    )
                   : '-'}
               </Descriptions.Item>
+              {reviewData.hasSiblingPriority && (
+                <Descriptions.Item
+                  label={t('admissions.siblingName', { defaultValue: 'Sibling Priority' })}
+                  span={2}
+                >
+                  <Badge
+                    color="green"
+                    text={`${reviewData.siblingName ?? '-'} — ${reviewData.siblingMatchedClass ?? ''}`}
+                  />
+                </Descriptions.Item>
+              )}
             </Descriptions>
+
+            <Descriptions
+              bordered
+              column={2}
+              size="small"
+              title={t('admissions.wizard.step3')}
+              style={{ marginBottom: 16 }}
+            >
+              <Descriptions.Item label={t('admissions.gradeApplied')}>
+                {reviewData.gradeApplied ?? '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label={t('admissions.previousSchool')}>
+                {reviewData.previousSchool ?? '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label={t('admissions.programmeStream', { defaultValue: 'Programme Stream' })}>
+                {reviewData.programmeStream ?? '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label={t('admissions.previousAcademicAvg', { defaultValue: 'Academic Average (%)' })}>
+                {reviewData.previousAcademicAvg !== undefined
+                  ? `${reviewData.previousAcademicAvg}%`
+                  : '-'}
+              </Descriptions.Item>
+              {reviewData.medicalConditions && (
+                <Descriptions.Item
+                  label={t('admissions.medicalConditions', { defaultValue: 'Medical Conditions' })}
+                  span={2}
+                >
+                  {reviewData.medicalConditions}
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+
+            {/* Eligibility Score Preview Card */}
+            <Card
+              size="small"
+              title={t('admissions.scoreCard', { defaultValue: 'Eligibility Score Preview' })}
+              style={{ marginBottom: 16 }}
+            >
+              <Row gutter={[12, 8]}>
+                <Col span={12}>
+                  <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                    <span style={{ fontSize: 12, color: '#888' }}>
+                      {t('admissions.scoreAcademicAvg', { defaultValue: 'Academic Average' })}
+                    </span>
+                    <span style={{ fontWeight: 600 }}>
+                      {scoreCardItems.academic}%
+                    </span>
+                  </Space>
+                </Col>
+                <Col span={12}>
+                  <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                    <span style={{ fontSize: 12, color: '#888' }}>
+                      {t('admissions.scoreAgeGradeMatch', { defaultValue: 'Age-Grade Match' })}
+                    </span>
+                    <Tag color={scoreCardItems.ageGradeMatch ? 'green' : 'orange'}>
+                      {scoreCardItems.ageGradeMatch ? 'Y' : 'N'}
+                    </Tag>
+                  </Space>
+                </Col>
+                <Col span={12}>
+                  <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                    <span style={{ fontSize: 12, color: '#888' }}>
+                      {t('admissions.scoreSiblingPriority', { defaultValue: 'Sibling Priority' })}
+                    </span>
+                    <Tag color={scoreCardItems.sibling ? 'green' : 'default'}>
+                      {scoreCardItems.sibling ? 'Y' : 'N'}
+                    </Tag>
+                  </Space>
+                </Col>
+                <Col span={12}>
+                  <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                    <span style={{ fontSize: 12, color: '#888' }}>
+                      {t('admissions.scoreDocsComplete', { defaultValue: 'Documents Complete' })}
+                    </span>
+                    <Tag color="default">N</Tag>
+                  </Space>
+                </Col>
+              </Row>
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: '12px 0',
+                  borderTop: '1px solid #f0f0f0',
+                  textAlign: 'center',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 700,
+                    color:
+                      estimatedScore >= 80
+                        ? '#52c41a'
+                        : estimatedScore >= 60
+                          ? '#fa8c16'
+                          : '#f5222d',
+                  }}
+                >
+                  {t('admissions.scoreEstimated', {
+                    score: estimatedScore,
+                    defaultValue: `Estimated Score: ${estimatedScore}/100`,
+                  })}
+                </span>
+              </div>
+            </Card>
 
             {ageMismatch && (
               <Alert
                 type="warning"
-                title={ageMismatch}
+                message={ageMismatch}
                 showIcon
                 style={{ marginBottom: 16 }}
               />
@@ -870,7 +1356,7 @@ const AdmissionsPage = () => {
             <Button
               type="primary"
               icon={<ArrowRight size={16} />}
-              iconPlacement="end"
+              iconPosition="end"
               onClick={handleNextStep}
             >
               {t('common.next')}
