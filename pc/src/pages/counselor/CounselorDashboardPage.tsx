@@ -36,8 +36,8 @@ interface CounselorDashboardStats {
   }[]
 }
 
-const RISK_COLORS = { HIGH_RISK: '#f5222d', MEDIUM_RISK: '#fa8c16', LOW_RISK: '#52c41a' }
-const RISK_LABELS: Record<string, string> = { HIGH_RISK: 'High Risk', MEDIUM_RISK: 'Medium Risk', LOW_RISK: 'Low Risk' }
+const RISK_COLORS: Record<string, string> = { HIGH_RISK: '#f5222d', MONITOR: '#fa8c16', ON_TRACK: '#52c41a' }
+const RISK_LABELS: Record<string, string> = { HIGH_RISK: 'High Risk', MONITOR: 'Monitor', ON_TRACK: 'On Track' }
 
 const STATUS_COLOR: Record<string, string> = {
   OPEN: 'red',
@@ -92,20 +92,16 @@ const CounselorDashboardPage = () => {
   // SSE: refresh when risk scores change or thresholds change
   useEffect(() => {
     if (!token) return
-    const es = new EventSource(
-      `/api/v1/events/stream?topics=dashboard&token=${token}`,
-    )
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data) as { event?: string }
-        if (msg.event?.startsWith('dashboard.risk') || msg.event === 'system.thresholds.changed') {
-          void queryClient.invalidateQueries({ queryKey: ['counselor-dashboard'] })
-        }
-      } catch {
-        // ignore parse errors
-      }
+    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000/api/v1'
+    const es = new EventSource(`${base}/events/stream?topics=dashboard&token=${token}`)
+    const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ['counselor-dashboard'] }) }
+    es.addEventListener('dashboard.risk.changed', invalidate)
+    es.addEventListener('system.thresholds.changed', invalidate)
+    return () => {
+      es.removeEventListener('dashboard.risk.changed', invalidate)
+      es.removeEventListener('system.thresholds.changed', invalidate)
+      es.close()
     }
-    return () => es.close()
   }, [token, queryClient])
 
   if (isLoading) {
@@ -116,7 +112,7 @@ const CounselorDashboardPage = () => {
     )
   }
 
-  const dist = stats?.riskBandDistribution ?? { HIGH_RISK: 0, MEDIUM_RISK: 0, LOW_RISK: 0 }
+  const dist = stats?.riskBandDistribution ?? { HIGH_RISK: 0, MONITOR: 0, ON_TRACK: 0 }
   const pieData = Object.entries(dist)
     .filter(([, v]) => v > 0)
     .map(([k, v]) => ({ name: RISK_LABELS[k] ?? k, value: v, color: RISK_COLORS[k as keyof typeof RISK_COLORS] ?? '#999' }))
@@ -154,7 +150,7 @@ const CounselorDashboardPage = () => {
           <KpiCard icon={TrendingUp} color="#fa8c16" bg="#fff7e6" title={t('counselor.inProgressCases', { defaultValue: 'In Progress' })} value={stats?.casesInProgress ?? 0} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <KpiCard icon={AlertTriangle} color="#f5222d" bg="#fff2f0" title={t('counselor.highRisk', { defaultValue: 'High-Risk Students' })} value={dist.HIGH_RISK} />
+          <KpiCard icon={AlertTriangle} color="#f5222d" bg="#fff2f0" title={t('counselor.highRisk', { defaultValue: 'High-Risk Students' })} value={dist.HIGH_RISK ?? 0} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <KpiCard icon={Users} color="#52c41a" bg="#f6ffed" title={t('counselor.resolvedCases', { defaultValue: 'Resolved Cases' })} value={stats?.casesResolved ?? 0} />

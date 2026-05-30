@@ -23,9 +23,9 @@ router.get(
         }),
       ])
 
-      const bandCounts = { HIGH_RISK: 0, MEDIUM_RISK: 0, LOW_RISK: 0 }
+      const bandCounts: Record<string, number> = { HIGH_RISK: 0, MONITOR: 0, ON_TRACK: 0 }
       for (const rs of riskBands) {
-        if (rs.band in bandCounts) bandCounts[rs.band as keyof typeof bandCounts]++
+        if (rs.band in bandCounts) bandCounts[rs.band]++
       }
 
       // Active cases with student info for the list

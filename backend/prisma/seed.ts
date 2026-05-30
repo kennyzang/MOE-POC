@@ -127,7 +127,7 @@ async function main() {
     data: { username: 'parent01', password: hash('parent123'), displayName: 'Hj Abdullah Bin Mahmud', email: 'abdullah@email.com', role: 'parent' },
   })
 
-  await prisma.user.create({
+  const fatimahUser = await prisma.user.create({
     data: { username: 'fatimah', password: hash('Demo@2026'), displayName: 'Fatimah Binti Yusof', email: 'fatimah@parent.moe.edu.bn', role: 'parent' },
   })
 
@@ -435,6 +435,17 @@ async function main() {
 
   await prisma.parentStudent.create({
     data: { parentId: parent01.id, studentId: ahmad.id },
+  })
+
+  const fatimah = await prisma.parent.create({
+    data: { userId: fatimahUser.id, phone: '+673 8765 4321', occupation: 'Teacher', relationship: 'mother' },
+  })
+
+  await prisma.parentStudent.createMany({
+    data: [
+      { parentId: fatimah.id, studentId: adam.id },
+      { parentId: fatimah.id, studentId: nurul.id },
+    ],
   })
 
   // ─── Courses: Enrollments for Ahmad, adam, nurul ──────────────────────────
@@ -1187,6 +1198,88 @@ async function main() {
       update: { value: cfg.value, description: cfg.description },
     })
   }
+
+  // ─── CPD Workshops ────────────────────────────────────────────────────────
+  // Seeded for demo: 6 open workshops, filtered to teacher subjects
+
+  const futureDate = (daysFromNow: number) => {
+    const d = new Date()
+    d.setDate(d.getDate() + daysFromNow)
+    return d
+  }
+
+  await prisma.cpdWorkshop.createMany({
+    data: [
+      {
+        title: 'Digital Pedagogy for Mathematics',
+        provider: 'MOE Professional Development Centre',
+        subject: 'Mathematics',
+        hours: 4,
+        startDate: futureDate(14),
+        endDate: futureDate(14),
+        location: 'Resource Centre, Block B',
+        maxParticipants: 25,
+        status: 'open',
+      },
+      {
+        title: 'Inquiry-Based Science Teaching',
+        provider: 'MOE Professional Development Centre',
+        subject: 'Science',
+        hours: 6,
+        startDate: futureDate(21),
+        endDate: futureDate(22),
+        location: 'Science Lab Wing',
+        maxParticipants: 20,
+        status: 'open',
+      },
+      {
+        title: 'Classroom Management & Student Engagement',
+        provider: 'Universiti Brunei Darussalam',
+        subject: 'General',
+        hours: 3,
+        startDate: futureDate(10),
+        endDate: futureDate(10),
+        location: 'UBD Main Campus',
+        maxParticipants: 40,
+        status: 'open',
+      },
+      {
+        title: 'Assessment for Learning: Formative Strategies',
+        provider: 'MOE Professional Development Centre',
+        subject: 'General',
+        hours: 5,
+        startDate: futureDate(28),
+        endDate: futureDate(29),
+        location: 'Resource Centre, Block A',
+        maxParticipants: 30,
+        status: 'open',
+      },
+      {
+        title: 'Inclusive Education & SEN Strategies',
+        provider: 'Brunei Darussalam National Institute of Education',
+        subject: 'General',
+        hours: 8,
+        startDate: futureDate(35),
+        endDate: futureDate(36),
+        location: 'BDNIE Conference Hall',
+        maxParticipants: 50,
+        status: 'open',
+      },
+      {
+        title: 'ICT Integration in the Secondary Classroom',
+        provider: 'MOE ICT Division',
+        subject: 'ICT',
+        hours: 4,
+        startDate: futureDate(18),
+        endDate: futureDate(18),
+        location: 'Computer Lab, Block C',
+        maxParticipants: 20,
+        status: 'open',
+      },
+    ],
+  })
+
+  console.log('  CPD Workshops seeded.')
 
   // ─── Final summary ────────────────────────────────────────────────────────
 

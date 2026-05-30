@@ -17,10 +17,11 @@ import {
   Row,
   Col,
   List,
+  Descriptions,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, Plus, Trash2, Edit2 } from 'lucide-react'
 import dayjs, { type Dayjs } from 'dayjs'
 import api from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
@@ -47,8 +48,11 @@ const SchoolCalendarPage = () => {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<SchoolEvent | null>(null)
+  const [viewEvent, setViewEvent] = useState<SchoolEvent | null>(null)
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs())
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
 
   const canEdit = ['admin', 'manager', 'principal'].includes(user?.role ?? '')
 
@@ -85,9 +89,39 @@ const SchoolCalendarPage = () => {
     onSuccess: () => {
       message.success(t('common.success'))
       queryClient.invalidateQueries({ queryKey: ['school-events'] })
+      setViewEvent(null)
     },
     onError: () => message.error(t('common.error')),
   })
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, values }: { id: string; values: Record<string, unknown> }) => {
+      const res = await api.patch(`/sms/calendar-events/${id}`, {
+        ...values,
+        date: (values.date as Dayjs).format('YYYY-MM-DD'),
+        endDate: values.endDate ? (values.endDate as Dayjs).format('YYYY-MM-DD') : undefined,
+      })
+      return res.data.data
+    },
+    onSuccess: () => {
+      message.success(t('common.success'))
+      queryClient.invalidateQueries({ queryKey: ['school-events'] })
+      setEditingEvent(null)
+    },
+    onError: () => message.error(t('common.error')),
+  })
+
+  const openEdit = (ev: SchoolEvent) => {
+    setEditingEvent(ev)
+    setViewEvent(null)
+    editForm.setFieldsValue({
+      title: ev.title,
+      date: dayjs(ev.date),
+      endDate: ev.endDate ? dayjs(ev.endDate) : undefined,
+      type: ev.type,
+      description: ev.description ?? '',
+    })
+  }
 
   // Group events by date string for calendar cell rendering
   const eventsByDate: Record<string, SchoolEvent[]> = {}
@@ -103,7 +137,7 @@ const SchoolCalendarPage = () => {
     return (
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {dayEvents.map(ev => (
-          <li key={ev.id}>
+          <li key={ev.id} onClick={(e) => { e.stopPropagation(); setViewEvent(ev) }} style={{ cursor: 'pointer' }}>
             <Badge
               color={TYPE_COLORS[ev.type] ?? 'default'}
               text={
@@ -173,13 +207,22 @@ const SchoolCalendarPage = () => {
               locale={{ emptyText: t('common.noData') }}
               renderItem={ev => (
                 <List.Item
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setViewEvent(ev)}
                   actions={
                     canEdit
                       ? [
+                          <Button
+                            key="edit"
+                            type="text"
+                            size="small"
+                            icon={<Edit2 size={14} />}
+                            onClick={(e) => { e.stopPropagation(); openEdit(ev) }}
+                          />,
                           <Popconfirm
                             key="delete"
                             title={t('sms.deleteEventConfirm')}
-                            onConfirm={() => deleteMutation.mutate(ev.id)}
+                            onConfirm={(e) => { e?.stopPropagation(); deleteMutation.mutate(ev.id) }}
                             okType="danger"
                           >
                             <Button
@@ -187,6 +230,7 @@ const SchoolCalendarPage = () => {
                               size="small"
                               danger
                               icon={<Trash2 size={14} />}
+                              onClick={(e) => e.stopPropagation()}
                             />
                           </Popconfirm>,
                         ]
@@ -221,6 +265,107 @@ const SchoolCalendarPage = () => {
         </Col>
       </Row>
 
+      {/* Event detail modal */}
+      {viewEvent && (
+        <Modal
+          open={!!viewEvent}
+          onCancel={() => setViewEvent(null)}
+          title={
+            <Space>
+              <Tag color={TYPE_COLORS[viewEvent.type] ?? 'default'}>
+                {viewEvent.type.toUpperCase()}
+              </Tag>
+              {viewEvent.title}
+            </Space>
+          }
+          footer={canEdit ? (
+            <Space>
+              <Button icon={<Edit2 size={14} />} onClick={() => openEdit(viewEvent)}>Edit</Button>
+              <Popconfirm
+                title={t('sms.deleteEventConfirm')}
+                onConfirm={() => deleteMutation.mutate(viewEvent.id)}
+                okType="danger"
+              >
+                <Button danger icon={<Trash2 size={14} />}>Delete</Button>
+              </Popconfirm>
+              <Button onClick={() => setViewEvent(null)}>Close</Button>
+            </Space>
+          ) : <Button onClick={() => setViewEvent(null)}>Close</Button>}
+          width={440}
+        >
+          <Descriptions column={1} size="small" bordered>
+            <Descriptions.Item label="Title">{viewEvent.title}</Descriptions.Item>
+            <Descriptions.Item label="Type">
+              <Tag color={TYPE_COLORS[viewEvent.type] ?? 'default'}>{viewEvent.type}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Date">
+              {dayjs(viewEvent.date).format('D MMMM YYYY')}
+              {viewEvent.endDate && ` — ${dayjs(viewEvent.endDate).format('D MMMM YYYY')}`}
+            </Descriptions.Item>
+            {viewEvent.description && (
+              <Descriptions.Item label="Description">{viewEvent.description}</Descriptions.Item>
+            )}
+          </Descriptions>
+        </Modal>
+      )}
+
+      {/* Edit modal */}
+      {editingEvent && (
+        <Modal
+          open={!!editingEvent}
+          onCancel={() => setEditingEvent(null)}
+          title={
+            <Space>
+              <Edit2 size={16} />
+              Edit Event
+            </Space>
+          }
+          footer={null}
+          width={480}
+          destroyOnHidden
+        >
+          <Form
+            form={editForm}
+            layout="vertical"
+            onFinish={(values) => updateMutation.mutate({ id: editingEvent.id, values: values as Record<string, unknown> })}
+          >
+            <Form.Item name="title" label={t('sms.eventTitle')} rules={[{ required: true }]}>
+              <Input />
+            </Form.Item>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item name="date" label={t('sms.eventDate')} rules={[{ required: true }]}>
+                  <DatePicker style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="endDate" label={t('sms.eventEndDate')}>
+                  <DatePicker style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item name="type" label={t('sms.eventType')} rules={[{ required: true }]}>
+              <Select options={[
+                { value: 'holiday', label: t('sms.typeHoliday') },
+                { value: 'exam', label: t('sms.typeExam') },
+                { value: 'activity', label: t('sms.typeActivity') },
+                { value: 'event', label: t('sms.typeEvent') },
+              ]} />
+            </Form.Item>
+            <Form.Item name="description" label={t('common.description')}>
+              <Input.TextArea rows={2} />
+            </Form.Item>
+            <Space style={{ justifyContent: 'flex-end', width: '100%' }}>
+              <Button onClick={() => setEditingEvent(null)}>{t('common.cancel')}</Button>
+              <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
+                {t('common.save')}
+              </Button>
+            </Space>
+          </Form>
+        </Modal>
+      )}
+
+      {/* Create modal */}
       <Modal
         open={modalOpen}
         onCancel={() => { setModalOpen(false); form.resetFields() }}

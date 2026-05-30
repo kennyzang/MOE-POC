@@ -64,6 +64,79 @@ router.get(
   },
 )
 
+// ── GET /approvals/history ────────────────────────────────────────────────────
+router.get(
+  '/history',
+  authenticate,
+  requireRole('hod', 'principal', 'admin', 'manager'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const requests = await prisma.approvalRequest.findMany({
+        where: { status: { in: ['FULLY_APPROVED', 'REJECTED'] } },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      })
+      const enriched = await Promise.all(requests.map(async (r) => {
+        const base = await enrichRequest(r)
+        // Fetch approver names
+        const level1Name = r.level1ApproverId
+          ? (await prisma.user.findUnique({ where: { id: r.level1ApproverId }, select: { displayName: true } }))?.displayName
+          : null
+        const level2Name = r.level2ApproverId
+          ? (await prisma.user.findUnique({ where: { id: r.level2ApproverId }, select: { displayName: true } }))?.displayName
+          : null
+        const rejectedByName = r.rejectedBy
+          ? (await prisma.user.findUnique({ where: { id: r.rejectedBy }, select: { displayName: true } }))?.displayName
+          : null
+        return { ...base, level1Name, level2Name, rejectedByName }
+      }))
+      res.json({ success: true, data: enriched })
+    } catch (error) {
+      console.error('GET /approvals/history error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
+// ── GET /approvals/:id/detail ─────────────────────────────────────────────────
+router.get(
+  '/:id/detail',
+  authenticate,
+  requireRole('hod', 'principal', 'admin', 'manager'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params
+      const approval = await prisma.approvalRequest.findUnique({ where: { id } })
+      if (!approval) { res.status(404).json({ success: false, message: 'Not found' }); return }
+
+      const base = await enrichRequest(approval)
+
+      // Fetch the entity
+      let entity: any = null
+      if (approval.entityType === 'SchoolExpense') {
+        entity = await prisma.schoolExpense.findUnique({ where: { id: approval.entityId } })
+      } else if (approval.entityType === 'GradeAmendment') {
+        entity = await prisma.gradeAmendment.findUnique({
+          where: { id: approval.entityId },
+          include: { /* nothing complex */ },
+        })
+      }
+
+      const level1Name = approval.level1ApproverId
+        ? (await prisma.user.findUnique({ where: { id: approval.level1ApproverId }, select: { displayName: true } }))?.displayName
+        : null
+      const level2Name = approval.level2ApproverId
+        ? (await prisma.user.findUnique({ where: { id: approval.level2ApproverId }, select: { displayName: true } }))?.displayName
+        : null
+
+      res.json({ success: true, data: { ...base, entity, level1Name, level2Name } })
+    } catch (error) {
+      console.error('GET /approvals/:id/detail error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
 // ── POST /approvals/:id/decide ────────────────────────────────────────────────
 router.post(
   '/:id/decide',

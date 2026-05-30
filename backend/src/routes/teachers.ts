@@ -79,6 +79,64 @@ router.get('/me', authenticate, requireRole('teacher'), async (req: AuthRequest,
   }
 })
 
+// GET /teachers/:id/performance-evaluations
+router.get('/:id/performance-evaluations', authenticate, requireRole('admin', 'manager', 'hod', 'principal', 'teacher'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const teacherId = req.params.id as string
+    const teacher = await prisma.teacher.findUnique({ where: { id: teacherId } })
+    if (!teacher) { res.status(404).json({ success: false, message: 'Teacher not found' }); return }
+    if (role === 'teacher' && teacher.userId !== userId) { res.status(403).json({ success: false, message: 'Forbidden' }); return }
+    const evals = await prisma.performanceEvaluation.findMany({
+      where: { teacherId },
+      orderBy: { academicYear: 'desc' },
+    })
+    res.json({ success: true, data: evals })
+  } catch (error) {
+    console.error('GET /teachers/:id/performance-evaluations error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /teachers/:id/leave-history
+router.get('/:id/leave-history', authenticate, requireRole('admin', 'manager', 'hod', 'principal', 'teacher'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const teacherId = req.params.id as string
+    const teacher = await prisma.teacher.findUnique({ where: { id: teacherId } })
+    if (!teacher) { res.status(404).json({ success: false, message: 'Teacher not found' }); return }
+    if (role === 'teacher' && teacher.userId !== userId) { res.status(403).json({ success: false, message: 'Forbidden' }); return }
+    const leaves = await prisma.leaveApplication.findMany({
+      where: { teacherId },
+      orderBy: { startDate: 'desc' },
+    })
+    res.json({ success: true, data: leaves })
+  } catch (error) {
+    console.error('GET /teachers/:id/leave-history error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /teachers/:id/cpd-enrollments
+router.get('/:id/cpd-enrollments', authenticate, requireRole('admin', 'manager', 'hod', 'principal', 'teacher'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const teacherId = req.params.id as string
+    const teacher = await prisma.teacher.findUnique({ where: { id: teacherId } })
+    if (!teacher) { res.status(404).json({ success: false, message: 'Teacher not found' }); return }
+    if (role === 'teacher' && teacher.userId !== userId) { res.status(403).json({ success: false, message: 'Forbidden' }); return }
+    const enrollments = await prisma.cpdEnrollment.findMany({
+      where: { teacherId },
+      include: { workshop: true },
+      orderBy: { enrolledAt: 'desc' },
+    })
+    res.json({ success: true, data: enrollments })
+  } catch (error) {
+    console.error('GET /teachers/:id/cpd-enrollments error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
 // GET /teachers/:id — get teacher with details
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
@@ -107,7 +165,13 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
         },
         certifications: true,
         courseAssignments: {
-          include: { course: true },
+          include: {
+            course: {
+              include: {
+                _count: { select: { enrollments: true } },
+              },
+            },
+          },
         },
       },
     })

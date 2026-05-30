@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import {
-  Card, Row, Col, Statistic, List, Spin, Typography, Tag, Progress, Alert,
+  Card, Row, Col, Statistic, List, Spin, Typography, Tag, Progress, Alert, Space,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -66,21 +66,19 @@ const StudentDashboardPage = () => {
     enabled: !!user,
   })
 
-  // SSE: refresh when teacher posts a new grade
+  // SSE: refresh when teacher posts a grade or marks attendance
   useEffect(() => {
     if (!token) return
-    const es = new EventSource(`/api/v1/events/stream?topics=dashboard&token=${token}`)
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data) as { event?: string }
-        if (msg.event?.startsWith('dashboard.grade') || msg.event?.startsWith('dashboard.attendance')) {
-          void queryClient.invalidateQueries({ queryKey: ['student-dashboard-stats'] })
-        }
-      } catch {
-        // ignore
-      }
+    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000/api/v1'
+    const es = new EventSource(`${base}/events/stream?topics=dashboard&token=${token}`)
+    const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ['student-dashboard-stats'] }) }
+    es.addEventListener('dashboard.gradeUpdated', invalidate)
+    es.addEventListener('dashboard.attendance.changed', invalidate)
+    return () => {
+      es.removeEventListener('dashboard.gradeUpdated', invalidate)
+      es.removeEventListener('dashboard.attendance.changed', invalidate)
+      es.close()
     }
-    return () => es.close()
   }, [token, queryClient])
 
   if (isLoading) {
@@ -118,7 +116,7 @@ const StudentDashboardPage = () => {
           message={t('dashboard.riskAlertHigh', { defaultValue: 'Your attendance is critically low. Please speak to your class counselor.' })}
         />
       )}
-      {stats?.riskBand === 'MEDIUM_RISK' && (
+      {stats?.riskBand === 'MONITOR' && (
         <Alert
           type="warning"
           showIcon

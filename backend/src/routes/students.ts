@@ -105,10 +105,34 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
           },
         },
         enrollments: {
-          include: { course: true },
+          include: {
+            course: {
+              include: {
+                assignments: {
+                  include: {
+                    teacher: {
+                      include: { user: { select: { displayName: true } } },
+                    },
+                  },
+                  take: 1,
+                },
+              },
+            },
+          },
         },
         grades: {
-          include: { gradeItem: true },
+          include: {
+            gradeItem: {
+              include: { course: { select: { id: true, code: true, name: true } } },
+            },
+          },
+        },
+        riskScores: {
+          orderBy: { computedAt: 'desc' },
+          take: 1,
+        },
+        _count: {
+          select: { counselorCases: true },
         },
       },
     })
@@ -143,6 +167,139 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     res.json({ success: true, data: student })
   } catch (error) {
     console.error('Error getting student:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /students/:id/attendance-history — all attendance records for a student
+router.get('/:id/attendance-history', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const studentId = req.params.id as string
+
+    if (!['admin', 'manager', 'teacher', 'counselor', 'principal', 'student', 'parent'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' })
+      return
+    }
+
+    const student = await prisma.student.findUnique({ where: { id: studentId } })
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student not found' })
+      return
+    }
+    if (role === 'student' && student.userId !== userId) {
+      res.status(403).json({ success: false, message: 'Forbidden' })
+      return
+    }
+
+    const records = await prisma.attendanceRecord.findMany({
+      where: { studentId },
+      include: {
+        session: {
+          include: { course: { select: { id: true, code: true, name: true } } },
+        },
+      },
+      orderBy: { session: { date: 'desc' } },
+    })
+
+    res.json({ success: true, data: records })
+  } catch (error) {
+    console.error('GET /students/:id/attendance-history error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /students/:id/standing-history — academic standing history
+router.get('/:id/standing-history', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const studentId = req.params.id as string
+
+    if (!['admin', 'manager', 'teacher', 'counselor', 'principal', 'student', 'parent'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' })
+      return
+    }
+
+    const student = await prisma.student.findUnique({ where: { id: studentId } })
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student not found' })
+      return
+    }
+    if (role === 'student' && student.userId !== userId) {
+      res.status(403).json({ success: false, message: 'Forbidden' })
+      return
+    }
+
+    const history = await prisma.academicStandingHistory.findMany({
+      where: { studentId },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    res.json({ success: true, data: history })
+  } catch (error) {
+    console.error('GET /students/:id/standing-history error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /students/:id/invoices — fee invoices for a student
+router.get('/:id/invoices', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const studentId = req.params.id as string
+
+    if (!['admin', 'manager', 'finance', 'principal', 'student', 'parent'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' })
+      return
+    }
+
+    const student = await prisma.student.findUnique({ where: { id: studentId } })
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student not found' })
+      return
+    }
+    if (role === 'student' && student.userId !== userId) {
+      res.status(403).json({ success: false, message: 'Forbidden' })
+      return
+    }
+
+    const invoices = await prisma.feeInvoice.findMany({
+      where: { studentId },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    res.json({ success: true, data: invoices })
+  } catch (error) {
+    console.error('GET /students/:id/invoices error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /students/:id/counselor-cases — counselor cases for a student
+router.get('/:id/counselor-cases', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    const studentId = req.params.id as string
+
+    if (!['admin', 'manager', 'counselor', 'principal'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' })
+      return
+    }
+
+    const student = await prisma.student.findUnique({ where: { id: studentId } })
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student not found' })
+      return
+    }
+
+    const cases = await prisma.counselorCase.findMany({
+      where: { studentId },
+      orderBy: { openedAt: 'desc' },
+    })
+
+    res.json({ success: true, data: cases })
+  } catch (error) {
+    console.error('GET /students/:id/counselor-cases error:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })

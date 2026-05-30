@@ -35,8 +35,8 @@ interface CaseDetail extends CaseRow {
   parents: { name: string; email: string | null }[]
 }
 
-const RISK_COLORS: Record<string, string> = { HIGH_RISK: '#f5222d', MEDIUM_RISK: '#fa8c16', LOW_RISK: '#52c41a' }
-const RISK_LABELS: Record<string, string> = { HIGH_RISK: 'High Risk', MEDIUM_RISK: 'Medium Risk', LOW_RISK: 'Low Risk' }
+const RISK_COLORS: Record<string, string> = { HIGH_RISK: '#f5222d', MONITOR: '#fa8c16', ON_TRACK: '#52c41a' }
+const RISK_LABELS: Record<string, string> = { HIGH_RISK: 'High Risk', MONITOR: 'Monitor', ON_TRACK: 'On Track' }
 const STATUS_COLOR: Record<string, string> = { OPEN: 'red', IN_PROGRESS: 'orange', RESOLVED: 'green', CLOSED: 'default' }
 const REASON_LABEL: Record<string, string> = {
   AUTO_RISK_THRESHOLD: 'Risk Threshold',

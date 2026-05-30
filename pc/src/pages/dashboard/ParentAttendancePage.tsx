@@ -87,20 +87,15 @@ const ParentAttendancePage = () => {
   // SSE: refresh when attendance is marked
   useEffect(() => {
     if (!token) return
-    const es = new EventSource(`/api/v1/events/stream?topics=dashboard&token=${token}`)
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data) as { event?: string }
-        if (msg.event?.startsWith('attendance') || msg.event?.startsWith('dashboard.attendance')) {
-          void queryClient.invalidateQueries({ queryKey: ['parent-attendance-records'] })
-          void queryClient.invalidateQueries({ queryKey: ['parent-dashboard-stats'] })
-          void message.info(t('parentPortal.attendanceUpdated', { defaultValue: 'Attendance record updated.' }), 3)
-        }
-      } catch {
-        // ignore
-      }
+    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000/api/v1'
+    const es = new EventSource(`${base}/events/stream?topics=dashboard&token=${token}`)
+    const handler = () => {
+      void queryClient.invalidateQueries({ queryKey: ['parent-attendance-records'] })
+      void queryClient.invalidateQueries({ queryKey: ['parent-dashboard-stats'] })
+      void message.info(t('parentPortal.attendanceUpdated', { defaultValue: 'Attendance record updated.' }), 3)
     }
-    return () => es.close()
+    es.addEventListener('dashboard.attendance.changed', handler)
+    return () => { es.removeEventListener('dashboard.attendance.changed', handler); es.close() }
   }, [token, queryClient, t])
 
   // Build a map of date → status for calendar coloring

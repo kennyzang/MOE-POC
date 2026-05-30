@@ -55,6 +55,86 @@ router.get(
   }
 )
 
+// GET /courses/:id — full course detail
+router.get(
+  '/:id',
+  authenticate,
+  requireRole('admin', 'manager', 'teacher'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params
+
+      const course = await prisma.course.findUnique({
+        where: { id },
+        include: {
+          assignments: {
+            include: {
+              teacher: {
+                include: {
+                  user: { select: { id: true, displayName: true, email: true } },
+                },
+              },
+            },
+          },
+          enrollments: {
+            include: {
+              student: {
+                include: {
+                  user: { select: { id: true, displayName: true } },
+                  grades: {
+                    include: { gradeItem: true },
+                    where: { gradeItem: { courseId: id } },
+                  },
+                },
+              },
+            },
+            orderBy: { enrolledAt: 'desc' },
+          },
+          attendanceSessions: {
+            include: {
+              _count: {
+                select: {
+                  records: true,
+                },
+              },
+            },
+            orderBy: { date: 'desc' },
+          },
+          gradeItems: {
+            include: {
+              _count: { select: { grades: true } },
+            },
+            orderBy: { dueDate: 'asc' },
+          },
+          timetableSlots: true,
+        },
+      })
+
+      if (!course) {
+        res.status(404).json({ success: false, message: 'Course not found' })
+        return
+      }
+
+      // Compute per-student attendance counts for this course
+      const studentIds = course.enrollments.map((e) => e.studentId)
+      const sessionIds = course.attendanceSessions.map((s) => s.id)
+
+      const attendanceCounts = sessionIds.length > 0 && studentIds.length > 0
+        ? await prisma.attendanceRecord.groupBy({
+            by: ['studentId', 'status'],
+            where: { sessionId: { in: sessionIds }, studentId: { in: studentIds } },
+            _count: true,
+          })
+        : []
+
+      res.json({ success: true, data: { ...course, attendanceCounts } })
+    } catch (error) {
+      console.error('GET /courses/:id error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
 // POST /courses — create course
 router.post(
   '/',

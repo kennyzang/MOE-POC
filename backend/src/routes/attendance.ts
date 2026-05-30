@@ -7,6 +7,8 @@ import { broadcast } from './events'
 import { recalcStudentRisk } from './ai'
 import { getConfigInt } from '../lib/config'
 
+const VALID_ABSENCE_REASONS = ['Sick', 'Personal', 'Unexplained', 'Other']
+
 const router = Router()
 
 // GET /sessions — list attendance sessions
@@ -57,6 +59,42 @@ router.get(
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   },
+)
+
+// GET /sessions/:id — full session detail with all attendance records
+router.get(
+  '/sessions/:id',
+  authenticate,
+  requireRole('admin', 'manager', 'teacher'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params
+      const session = await prisma.attendanceSession.findUnique({
+        where: { id },
+        include: {
+          course: { select: { id: true, code: true, name: true } },
+          records: {
+            include: {
+              student: {
+                include: {
+                  user: { select: { id: true, displayName: true } },
+                },
+              },
+            },
+            orderBy: { student: { studentId: 'asc' } },
+          },
+        },
+      })
+      if (!session) {
+        res.status(404).json({ success: false, message: 'Session not found' })
+        return
+      }
+      res.json({ success: true, data: session })
+    } catch (error) {
+      console.error('GET /attendance/sessions/:id error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
 )
 
 // POST /sessions — create session
@@ -279,5 +317,134 @@ router.post(
     }
   },
 )
+
+// PATCH /records/:id/reason — parent submits absence reason
+// Updates status display: "Absent" → "Absent – Sick (notified)"
+router.patch(
+  '/records/:id/reason',
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { role, userId } = req.user!
+      const recordId = req.params.id as string
+      const { absenceReason, parentNote } = req.body as {
+        absenceReason: string
+        parentNote?: string
+      }
+
+      if (!absenceReason || !VALID_ABSENCE_REASONS.includes(absenceReason)) {
+        res.status(400).json({
+          success: false,
+          message: `absenceReason must be one of: ${VALID_ABSENCE_REASONS.join(', ')}`,
+        })
+        return
+      }
+
+      // Fetch record with student + parent links
+      const record = await prisma.attendanceRecord.findUnique({
+        where: { id: recordId },
+        include: {
+          student: {
+            include: {
+              user: { select: { id: true, displayName: true } },
+              parentLinks: { include: { parent: { include: { user: { select: { id: true } } } } } },
+            },
+          },
+          session: {
+            include: { course: { select: { id: true, name: true } } },
+          },
+        },
+      })
+
+      if (!record) {
+        res.status(404).json({ success: false, message: 'Attendance record not found' })
+        return
+      }
+
+      if (record.status !== 'absent') {
+        res.status(400).json({ success: false, message: 'Can only submit reason for absent records' })
+        return
+      }
+
+      // RBAC: only the parent of this student OR admin/manager/teacher may submit reason
+      if (role === 'parent') {
+        const parent = await prisma.parent.findUnique({
+          where: { userId },
+          include: { childLinks: true },
+        })
+        const isParentOfStudent = parent?.childLinks.some(l => l.studentId === record.studentId)
+        if (!isParentOfStudent) {
+          res.status(403).json({ success: false, message: 'Forbidden: not a parent of this student' })
+          return
+        }
+      } else if (!['admin', 'manager', 'teacher'].includes(role)) {
+        res.status(403).json({ success: false, message: 'Forbidden' })
+        return
+      }
+
+      const updated = await prisma.attendanceRecord.update({
+        where: { id: recordId },
+        data: {
+          absenceReason,
+          parentNote: parentNote ?? null,
+          reasonSubmittedAt: new Date(),
+        },
+      })
+
+      // Notify the teacher(s) of this session's course
+      const courseAssignments = await prisma.courseAssignment.findMany({
+        where: { courseId: record.session.courseId },
+        include: { teacher: { include: { user: { select: { id: true } } } } },
+      })
+      const teacherUserIds = courseAssignments.map(a => a.teacher.user.id)
+      const studentName = record.student.user.displayName
+      const courseName = record.session.course.name
+
+      await Promise.all(
+        teacherUserIds.map(uid =>
+          send({
+            userId: uid,
+            title: 'Absence Reason Submitted',
+            message: `${studentName}'s absence from ${courseName} has been updated: ${absenceReason}${parentNote ? ` — "${parentNote}"` : ''}.`,
+            type: 'info',
+          }),
+        ),
+      )
+
+      // SSE: notify teacher dashboard that reason was submitted
+      broadcast('attendance', 'attendance.reason.submitted', {
+        recordId,
+        studentId: record.studentId,
+        absenceReason,
+        studentName,
+      })
+
+      res.json({ success: true, data: updated })
+    } catch (error) {
+      console.error('PATCH /attendance/records/:id/reason error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// GET /records/:id — fetch single attendance record (for parent reason-submit UI)
+router.get('/records/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const record = await prisma.attendanceRecord.findUnique({
+      where: { id: req.params.id as string },
+      include: {
+        session: { include: { course: { select: { id: true, code: true, name: true } } } },
+        student: { include: { user: { select: { id: true, displayName: true } } } },
+      },
+    })
+    if (!record) {
+      res.status(404).json({ success: false, message: 'Record not found' })
+      return
+    }
+    res.json({ success: true, data: record })
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
 
 export default router

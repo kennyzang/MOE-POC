@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Card,
   Select,
@@ -168,7 +169,9 @@ const AtRiskPage = () => {
       key: 'name',
       render: (name: string, record) => (
         <div>
-          <Text strong>{name}</Text>
+          <Link to={`/sis/students/${record.studentDbId}`}>
+            <Text strong style={{ color: '#1677ff' }}>{name}</Text>
+          </Link>
           <br />
           <Text type="secondary" style={{ fontSize: 12 }}>
             {record.studentId} · {record.className}

@@ -51,7 +51,8 @@ router.get(
 )
 
 // ─── POST /api/v1/sms/timetable/generate ────────────────────────────────────
-// body: { gradeLevel, className, semester, constraints: [{teacherId, dayOfWeek, startTime, reason}] }
+// body: { gradeLevel, className, semester, constraints, noFridayAfterP4? }
+// Returns 3 candidate timetables ranked by soft-constraint violations
 router.post(
   '/timetable/generate',
   authenticate,
@@ -63,19 +64,19 @@ router.post(
         className = '7A',
         semester = '2026-S1',
         constraints = [],
+        noFridayAfterP4 = false,
       } = req.body as {
         gradeLevel?: string
         className?: string
         semester?: string
         constraints?: Array<{ teacherId: string; dayOfWeek: number; startTime: string; reason?: string }>
+        noFridayAfterP4?: boolean
       }
 
-      // Build constraint set for fast lookup: key = `${teacherId}-${dayOfWeek}-${startTime}`
       const constraintSet = new Set(
         constraints.map((c) => `${c.teacherId}-${c.dayOfWeek}-${c.startTime}`)
       )
 
-      // Fetch course assignments for this grade
       const assignments = await prisma.courseAssignment.findMany({
         where: { semester },
         include: {
@@ -84,7 +85,6 @@ router.post(
         },
       })
 
-      // Filter to courses relevant for this grade level
       const relevantAssignments = assignments.filter(
         (a) => !a.course.gradeLevel || a.course.gradeLevel === gradeLevel
       )
@@ -97,107 +97,203 @@ router.post(
         return
       }
 
-      // Build schedule: track occupied slots per teacher per day
-      // occupied key: `${teacherId}-${dayOfWeek}-${startTime}`
-      const occupied = new Set<string>()
-
-      // Each course assignment gets up to 2 slots per week
-      const newSlots: Array<{
-        courseId: string
-        teacherId: string
-        gradeLevel: string
-        className: string
-        dayOfWeek: number
-        startTime: string
-        endTime: string
-        room: string
-        semester: string
-      }> = []
-
-      // Determine default room per course
       const roomMap: Record<string, string> = {
         SCI701: 'Science Lab 1',
+        SCI801: 'Science Lab 1',
         ICT701: 'Computer Lab',
+        ICT801: 'Computer Lab',
       }
       const defaultRoom = `Classroom ${className}`
 
-      for (const assignment of relevantAssignments) {
-        const { course, teacher } = assignment
-        let slotsAssigned = 0
-        const maxSlotsPerCourse = course.code === 'ICT701' || course.code === 'MIB701' ? 1 : 2
+      // ─── Helper: build one candidate timetable with a day-order shuffle ────
+      type SlotEntry = {
+        courseId: string; teacherId: string; gradeLevel: string; className: string
+        dayOfWeek: number; startTime: string; endTime: string; room: string; semester: string
+      }
 
-        for (const day of DAYS) {
-          if (slotsAssigned >= maxSlotsPerCourse) break
-          for (const slot of TIME_SLOTS) {
-            if (slotsAssigned >= maxSlotsPerCourse) break
+      function buildCandidate(dayOrder: number[]): { slots: SlotEntry[]; failed: boolean } {
+        const occupied = new Set<string>()
+        const slots: SlotEntry[] = []
 
-            const slotKey = `${teacher.id}-${day}-${slot.startTime}`
-            const classSlotKey = `class-${className}-${day}-${slot.startTime}`
-
-            // Skip if constraint forbids it
-            if (constraintSet.has(slotKey)) continue
-            // Skip if teacher is already occupied at this slot
-            if (occupied.has(slotKey)) continue
-            // Skip if the class already has a lesson at this slot
-            if (occupied.has(classSlotKey)) continue
-
-            // Assign
-            occupied.add(slotKey)
-            occupied.add(classSlotKey)
-            slotsAssigned++
-
-            newSlots.push({
-              courseId: course.id,
-              teacherId: teacher.id,
-              gradeLevel,
-              className,
-              dayOfWeek: day,
-              startTime: slot.startTime,
-              endTime: slot.endTime,
-              room: roomMap[course.code] ?? defaultRoom,
-              semester,
-            })
-          }
+        // Apply Friday-after-P4 hard constraint
+        const effectiveSlotsByDay: Record<number, typeof TIME_SLOTS> = {}
+        for (const d of DAYS) {
+          effectiveSlotsByDay[d] = d === 4 && noFridayAfterP4
+            ? TIME_SLOTS.slice(0, 2) // only first 2 slots on Friday
+            : TIME_SLOTS
         }
 
-        if (slotsAssigned === 0) {
-          res.status(409).json({
-            success: false,
-            message: `Cannot generate timetable with given constraints: no valid slot for ${course.name}`,
+        for (const assignment of relevantAssignments) {
+          const { course, teacher } = assignment
+          let slotsAssigned = 0
+          const maxSlotsPerCourse = course.code === 'ICT701' || course.code === 'MIB701' ? 1 : 2
+
+          for (const day of dayOrder) {
+            if (slotsAssigned >= maxSlotsPerCourse) break
+            for (const slot of (effectiveSlotsByDay[day] ?? TIME_SLOTS)) {
+              if (slotsAssigned >= maxSlotsPerCourse) break
+              const slotKey = `${teacher.id}-${day}-${slot.startTime}`
+              const classSlotKey = `class-${className}-${day}-${slot.startTime}`
+              if (constraintSet.has(slotKey) || occupied.has(slotKey) || occupied.has(classSlotKey)) continue
+              occupied.add(slotKey); occupied.add(classSlotKey)
+              slotsAssigned++
+              slots.push({
+                courseId: course.id, teacherId: teacher.id, gradeLevel, className,
+                dayOfWeek: day, startTime: slot.startTime, endTime: slot.endTime,
+                room: roomMap[course.code] ?? defaultRoom, semester,
+              })
+            }
+          }
+          if (slotsAssigned === 0) return { slots: [], failed: true }
+        }
+        return { slots, failed: false }
+      }
+
+      // ─── Soft-constraint checker ──────────────────────────────────────────
+      // Returns count of "Maths/Science back-to-back in same class on same day"
+      function countSoftViolations(slots: SlotEntry[]): number {
+        let violations = 0
+        const sciMathCodes = ['MAT', 'SCI', 'PHY', 'BIO', 'CHE']
+        const byDayTime = new Map<string, SlotEntry>()
+        for (const s of slots) {
+          byDayTime.set(`${s.dayOfWeek}-${s.startTime}`, s)
+        }
+        for (const s of slots) {
+          const isSciMath = sciMathCodes.some(c => {
+            const courseEntry = relevantAssignments.find(a => a.course.id === s.courseId)
+            return courseEntry?.course.code.startsWith(c)
           })
-          return
+          if (!isSciMath) continue
+          // Check next slot
+          const slotIdx = TIME_SLOTS.findIndex(ts => ts.startTime === s.startTime)
+          if (slotIdx >= 0 && slotIdx < TIME_SLOTS.length - 1) {
+            const nextTime = TIME_SLOTS[slotIdx + 1].startTime
+            const next = byDayTime.get(`${s.dayOfWeek}-${nextTime}`)
+            if (next) {
+              const nextIsSciMath = sciMathCodes.some(c => {
+                const courseEntry = relevantAssignments.find(a => a.course.id === next.courseId)
+                return courseEntry?.course.code.startsWith(c)
+              })
+              if (nextIsSciMath) violations++
+            }
+          }
+        }
+        return violations
+      }
+
+      // ─── Generate 3 candidates with different day orderings ──────────────
+      const dayOrderVariants = [
+        [0, 1, 2, 3, 4], // Mon-first (default)
+        [2, 0, 3, 1, 4], // Wed-first
+        [1, 3, 0, 2, 4], // Tue-first
+      ]
+
+      const candidates: Array<{
+        id: number
+        slots: SlotEntry[]
+        hardConflicts: number
+        softViolations: number
+        description: string
+      }> = []
+
+      for (let i = 0; i < dayOrderVariants.length; i++) {
+        const { slots, failed } = buildCandidate(dayOrderVariants[i])
+        if (!failed) {
+          const softViolations = countSoftViolations(slots)
+          candidates.push({
+            id: i + 1,
+            slots,
+            hardConflicts: 0,
+            softViolations,
+            description: i === 0
+              ? 'Balanced spread across the week'
+              : i === 1
+              ? 'Front-loads midweek sessions'
+              : 'Distributes heavy subjects evenly',
+          })
         }
       }
 
-      // Artificial delay: 12-15 seconds so the loading animation feels real (spec §3.1)
+      if (candidates.length === 0) {
+        res.status(409).json({
+          success: false,
+          message: 'Cannot generate timetable with given constraints. Please relax some constraints.',
+        })
+        return
+      }
+
+      // Sort: fewest soft violations first
+      candidates.sort((a, b) => a.softViolations - b.softViolations)
+
+      // Artificial delay: 12-15 seconds to simulate CSP algorithm run
       const delayMs = 12000 + Math.floor(Math.random() * 3000)
       await new Promise(resolve => setTimeout(resolve, delayMs))
 
-      // Replace existing slots
-      await prisma.timetableSlot.deleteMany({
-        where: { gradeLevel, className, semester },
+      res.json({
+        success: true,
+        candidates: candidates.map((c, idx) => ({
+          rank: idx + 1,
+          id: c.id,
+          hardConflicts: c.hardConflicts,
+          softViolations: c.softViolations,
+          slotCount: c.slots.length,
+          description: c.description,
+          // Enrich slots for UI display
+          slots: c.slots.map(s => {
+            const assignment = relevantAssignments.find(a => a.course.id === s.courseId)
+            return {
+              ...s,
+              courseName: assignment?.course.name ?? s.courseId,
+              courseCode: assignment?.course.code ?? '',
+            }
+          }),
+        })),
+        message: `Generated ${candidates.length} candidate timetables. Option 1 has ${candidates[0].softViolations} soft constraint violation(s).`,
       })
+    } catch (error) {
+      console.error('Error generating timetable:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
 
-      await prisma.timetableSlot.createMany({ data: newSlots })
+// ─── POST /api/v1/sms/timetable/apply-candidate ──────────────────────────────
+// Saves the chosen candidate slots to the database (replaces existing)
+router.post(
+  '/timetable/apply-candidate',
+  authenticate,
+  requireRole('admin', 'manager', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { gradeLevel, className, semester, slots } = req.body as {
+        gradeLevel: string; className: string; semester: string
+        slots: Array<{
+          courseId: string; teacherId: string; gradeLevel: string; className: string
+          dayOfWeek: number; startTime: string; endTime: string; room: string; semester: string
+        }>
+      }
+      if (!gradeLevel || !className || !semester || !slots?.length) {
+        res.status(400).json({ success: false, message: 'gradeLevel, className, semester, slots are required' }); return
+      }
+      await prisma.timetableSlot.deleteMany({ where: { gradeLevel, className, semester } })
+      await prisma.timetableSlot.createMany({ data: slots.map(s => ({
+        courseId: s.courseId, teacherId: s.teacherId, gradeLevel: s.gradeLevel,
+        className: s.className, dayOfWeek: s.dayOfWeek, startTime: s.startTime,
+        endTime: s.endTime, room: s.room, semester: s.semester,
+      })) })
 
-      // Return fresh timetable with relations
       const result = await prisma.timetableSlot.findMany({
         where: { gradeLevel, className, semester },
         include: {
           course: { select: { id: true, code: true, name: true } },
-          teacher: {
-            select: {
-              id: true,
-              user: { select: { displayName: true } },
-            },
-          },
+          teacher: { select: { id: true, user: { select: { displayName: true } } } },
         },
         orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
       })
 
       res.json({ success: true, data: result, count: result.length })
     } catch (error) {
-      console.error('Error generating timetable:', error)
+      console.error('Error applying candidate:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   }
@@ -524,6 +620,30 @@ router.post(
       res.status(201).json({ success: true, data: event })
     } catch (error) {
       console.error('POST /sms/calendar-events error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
+// ─── PATCH /sms/calendar-events/:id ────────────────────────────────────────
+router.patch(
+  '/calendar-events/:id',
+  authenticate,
+  requireRole('admin', 'manager', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params
+      const { title, date, endDate, type, description } = req.body
+      const data: any = {}
+      if (title !== undefined) data.title = title
+      if (date !== undefined) data.date = new Date(date)
+      if (endDate !== undefined) data.endDate = endDate ? new Date(endDate) : null
+      if (type !== undefined) data.type = type
+      if (description !== undefined) data.description = description
+      const event = await prisma.schoolEvent.update({ where: { id }, data })
+      res.json({ success: true, data: event })
+    } catch (error) {
+      console.error('PATCH /sms/calendar-events/:id error:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   }

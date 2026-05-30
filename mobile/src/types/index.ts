@@ -69,6 +69,9 @@ export interface AttendanceRecord {
   sessionId: string
   studentId: string
   status: 'present' | 'absent' | 'late' | 'excused'
+  absenceReason?: string
+  parentNote?: string
+  reasonSubmittedAt?: string
   session?: {
     id: string
     date: string

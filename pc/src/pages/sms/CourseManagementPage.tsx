@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Table,
   Input,
@@ -19,7 +20,7 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Plus, Edit2, Trash2, Search } from 'lucide-react'
+import { BookOpen, Plus, Edit2, Trash2, Search, Eye } from 'lucide-react'
 import api from '../../lib/api'
 import type { Course } from '../../types'
 
@@ -192,9 +193,14 @@ const CourseManagementPage = () => {
     {
       title: t('common.actions'),
       key: 'actions',
-      width: 150,
+      width: 200,
       render: (_, record) => (
         <Space>
+          <Link to={`/sms/courses/${record.id}`}>
+            <Button type="link" size="small" icon={<Eye size={14} />}>
+              {t('common.view')}
+            </Button>
+          </Link>
           <Button
             type="link"
             size="small"

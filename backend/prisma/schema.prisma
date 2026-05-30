@@ -53,6 +53,7 @@ model Student {
   counselorCases CounselorCase[]
   feeInvoices   FeeInvoice[]
   standingHistory AcademicStandingHistory[]
+  parentTeacherMeetings ParentTeacherMeeting[]
 }
 
 // ─── Teacher ────────────────────────────────────────────────────
@@ -82,6 +83,8 @@ model Teacher {
   performanceEvaluations PerformanceEvaluation[]
   timetableSlots  TimetableSlot[]
   leaveApplications LeaveApplication[]
+  cpdEnrollments  CpdEnrollment[]
+  parentTeacherMeetings ParentTeacherMeeting[]
 }
 
 // ─── Parent ─────────────────────────────────────────────────────
@@ -184,11 +187,15 @@ model AttendanceSession {
 }
 
 model AttendanceRecord {
-  id          String   @id @default(uuid())
-  sessionId   String
-  studentId   String
-  status      String   // present, absent, late, excused
-  checkedInAt DateTime?
+  id                  String    @id @default(uuid())
+  sessionId           String
+  studentId           String
+  status              String    // present, absent, late, excused
+  checkedInAt         DateTime?
+  absenceReason       String?   // Sick, Personal, Unexplained, Other
+  parentNote          String?   // free-text from parent
+  reasonSubmittedAt   DateTime?
+  notifiedAt          DateTime? // when push was sent to parent
 
   session     AttendanceSession @relation(fields: [sessionId], references: [id])
   student     Student           @relation(fields: [studentId], references: [id])
@@ -597,4 +604,57 @@ model GradeAmendment {
   approverRemarks String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// ─── CPD Workshops ────────────────────────────────────────────────
+
+model CpdWorkshop {
+  id           String    @id @default(uuid())
+  title        String
+  provider     String?
+  subject      String?   // Maths, Science, etc — used for filtering
+  hours        Float     // CPD hours credited on completion
+  startDate    DateTime
+  endDate      DateTime
+  location     String?
+  maxParticipants Int    @default(30)
+  status       String    @default("open") // open, full, completed, cancelled
+  createdAt    DateTime  @default(now())
+
+  enrollments  CpdEnrollment[]
+}
+
+model CpdEnrollment {
+  id           String      @id @default(uuid())
+  workshopId   String
+  teacherId    String
+  enrolledAt   DateTime    @default(now())
+  status       String      @default("ENROLLED") // ENROLLED, COMPLETED, WITHDRAWN
+  completedAt  DateTime?
+  hoursAwarded Float?
+
+  workshop     CpdWorkshop @relation(fields: [workshopId], references: [id])
+  teacher      Teacher     @relation(fields: [teacherId], references: [id])
+
+  @@unique([workshopId, teacherId])
+}
+
+// ─── Parent-Teacher Meetings ──────────────────────────────────────
+
+model ParentTeacherMeeting {
+  id            String    @id @default(uuid())
+  teacherId     String
+  parentUserId  String
+  studentId     String
+  meetingDate   DateTime
+  startTime     String    // "14:00"
+  endTime       String    // "14:30"
+  purpose       String?
+  status        String    @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  teacher       Teacher   @relation(fields: [teacherId], references: [id])
+  student       Student   @relation(fields: [studentId], references: [id])
 }

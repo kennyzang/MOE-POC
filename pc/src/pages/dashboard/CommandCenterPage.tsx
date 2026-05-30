@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Card, Row, Col, Typography, Statistic, Spin, Alert, Tag, Button, Space, Tooltip, Modal, message } from 'antd'
+import { useNavigate } from 'react-router-dom'
+import { Card, Row, Col, Typography, Statistic, Spin, Alert, Tag, Button, Space, Tooltip } from 'antd'
 import {
   Users,
   ClipboardList,
@@ -14,7 +15,7 @@ import {
   TrendingDown,
   Minus,
   RefreshCw,
-  RotateCcw,
+  ArrowRight,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -46,92 +47,21 @@ interface KpiWidget {
   bg: string
   format?: 'number' | 'percent'
   suffix?: string
-  warningThreshold?: number  // value below which shows amber warning
-  criticalThreshold?: number // value below which shows red warning
+  warningThreshold?: number
+  criticalThreshold?: number
+  navTo?: string
 }
 
 const WIDGETS: KpiWidget[] = [
-  {
-    key: 'totalEnrolment',
-    label: 'commandCenter.totalEnrolment',
-    icon: Users,
-    color: '#1F2D3D',
-    bg: '#EBF1F7',
-    format: 'number',
-  },
-  {
-    key: 'pendingApplications',
-    label: 'commandCenter.pendingApplications',
-    icon: ClipboardList,
-    color: '#2E5A8E',
-    bg: '#E8F0FA',
-    format: 'number',
-  },
-  {
-    key: 'attendanceRate',
-    label: 'commandCenter.attendanceRate',
-    icon: CalendarCheck,
-    color: '#1A6B3A',
-    bg: '#D4EDDA',
-    format: 'percent',
-    suffix: '%',
-    warningThreshold: 90,
-    criticalThreshold: 85,
-  },
-  {
-    key: 'activeStaff',
-    label: 'commandCenter.activeStaff',
-    icon: UserCheck,
-    color: '#5A3E00',
-    bg: '#FFF3CD',
-    format: 'number',
-  },
-  {
-    key: 'teachersCpdAboveTarget',
-    label: 'commandCenter.teachersCpdAboveTarget',
-    icon: GraduationCap,
-    color: '#1F2D3D',
-    bg: '#EBF1F7',
-    format: 'percent',
-    suffix: '%',
-    warningThreshold: 80,
-    criticalThreshold: 60,
-  },
-  {
-    key: 'studentsAtRisk',
-    label: 'commandCenter.studentsAtRisk',
-    icon: AlertTriangle,
-    color: '#8B1A1A',
-    bg: '#FDECEA',
-    format: 'number',
-  },
-  {
-    key: 'timetableHealth',
-    label: 'commandCenter.timetableHealth',
-    icon: CalendarRange,
-    color: '#1A6B3A',
-    bg: '#D4EDDA',
-    format: 'percent',
-    suffix: '%',
-    warningThreshold: 90,
-  },
-  {
-    key: 'facilityUtilization',
-    label: 'commandCenter.facilityUtilization',
-    icon: Building2,
-    color: '#2E5A8E',
-    bg: '#E8F0FA',
-    format: 'percent',
-    suffix: '%',
-  },
-  {
-    key: 'outstandingFeeInvoices',
-    label: 'commandCenter.outstandingFeeInvoices',
-    icon: DollarSign,
-    color: '#8B1A1A',
-    bg: '#FDECEA',
-    format: 'number',
-  },
+  { key: 'totalEnrolment', label: 'commandCenter.totalEnrolment', icon: Users, color: '#1F2D3D', bg: '#EBF1F7', format: 'number', navTo: '/sis/students' },
+  { key: 'pendingApplications', label: 'commandCenter.pendingApplications', icon: ClipboardList, color: '#2E5A8E', bg: '#E8F0FA', format: 'number', navTo: '/sis/admissions' },
+  { key: 'attendanceRate', label: 'commandCenter.attendanceRate', icon: CalendarCheck, color: '#1A6B3A', bg: '#D4EDDA', format: 'percent', suffix: '%', warningThreshold: 90, criticalThreshold: 85, navTo: '/sis/attendance' },
+  { key: 'activeStaff', label: 'commandCenter.activeStaff', icon: UserCheck, color: '#5A3E00', bg: '#FFF3CD', format: 'number', navTo: '/ems/teachers' },
+  { key: 'teachersCpdAboveTarget', label: 'commandCenter.teachersCpdAboveTarget', icon: GraduationCap, color: '#1F2D3D', bg: '#EBF1F7', format: 'percent', suffix: '%', warningThreshold: 80, criticalThreshold: 60, navTo: '/ems/cpd-workshops' },
+  { key: 'studentsAtRisk', label: 'commandCenter.studentsAtRisk', icon: AlertTriangle, color: '#8B1A1A', bg: '#FDECEA', format: 'number', navTo: '/dashboard/at-risk' },
+  { key: 'timetableHealth', label: 'commandCenter.timetableHealth', icon: CalendarRange, color: '#1A6B3A', bg: '#D4EDDA', format: 'percent', suffix: '%', warningThreshold: 90, navTo: '/sms/timetable' },
+  { key: 'facilityUtilization', label: 'commandCenter.facilityUtilization', icon: Building2, color: '#2E5A8E', bg: '#E8F0FA', format: 'percent', suffix: '%', navTo: '/sms/resources' },
+  { key: 'outstandingFeeInvoices', label: 'commandCenter.outstandingFeeInvoices', icon: DollarSign, color: '#8B1A1A', bg: '#FDECEA', format: 'number', navTo: '/sis/fees' },
 ]
 
 function TrendBadge({ delta }: { delta: number | null }) {
@@ -143,33 +73,11 @@ function TrendBadge({ delta }: { delta: number | null }) {
 
 export default function CommandCenterPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const authToken = useAuthStore(s => s.token)
   const [liveData, setLiveData] = useState<CommandCenterData | null>(null)
   const [sseConnected, setSseConnected] = useState(false)
-  const [resetting, setResetting] = useState(false)
   const sseRef = useRef<EventSource | null>(null)
-
-  const handleDemoReset = () => {
-    Modal.confirm({
-      title: t('commandCenter.demoReset'),
-      content: t('commandCenter.demoResetConfirm'),
-      okText: t('commandCenter.demoReset'),
-      okType: 'danger',
-      onOk: async () => {
-        setResetting(true)
-        try {
-          await api.post('/admin/demo-reset')
-          setLiveData(null)
-          message.success(t('commandCenter.demoResetSuccess'))
-          refetch()
-        } catch {
-          message.error(t('commandCenter.demoResetError'))
-        } finally {
-          setResetting(false)
-        }
-      },
-    })
-  }
 
   const { data, isLoading, error, refetch } = useQuery<CommandCenterData>({
     queryKey: ['command-center'],
@@ -269,15 +177,6 @@ export default function CommandCenterPage() {
           <Button icon={<RefreshCw size={14} />} size="small" onClick={() => refetch()}>
             {t('common.refresh')}
           </Button>
-          <Button
-            icon={<RotateCcw size={14} />}
-            size="small"
-            danger
-            loading={resetting}
-            onClick={handleDemoReset}
-          >
-            {t('commandCenter.demoReset')}
-          </Button>
           <Text type="secondary" style={{ fontSize: 12 }}>
             {display?.lastUpdated ? new Date(display.lastUpdated).toLocaleTimeString() : ''}
           </Text>
@@ -298,18 +197,29 @@ export default function CommandCenterPage() {
             <Col xs={24} sm={12} lg={6} key={widget.key}>
               <Card
                 className={styles.kpiCard}
-                style={{ borderTop: cardBorderColor ? `3px solid ${cardBorderColor}` : `3px solid ${widget.color}` }}
+                style={{
+                  borderTop: cardBorderColor ? `3px solid ${cardBorderColor}` : `3px solid ${widget.color}`,
+                  cursor: widget.navTo ? 'pointer' : 'default',
+                  transition: 'box-shadow 0.2s, transform 0.15s',
+                }}
                 bodyStyle={{ padding: 20 }}
+                hoverable={!!widget.navTo}
+                onClick={() => widget.navTo && navigate(widget.navTo)}
               >
                 <div className={styles.kpiHeader}>
                   <div className={styles.kpiIconWrap} style={{ background: widget.bg }}>
                     <IconComp size={20} style={{ color: widget.color }} />
                   </div>
-                  {(isWarning || isCritical) && (
-                    <Tooltip title={isCritical ? t('commandCenter.criticalLevel') : t('commandCenter.warningLevel')}>
-                      <AlertTriangle size={16} color={isCritical ? '#F5222D' : '#FA8C16'} />
-                    </Tooltip>
-                  )}
+                  <Space size={4}>
+                    {(isWarning || isCritical) && (
+                      <Tooltip title={isCritical ? t('commandCenter.criticalLevel') : t('commandCenter.warningLevel')}>
+                        <AlertTriangle size={16} color={isCritical ? '#F5222D' : '#FA8C16'} />
+                      </Tooltip>
+                    )}
+                    {widget.navTo && (
+                      <ArrowRight size={14} color="#bbb" />
+                    )}
+                  </Space>
                 </div>
 
                 <div className={styles.kpiValue}>

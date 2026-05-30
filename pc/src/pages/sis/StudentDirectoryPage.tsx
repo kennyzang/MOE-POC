@@ -1,18 +1,16 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Table,
   Input,
   Select,
   Tag,
-  Modal,
-  Descriptions,
   Card,
   Space,
   Row,
   Col,
   Typography,
   Button,
-  List,
   Tooltip,
   Progress,
 } from 'antd'
@@ -54,13 +52,12 @@ const GRADE_LEVELS = [
 
 const StudentDirectoryPage = () => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
   const [gradeLevel, setGradeLevel] = useState<string>('')
   const [className, setClassName] = useState<string>('')
   const [status, setStatus] = useState<string>('')
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [detailOpen, setDetailOpen] = useState(false)
 
   const { data: students = [], isLoading } = useQuery({
     queryKey: ['students', search, gradeLevel, className, status],
@@ -92,8 +89,7 @@ const StudentDirectoryPage = () => {
   })
 
   const handleView = (student: Student) => {
-    setSelectedStudent(student)
-    setDetailOpen(true)
+    navigate(`/sis/students/${student.id}`)
   }
 
   const columns: ColumnsType<Student> = [
@@ -269,102 +265,6 @@ const StudentDirectoryPage = () => {
         />
       </Card>
 
-      {/* Detail Modal */}
-      <Modal
-        title={selectedStudent?.user?.displayName ?? t('common.view')}
-        open={detailOpen}
-        onCancel={() => setDetailOpen(false)}
-        footer={null}
-        width={640}
-      >
-        {selectedStudent && (
-          <div>
-            <Descriptions
-              title={t('students.personalInfo')}
-              bordered
-              column={2}
-              size="small"
-              style={{ marginBottom: 24 }}
-            >
-              <Descriptions.Item label={t('students.studentId')}>
-                {selectedStudent.studentId}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('common.name')}>
-                {selectedStudent.user?.displayName}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('common.email')}>
-                {selectedStudent.user?.email ?? '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('students.gender')}>
-                {selectedStudent.gender === 'male'
-                  ? t('students.male')
-                  : selectedStudent.gender === 'female'
-                    ? t('students.female')
-                    : selectedStudent.gender ?? '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('students.dateOfBirth')}>
-                {selectedStudent.dateOfBirth ?? '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('students.nationality')}>
-                {selectedStudent.nationality ?? '-'}
-              </Descriptions.Item>
-            </Descriptions>
-
-            <Descriptions
-              title={t('students.academicInfo')}
-              bordered
-              column={2}
-              size="small"
-              style={{ marginBottom: 24 }}
-            >
-              <Descriptions.Item label={t('students.gradeLevel')}>
-                {selectedStudent.gradeLevel ?? '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('students.className')}>
-                {selectedStudent.className ?? '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('students.enrollmentStatus')}>
-                <Tag color={STATUS_TAG_COLORS[selectedStudent.enrollmentStatus] ?? 'default'}>
-                  {t(`students.${selectedStudent.enrollmentStatus}` as never, selectedStudent.enrollmentStatus)}
-                </Tag>
-              </Descriptions.Item>
-            </Descriptions>
-
-            {selectedStudent.enrollments && selectedStudent.enrollments.length > 0 && (
-              <div>
-                <Title level={5} style={{ marginBottom: 8 }}>
-                  {t('dashboard.enrolledCourses')}
-                </Title>
-                <List
-                  size="small"
-                  bordered
-                  dataSource={selectedStudent.enrollments}
-                  renderItem={(enrollment) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        title={enrollment.course?.name ?? enrollment.courseId}
-                        description={
-                          <Space>
-                            {enrollment.course?.code && (
-                              <Tag>{enrollment.course.code}</Tag>
-                            )}
-                            {enrollment.semester && (
-                              <span>{enrollment.semester}</span>
-                            )}
-                          </Space>
-                        }
-                      />
-                      <Tag color={enrollment.status === 'active' ? 'green' : 'default'}>
-                        {enrollment.status}
-                      </Tag>
-                    </List.Item>
-                  )}
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
     </div>
   )
 }

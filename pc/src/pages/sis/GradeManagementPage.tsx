@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Table,
   Select,
@@ -11,11 +12,12 @@ import {
   Button,
   InputNumber,
   message,
+  Tooltip,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ClipboardCheck, Save } from 'lucide-react'
+import { ClipboardCheck, Save, ExternalLink } from 'lucide-react'
 import api from '../../lib/api'
 import type { Course, Enrollment, Grade, GradeItem } from '../../types'
 
@@ -182,7 +184,10 @@ const GradeManagementPage = () => {
         dataIndex: 'studentName',
         key: 'studentName',
         fixed: 'left',
-        width: 180,
+        width: 200,
+        render: (name: string, record: StudentRow) => (
+          <Link to={`/sis/students/${record.studentId}`}>{name}</Link>
+        ),
       },
     ]
 
@@ -270,16 +275,27 @@ const GradeManagementPage = () => {
           </Space>
         </Col>
         <Col>
-          {selectedCourseId && hasEdits && (
-            <Button
-              type="primary"
-              icon={<Save size={16} />}
-              loading={saveMutation.isPending}
-              onClick={handleSave}
-            >
-              {t('grades.saveGrades')}
-            </Button>
-          )}
+          <Space>
+            {selectedCourseId && (
+              <Tooltip title="View full course detail">
+                <Link to={`/sms/courses/${selectedCourseId}`}>
+                  <Button icon={<ExternalLink size={14} />} size="small">
+                    Course Detail
+                  </Button>
+                </Link>
+              </Tooltip>
+            )}
+            {selectedCourseId && hasEdits && (
+              <Button
+                type="primary"
+                icon={<Save size={16} />}
+                loading={saveMutation.isPending}
+                onClick={handleSave}
+              >
+                {t('grades.saveGrades')}
+              </Button>
+            )}
+          </Space>
         </Col>
       </Row>
 

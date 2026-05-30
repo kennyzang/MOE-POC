@@ -93,19 +93,14 @@ const ParentGradesPage = () => {
   // SSE: refresh when grades are updated
   useEffect(() => {
     if (!token) return
-    const es = new EventSource(`/api/v1/events/stream?topics=dashboard&token=${token}`)
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data) as { event?: string }
-        if (msg.event === 'dashboard.gradeUpdated' || msg.event?.startsWith('dashboard.grade')) {
-          void queryClient.invalidateQueries({ queryKey: ['parent-grades'] })
-          void message.info(t('parentPortal.gradeUpdated', { defaultValue: 'A new grade has been posted for your child.' }), 3)
-        }
-      } catch {
-        // ignore
-      }
+    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000/api/v1'
+    const es = new EventSource(`${base}/events/stream?topics=dashboard&token=${token}`)
+    const handler = () => {
+      void queryClient.invalidateQueries({ queryKey: ['parent-grades'] })
+      void message.info(t('parentPortal.gradeUpdated', { defaultValue: 'A new grade has been posted for your child.' }), 3)
     }
-    return () => es.close()
+    es.addEventListener('dashboard.gradeUpdated', handler)
+    return () => { es.removeEventListener('dashboard.gradeUpdated', handler); es.close() }
   }, [token, queryClient, t])
 
   if (statsLoading) {

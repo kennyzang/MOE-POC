@@ -37,8 +37,8 @@ interface DashboardStats {
   children: ChildInfo[]
 }
 
-const RISK_COLOR: Record<string, string> = { HIGH_RISK: 'red', MEDIUM_RISK: 'orange', LOW_RISK: 'green' }
-const RISK_LABEL: Record<string, string> = { HIGH_RISK: 'High Risk', MEDIUM_RISK: 'Monitor', LOW_RISK: 'Good Standing' }
+const RISK_COLOR: Record<string, string> = { HIGH_RISK: 'red', MONITOR: 'orange', ON_TRACK: 'green' }
+const RISK_LABEL: Record<string, string> = { HIGH_RISK: 'High Risk', MONITOR: 'Monitor', ON_TRACK: 'Good Standing' }
 
 const ParentChildrenPage = () => {
   const { t } = useTranslation()

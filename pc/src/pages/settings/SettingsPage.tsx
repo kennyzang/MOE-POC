@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Card, Form, Input, Button, Space, Typography, Divider, message, Tabs, Switch, Select, Slider, InputNumber, Row, Col } from 'antd'
-import { Settings, Mail, Send, Bot, Zap } from 'lucide-react'
+import { Card, Form, Input, Button, Space, Typography, Divider, message, Tabs, Switch, Select, Slider, InputNumber, Row, Col, Alert, Modal } from 'antd'
+import { Settings, Mail, Send, Bot, Zap, Shield, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 
@@ -332,6 +332,83 @@ function AiTab() {
   )
 }
 
+// ─── Maintenance Tab ─────────────────────────────────────────────
+
+function MaintenanceTab() {
+  const { t } = useTranslation()
+  const [restoring, setRestoring] = useState(false)
+
+  const handleRestore = () => {
+    Modal.confirm({
+      title: t('settings.systemRestoreTitle'),
+      content: (
+        <div>
+          <p style={{ marginBottom: 12 }}>{t('settings.systemRestoreDesc')}</p>
+          <Alert
+            type="warning"
+            showIcon
+            message={t('settings.systemRestoreWarning')}
+            style={{ fontSize: 13 }}
+          />
+        </div>
+      ),
+      okText: t('settings.systemRestoreBtn'),
+      okType: 'danger',
+      cancelText: t('common.cancel'),
+      onOk: async () => {
+        setRestoring(true)
+        try {
+          await api.post('/admin/demo-reset')
+          message.success(t('commandCenter.systemRestoreSuccess'))
+        } catch {
+          message.error(t('commandCenter.systemRestoreError'))
+        } finally {
+          setRestoring(false)
+        }
+      },
+    })
+  }
+
+  return (
+    <>
+      <Space align="center" style={{ marginBottom: 4 }}>
+        <Shield size={16} color="var(--color-primary)" />
+        <Text strong style={{ fontSize: 15 }}>{t('settings.maintenanceTab')}</Text>
+      </Space>
+      <Text type="secondary" style={{ display: 'block', marginBottom: 24, fontSize: 13 }}>
+        {t('settings.maintenanceDesc')}
+      </Text>
+
+      <Card
+        size="small"
+        style={{ border: '1px solid #ffccc7', background: '#fff2f0', maxWidth: 520 }}
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space align="start">
+            <RotateCcw size={18} color="#cf1322" style={{ marginTop: 2, flexShrink: 0 }} />
+            <div>
+              <Text strong style={{ display: 'block', color: '#cf1322' }}>
+                {t('settings.systemRestoreTitle')}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                {t('settings.systemRestoreDesc')}
+              </Text>
+            </div>
+          </Space>
+          <Button
+            danger
+            icon={<RotateCcw size={14} />}
+            loading={restoring}
+            onClick={handleRestore}
+          >
+            {t('settings.systemRestoreBtn')}
+          </Button>
+        </Space>
+      </Card>
+    </>
+  )
+}
+
 // ─── Main Page ───────────────────────────────────────────────────
 
 const SettingsPage = () => {
@@ -357,6 +434,16 @@ const SettingsPage = () => {
         </Space>
       ),
       children: <AiTab />,
+    },
+    {
+      key: 'maintenance',
+      label: (
+        <Space size={6}>
+          <Shield size={14} />
+          {t('settings.maintenanceTab')}
+        </Space>
+      ),
+      children: <MaintenanceTab />,
     },
   ]
 

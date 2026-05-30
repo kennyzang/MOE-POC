@@ -63,18 +63,11 @@ const FinanceDashboardPage = () => {
   // SSE: refresh when fees change
   useEffect(() => {
     if (!token) return
-    const es = new EventSource(`/api/v1/events/stream?topics=dashboard&token=${token}`)
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data) as { event?: string }
-        if (msg.event === 'dashboard.fees.changed') {
-          void queryClient.invalidateQueries({ queryKey: ['finance-dashboard'] })
-        }
-      } catch {
-        // ignore
-      }
-    }
-    return () => es.close()
+    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000/api/v1'
+    const es = new EventSource(`${base}/events/stream?topics=dashboard&token=${token}`)
+    const handler = () => { void queryClient.invalidateQueries({ queryKey: ['finance-dashboard'] }) }
+    es.addEventListener('dashboard.fees.changed', handler)
+    return () => { es.removeEventListener('dashboard.fees.changed', handler); es.close() }
   }, [token, queryClient])
 
   if (isLoading) {

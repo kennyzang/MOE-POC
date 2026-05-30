@@ -182,6 +182,70 @@ router.post(
 )
 
 // GET /:id — get single admission
+// GET /pipeline — counts per status stage (must be before /:id)
+router.get(
+  '/pipeline',
+  authenticate,
+  requireRole('admin', 'manager', 'admissions'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const statuses = ['draft', 'pending', 'submitted', 'under_review', 'offer_issued', 'offer_accepted', 'rejected', 'waitlisted']
+      const counts = await Promise.all(
+        statuses.map((s) => prisma.admission.count({ where: { status: s } })),
+      )
+      const pipeline = statuses.reduce<Record<string, number>>((acc, s, i) => {
+        acc[s] = counts[i]
+        return acc
+      }, {})
+      const total = counts.reduce((a, b) => a + b, 0)
+      const accepted = pipeline['offer_accepted'] ?? 0
+      const acceptanceRate = total > 0 ? Math.round((accepted / total) * 10000) / 100 : 0
+      const scored = await prisma.admission.findMany({
+        where: { status: { notIn: ['draft'] }, eligibilityScore: { not: null } },
+        select: { eligibilityScore: true },
+      })
+      const avgEligibility = scored.length > 0
+        ? Math.round((scored.reduce((s, a) => s + (a.eligibilityScore ?? 0), 0) / scored.length) * 10) / 10
+        : 0
+      const oneWeekAgo = new Date()
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+      const newThisWeek = await prisma.admission.count({ where: { createdAt: { gte: oneWeekAgo } } })
+      res.json({ success: true, data: { pipeline, total, acceptanceRate, avgEligibility, newThisWeek } })
+    } catch (error) {
+      console.error('GET /admissions/pipeline error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// GET /trend — weekly application volume for last 12 weeks (must be before /:id)
+router.get(
+  '/trend',
+  authenticate,
+  requireRole('admin', 'manager', 'admissions'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const twelveWeeksAgo = new Date()
+      twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84)
+      const admissions = await prisma.admission.findMany({
+        where: { createdAt: { gte: twelveWeeksAgo } },
+        select: { createdAt: true },
+      })
+      const weekMap: Record<number, number> = {}
+      for (const a of admissions) {
+        const diffDays = Math.floor((a.createdAt.getTime() - twelveWeeksAgo.getTime()) / (24 * 3600 * 1000))
+        const weekIdx = Math.floor(diffDays / 7)
+        if (weekIdx >= 0 && weekIdx < 12) weekMap[weekIdx] = (weekMap[weekIdx] ?? 0) + 1
+      }
+      const trend = Array.from({ length: 12 }, (_, i) => ({ week: `W${i + 1}`, count: weekMap[i] ?? 0 }))
+      res.json({ success: true, data: trend })
+    } catch (error) {
+      console.error('GET /admissions/trend error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
 router.get(
   '/:id',
   authenticate,
@@ -224,8 +288,10 @@ router.patch(
       }
 
       const validTransitions: Record<string, string[]> = {
-        pending: ['under_review'],
-        under_review: ['accepted', 'rejected'],
+        pending: ['under_review', 'rejected'],
+        submitted: ['under_review', 'rejected'],
+        under_review: ['offer_issued', 'accepted', 'rejected', 'waitlisted'],
+        offer_issued: ['offer_accepted', 'rejected'],
       }
 
       const allowed = validTransitions[existing.status]
@@ -239,7 +305,7 @@ router.patch(
 
       const updateData: any = { status }
       if (remarks !== undefined) updateData.remarks = remarks
-      if (status === 'accepted' || status === 'rejected') {
+      if (['accepted', 'rejected', 'waitlisted', 'offer_accepted'].includes(status)) {
         updateData.decidedAt = new Date()
       }
 
@@ -288,8 +354,10 @@ router.patch(
 
       // Validate status transitions
       const validTransitions: Record<string, string[]> = {
-        pending: ['under_review'],
-        under_review: ['accepted', 'rejected'],
+        pending: ['under_review', 'rejected'],
+        submitted: ['under_review', 'rejected'],
+        under_review: ['offer_issued', 'accepted', 'rejected', 'waitlisted'],
+        offer_issued: ['offer_accepted', 'rejected'],
       }
 
       if (status && status !== existing.status) {
@@ -767,93 +835,6 @@ router.post(
       })
     } catch (error) {
       console.error('POST /admissions/applications/:id/accept-offer error:', error)
-      res.status(500).json({ success: false, message: 'Internal server error' })
-    }
-  },
-)
-
-// GET /admissions/pipeline — counts per status stage
-router.get(
-  '/pipeline',
-  authenticate,
-  requireRole('admin', 'manager', 'admissions'),
-  async (_req: AuthRequest, res: Response) => {
-    try {
-      const statuses = ['draft', 'pending', 'submitted', 'under_review', 'offer_issued', 'offer_accepted', 'rejected', 'waitlisted']
-      const counts = await Promise.all(
-        statuses.map((s) => prisma.admission.count({ where: { status: s } })),
-      )
-      const pipeline = statuses.reduce<Record<string, number>>((acc, s, i) => {
-        acc[s] = counts[i]
-        return acc
-      }, {})
-
-      const total = counts.reduce((a, b) => a + b, 0)
-      const accepted = pipeline['offer_accepted'] ?? 0
-      const acceptanceRate = total > 0 ? Math.round((accepted / total) * 10000) / 100 : 0
-
-      // Average eligibility score for submitted+ applications
-      const scored = await prisma.admission.findMany({
-        where: { status: { notIn: ['draft'] }, eligibilityScore: { not: null } },
-        select: { eligibilityScore: true },
-      })
-      const avgEligibility =
-        scored.length > 0
-          ? Math.round(
-              (scored.reduce((s, a) => s + (a.eligibilityScore ?? 0), 0) / scored.length) * 10,
-            ) / 10
-          : 0
-
-      // New this week
-      const oneWeekAgo = new Date()
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-      const newThisWeek = await prisma.admission.count({
-        where: { createdAt: { gte: oneWeekAgo } },
-      })
-
-      res.json({
-        success: true,
-        data: { pipeline, total, acceptanceRate, avgEligibility, newThisWeek },
-      })
-    } catch (error) {
-      console.error('GET /admissions/pipeline error:', error)
-      res.status(500).json({ success: false, message: 'Internal server error' })
-    }
-  },
-)
-
-// GET /admissions/trend — weekly application volume for last 12 weeks
-router.get(
-  '/trend',
-  authenticate,
-  requireRole('admin', 'manager', 'admissions'),
-  async (_req: AuthRequest, res: Response) => {
-    try {
-      const twelveWeeksAgo = new Date()
-      twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84)
-
-      const admissions = await prisma.admission.findMany({
-        where: { createdAt: { gte: twelveWeeksAgo } },
-        select: { createdAt: true },
-      })
-
-      const weekMap: Record<number, number> = {}
-      for (const a of admissions) {
-        const diffDays = Math.floor(
-          (a.createdAt.getTime() - twelveWeeksAgo.getTime()) / (24 * 3600 * 1000),
-        )
-        const weekIdx = Math.floor(diffDays / 7)
-        if (weekIdx >= 0 && weekIdx < 12) weekMap[weekIdx] = (weekMap[weekIdx] ?? 0) + 1
-      }
-
-      const trend = Array.from({ length: 12 }, (_, i) => ({
-        week: `W${i + 1}`,
-        count: weekMap[i] ?? 0,
-      }))
-
-      res.json({ success: true, data: trend })
-    } catch (error) {
-      console.error('GET /admissions/trend error:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   },
