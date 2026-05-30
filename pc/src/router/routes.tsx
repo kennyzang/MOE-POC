@@ -99,6 +99,8 @@ const FinanceDashboardPage = lazy(() => import('@/pages/finance/FinanceDashboard
 
 // Parent Portal additions
 const ParentFeesPage = lazy(() => import('@/pages/parent/ParentFeesPage'))
+const ParentApplyPage = lazy(() => import('@/pages/parent/ParentApplyPage'))
+const ParentMeetingsPage = lazy(() => import('@/pages/parent/ParentMeetingsPage'))
 
 // Error pages
 const NotFoundPage = lazy(() => import('@/pages/errors/NotFoundPage'))
@@ -126,7 +128,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'dashboard/at-risk',
-        element: r(['admin', 'manager', 'principal'], <AtRiskPage />),
+        element: r(['admin', 'manager', 'principal', 'counselor', 'hod'], <AtRiskPage />),
       },
       {
         path: 'admin/command-center',
@@ -142,7 +144,7 @@ export const router = createBrowserRouter([
       { path: 'sis/fees', element: r(['admin', 'manager', 'finance', 'principal'], <FeesPage />) },
 
       // EMS
-      { path: 'ems/teachers', element: r(['admin', 'manager'], <TeacherDirectoryPage />) },
+      { path: 'ems/teachers', element: r(['admin', 'manager', 'principal', 'hod'], <TeacherDirectoryPage />) },
       { path: 'ems/teachers/:id', element: r(['admin', 'manager', 'hod', 'principal'], <TeacherDetailPage />) },
       { path: 'ems/certifications', element: r(['admin', 'manager', 'teacher'], <CertificationsPage />) },
       { path: 'ems/workload', element: r(['admin', 'manager', 'teacher'], <TeachingWorkloadPage />) },
@@ -151,10 +153,10 @@ export const router = createBrowserRouter([
       { path: 'ems/cpd-workshops', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <CpdWorkshopsPage />) },
 
       // SMS
-      { path: 'sms/courses', element: r(['admin', 'manager'], <CourseManagementPage />) },
-      { path: 'sms/courses/:id', element: r(['admin', 'manager', 'teacher'], <CourseDetailPage />) },
-      { path: 'sms/resources', element: r(['admin', 'manager'], <SchoolResourcesPage />) },
-      { path: 'sms/timetable', element: r(['admin', 'manager', 'principal'], <TimetablePage />) },
+      { path: 'sms/courses', element: r(['admin', 'manager', 'teacher', 'hod', 'principal'], <CourseManagementPage />) },
+      { path: 'sms/courses/:id', element: r(['admin', 'manager', 'teacher', 'hod', 'principal'], <CourseDetailPage />) },
+      { path: 'sms/resources', element: r(['admin', 'manager', 'teacher', 'hod', 'principal'], <SchoolResourcesPage />) },
+      { path: 'sms/timetable', element: r(['admin', 'manager', 'principal', 'teacher', 'hod'], <TimetablePage />) },
       { path: 'sms/calendar', element: r(['admin', 'manager', 'principal', 'teacher', 'hod'], <SchoolCalendarPage />) },
       { path: 'sms/finance', element: r(['admin', 'manager', 'finance'], <FinancialReportsPage />) },
 
@@ -187,6 +189,8 @@ export const router = createBrowserRouter([
 
       // Parent Portal additions
       { path: 'parent/fees', element: r(['parent'], <ParentFeesPage />) },
+      { path: 'parent/apply', element: r(['parent'], <ParentApplyPage />) },
+      { path: 'parent/meetings', element: r(['parent'], <ParentMeetingsPage />) },
 
       // Settings
       { path: 'settings', element: r(['admin'], <SettingsPage />) },

@@ -106,7 +106,7 @@ const Sidebar = () => {
         icon: icon(GraduationCap),
         roles: ['admin', 'manager', 'teacher', 'hod', 'principal'],
         children: [
-          { key: '/ems/teachers', label: t('nav.emsTeachers'), roles: ['admin', 'manager'] },
+          { key: '/ems/teachers', label: t('nav.emsTeachers'), roles: ['admin', 'manager', 'principal', 'hod'] },
           { key: '/ems/certifications', label: t('nav.emsCertifications'), roles: ['admin', 'manager', 'teacher'] },
           { key: '/ems/workload', label: t('nav.emsWorkload'), roles: ['admin', 'manager', 'teacher'] },
           { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['admin', 'manager', 'hod', 'principal', 'teacher'] },
@@ -121,9 +121,9 @@ const Sidebar = () => {
         icon: icon(School),
         roles: ['admin', 'manager', 'finance', 'principal', 'teacher', 'hod'],
         children: [
-          { key: '/sms/courses', label: t('nav.smsCourses'), roles: ['admin', 'manager'] },
-          { key: '/sms/resources', label: t('nav.smsResources'), roles: ['admin', 'manager'] },
-          { key: '/sms/timetable', label: t('nav.smsTimetable'), icon: icon(Calendar), roles: ['admin', 'manager', 'principal'] },
+          { key: '/sms/courses', label: t('nav.smsCourses'), roles: ['admin', 'manager', 'teacher', 'hod', 'principal'] },
+          { key: '/sms/resources', label: t('nav.smsResources'), roles: ['admin', 'manager', 'teacher', 'hod', 'principal'] },
+          { key: '/sms/timetable', label: t('nav.smsTimetable'), icon: icon(Calendar), roles: ['admin', 'manager', 'principal', 'teacher', 'hod'] },
           { key: '/sms/calendar', label: t('nav.smsCalendar'), roles: ['admin', 'manager', 'principal', 'teacher', 'hod'] },
           { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['admin', 'manager', 'finance'] },
         ],
@@ -158,11 +158,13 @@ const Sidebar = () => {
         roles: ['hod'],
         children: [
           { key: '/hod/dashboard', label: t('common.dashboard'), roles: ['hod'] },
+          { key: '/ems/teachers', label: t('nav.emsTeachers'), roles: ['hod'] },
           { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['hod'] },
           { key: '/ems/leave', label: 'Leave & Substitutes', roles: ['hod'] },
           { key: '/ems/cpd-workshops', label: 'CPD Workshops', roles: ['hod'] },
           { key: '/approvals', label: t('nav.approvals', { defaultValue: 'Approvals Inbox' }), roles: ['hod'] },
-          { key: '/sms/calendar', label: t('nav.smsCalendar'), roles: ['hod'] },
+          { key: '/sms/timetable', label: t('nav.smsTimetable'), roles: ['hod'] },
+          { key: '/dashboard/at-risk', label: t('nav.atRisk'), roles: ['hod'] },
         ],
       },
       // Finance Portal
@@ -201,6 +203,8 @@ const Sidebar = () => {
           { key: '/parent/grades', label: t('nav.parentGrades'), roles: ['parent'] },
           { key: '/parent/attendance', label: t('nav.parentAttendance'), roles: ['parent'] },
           { key: '/parent/fees', label: t('nav.parentFees', { defaultValue: 'Fee Invoices' }), roles: ['parent'] },
+          { key: '/parent/apply', label: t('nav.parentApply', { defaultValue: 'Apply for Admission' }), roles: ['parent'] },
+          { key: '/parent/meetings', label: t('nav.parentMeetings', { defaultValue: 'Book Meeting' }), roles: ['parent'] },
         ],
       },
       // Approvals

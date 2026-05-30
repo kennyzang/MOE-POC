@@ -23,6 +23,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BookOpen, Plus, Edit2, Trash2, Search, Eye } from 'lucide-react'
 import api from '../../lib/api'
 import type { Course } from '../../types'
+import { useAuthStore } from '../../stores/authStore'
 
 const { Title } = Typography
 const { TextArea } = Input
@@ -53,6 +54,8 @@ interface CourseFormValues {
 const CourseManagementPage = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
+  const canManage = ['admin', 'manager'].includes(user?.role ?? '')
   const [form] = Form.useForm<CourseFormValues>()
 
   const [search, setSearch] = useState('')
@@ -201,24 +204,28 @@ const CourseManagementPage = () => {
               {t('common.view')}
             </Button>
           </Link>
-          <Button
-            type="link"
-            size="small"
-            icon={<Edit2 size={14} />}
-            onClick={() => handleEdit(record)}
-          >
-            {t('common.edit')}
-          </Button>
-          <Popconfirm
-            title={t('courses.deleteConfirm')}
-            onConfirm={() => deleteMutation.mutate(record.id)}
-            okText={t('common.confirm')}
-            cancelText={t('common.cancel')}
-          >
-            <Button type="link" size="small" danger icon={<Trash2 size={14} />}>
-              {t('common.delete')}
+          {canManage && (
+            <Button
+              type="link"
+              size="small"
+              icon={<Edit2 size={14} />}
+              onClick={() => handleEdit(record)}
+            >
+              {t('common.edit')}
             </Button>
-          </Popconfirm>
+          )}
+          {canManage && (
+            <Popconfirm
+              title={t('courses.deleteConfirm')}
+              onConfirm={() => deleteMutation.mutate(record.id)}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+            >
+              <Button type="link" size="small" danger icon={<Trash2 size={14} />}>
+                {t('common.delete')}
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -239,11 +246,13 @@ const CourseManagementPage = () => {
             </Tag>
           </Space>
         </Col>
-        <Col>
-          <Button type="primary" icon={<Plus size={16} />} onClick={handleAdd}>
-            {t('courses.addCourse')}
-          </Button>
-        </Col>
+        {canManage && (
+          <Col>
+            <Button type="primary" icon={<Plus size={16} />} onClick={handleAdd}>
+              {t('courses.addCourse')}
+            </Button>
+          </Col>
+        )}
       </Row>
 
       {/* Filters */}
