@@ -17,9 +17,12 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ClipboardCheck, Save, ExternalLink } from 'lucide-react'
+import { ClipboardCheck, Save, ExternalLink, FileDown, FileUp } from 'lucide-react'
 import api from '../../lib/api'
+import { downloadFile } from '../../lib/download'
 import type { Course, Enrollment, Grade, GradeItem } from '../../types'
+import FileUploader from '../../components/FileUploader'
+import { useAuthStore } from '../../stores/authStore'
 
 const { Title } = Typography
 
@@ -50,6 +53,8 @@ interface StudentRow {
 const GradeManagementPage = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
+  const canEdit = ['admin', 'manager', 'teacher'].includes(user?.role ?? '')
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>()
   const [editedScores, setEditedScores] = useState<
@@ -215,7 +220,8 @@ const GradeManagementPage = () => {
               max={gi.maxScore}
               value={current}
               style={{ width: 80 }}
-              onChange={(val) => handleScoreChange(record.studentId, gi.id, val)}
+              disabled={!canEdit}
+              onChange={(val) => canEdit && handleScoreChange(record.studentId, gi.id, val)}
             />
           )
         },
@@ -275,7 +281,7 @@ const GradeManagementPage = () => {
           </Space>
         </Col>
         <Col>
-          <Space>
+          <Space wrap>
             {selectedCourseId && (
               <Tooltip title="View full course detail">
                 <Link to={`/sms/courses/${selectedCourseId}`}>
@@ -285,7 +291,29 @@ const GradeManagementPage = () => {
                 </Link>
               </Tooltip>
             )}
-            {selectedCourseId && hasEdits && (
+            {selectedCourseId && (
+              <Tooltip title="Download blank CSV template for grade entry">
+                <Button
+                  icon={<FileDown size={14} />}
+                  size="small"
+                  onClick={() => downloadFile(`/files/grade-template/${selectedCourseId}`)}
+                >
+                  Download Template
+                </Button>
+              </Tooltip>
+            )}
+            {selectedCourseId && (
+              <Tooltip title="Download current grade report as CSV">
+                <Button
+                  icon={<FileDown size={14} />}
+                  size="small"
+                  onClick={() => downloadFile(`/files/grade-report/${selectedCourseId}`)}
+                >
+                  Download Report
+                </Button>
+              </Tooltip>
+            )}
+            {selectedCourseId && hasEdits && canEdit && (
               <Button
                 type="primary"
                 icon={<Save size={16} />}
@@ -301,7 +329,7 @@ const GradeManagementPage = () => {
 
       {/* Course selector */}
       <Card size="small" style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 12]}>
+        <Row gutter={[12, 12]} align="middle">
           <Col xs={24} sm={12} md={8}>
             <Select
               placeholder={t('grades.selectCourse')}
@@ -323,6 +351,23 @@ const GradeManagementPage = () => {
               }
             />
           </Col>
+          {selectedCourseId && canEdit && (
+            <Col>
+              <Tooltip title="Upload a completed grade template CSV to bulk-import scores">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#595959' }}>
+                  <FileUp size={14} />
+                  Bulk import:
+                  <FileUploader
+                    entityType="grade_import"
+                    entityId={selectedCourseId}
+                    accept=".csv,.xlsx,.xls"
+                    description="Bulk grade import"
+                    label="Upload CSV"
+                  />
+                </span>
+              </Tooltip>
+            </Col>
+          )}
         </Row>
       </Card>
 

@@ -11,7 +11,7 @@ const router = Router()
 router.get(
   '/',
   authenticate,
-  requireRole('admin', 'manager', 'admissions'),
+  requireRole('admin', 'manager', 'admissions', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
       const { status, search } = req.query as { status?: string; search?: string }

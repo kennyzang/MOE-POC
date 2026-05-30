@@ -136,11 +136,11 @@ export const router = createBrowserRouter([
       },
 
       // SIS
-      { path: 'sis/students', element: r(['admin', 'manager', 'teacher'], <StudentDirectoryPage />) },
-      { path: 'sis/students/:id', element: r(['admin', 'manager', 'teacher', 'counselor', 'principal'], <StudentDetailPage />) },
-      { path: 'sis/admissions', element: r(['admin', 'manager', 'admissions'], <AdmissionsPage />) },
-      { path: 'sis/grades', element: r(['admin', 'manager', 'teacher'], <GradeManagementPage />) },
-      { path: 'sis/attendance', element: r(['admin', 'manager', 'teacher'], <AttendanceTrackingPage />) },
+      { path: 'sis/students', element: r(['admin', 'manager', 'teacher', 'principal', 'counselor', 'hod', 'admissions'], <StudentDirectoryPage />) },
+      { path: 'sis/students/:id', element: r(['admin', 'manager', 'teacher', 'counselor', 'principal', 'hod', 'admissions'], <StudentDetailPage />) },
+      { path: 'sis/admissions', element: r(['admin', 'manager', 'admissions', 'principal'], <AdmissionsPage />) },
+      { path: 'sis/grades', element: r(['admin', 'manager', 'teacher', 'principal'], <GradeManagementPage />) },
+      { path: 'sis/attendance', element: r(['admin', 'manager', 'teacher', 'principal'], <AttendanceTrackingPage />) },
       { path: 'sis/fees', element: r(['admin', 'manager', 'finance', 'principal'], <FeesPage />) },
 
       // EMS
@@ -158,7 +158,7 @@ export const router = createBrowserRouter([
       { path: 'sms/resources', element: r(['admin', 'manager', 'teacher', 'hod', 'principal'], <SchoolResourcesPage />) },
       { path: 'sms/timetable', element: r(['admin', 'manager', 'principal', 'teacher', 'hod'], <TimetablePage />) },
       { path: 'sms/calendar', element: r(['admin', 'manager', 'principal', 'teacher', 'hod'], <SchoolCalendarPage />) },
-      { path: 'sms/finance', element: r(['admin', 'manager', 'finance'], <FinancialReportsPage />) },
+      { path: 'sms/finance', element: r(['admin', 'manager', 'finance', 'principal'], <FinancialReportsPage />) },
 
       // EGNC
       { path: 'egnc/integration', element: r(['admin', 'manager'], <EgncIntegrationPage />) },

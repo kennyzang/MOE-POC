@@ -15,7 +15,7 @@ const router = Router()
 router.get(
   '/sessions',
   authenticate,
-  requireRole('admin', 'manager', 'teacher'),
+  requireRole('admin', 'manager', 'teacher', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
       const { courseId, date, status } = req.query as {
@@ -65,7 +65,7 @@ router.get(
 router.get(
   '/sessions/:id',
   authenticate,
-  requireRole('admin', 'manager', 'teacher'),
+  requireRole('admin', 'manager', 'teacher', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
       const { id } = req.params

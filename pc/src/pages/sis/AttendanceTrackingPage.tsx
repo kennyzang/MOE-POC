@@ -23,6 +23,7 @@ import { CalendarCheck, Plus, CheckSquare } from 'lucide-react'
 import dayjs from 'dayjs'
 import api from '../../lib/api'
 import type { Course, AttendanceSession, AttendanceRecord, Enrollment } from '../../types'
+import { useAuthStore } from '../../stores/authStore'
 
 const { Title } = Typography
 
@@ -36,6 +37,8 @@ const ATTENDANCE_STATUS_OPTIONS = ['present', 'absent', 'late', 'excused'] as co
 const AttendanceTrackingPage = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
+  const canEdit = ['admin', 'manager', 'teacher'].includes(user?.role ?? '')
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -213,7 +216,7 @@ const AttendanceTrackingPage = () => {
       key: 'actions',
       width: 160,
       render: (_, record) =>
-        record.status === 'active' ? (
+        record.status === 'active' && canEdit ? (
           <Button
             type="link"
             icon={<CheckSquare size={16} />}
@@ -246,7 +249,7 @@ const AttendanceTrackingPage = () => {
           </Space>
         </Col>
         <Col>
-          {selectedCourseId && (
+          {selectedCourseId && canEdit && (
             <Button
               type="primary"
               icon={<Plus size={16} />}
@@ -410,14 +413,16 @@ const AttendanceTrackingPage = () => {
           >
             {t('common.cancel')}
           </Button>,
-          <Button
-            key="save"
-            type="primary"
-            loading={saveRecordsMutation.isPending}
-            onClick={handleSaveAttendance}
-          >
-            {t('attendance.saveAttendance')}
-          </Button>,
+          canEdit && (
+            <Button
+              key="save"
+              type="primary"
+              loading={saveRecordsMutation.isPending}
+              onClick={handleSaveAttendance}
+            >
+              {t('attendance.saveAttendance')}
+            </Button>
+          ),
         ]}
       >
         <Table
