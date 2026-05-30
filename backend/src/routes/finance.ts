@@ -216,6 +216,80 @@ router.get(
   },
 )
 
+// GET /finance/dashboard — rich KPI dashboard for finance officer
+router.get(
+  '/dashboard',
+  authenticate,
+  requireRole(...financeRoles, 'principal', 'admin'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const [invoices, expenses] = await Promise.all([
+        prisma.feeInvoice.findMany({ orderBy: { createdAt: 'asc' } }),
+        prisma.schoolExpense.findMany({ orderBy: { date: 'asc' } }),
+      ])
+
+      const totalFees = invoices.reduce((s, i) => s + i.amount, 0)
+      const collected = invoices.filter((i) => i.status === 'paid').reduce((s, i) => s + i.amount, 0)
+      const outstanding = totalFees - collected
+      const collectionRate = totalFees > 0 ? Math.round((collected / totalFees) * 10000) / 100 : 0
+
+      const overdueInvoices = invoices
+        .filter((i) => i.status === 'overdue')
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 10)
+
+      const recentPayments = invoices
+        .filter((i) => i.status === 'paid' && i.paidAt)
+        .sort((a, b) => b.paidAt!.getTime() - a.paidAt!.getTime())
+        .slice(0, 10)
+
+      // Monthly revenue vs expense trend (last 6 months)
+      const sixMonthsAgo = new Date()
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+      const monthlyTrend: Record<string, { revenue: number; expense: number }> = {}
+      for (const inv of invoices.filter(
+        (i) => i.status === 'paid' && i.paidAt && i.paidAt >= sixMonthsAgo,
+      )) {
+        const month = inv.paidAt!.toISOString().slice(0, 7)
+        if (!monthlyTrend[month]) monthlyTrend[month] = { revenue: 0, expense: 0 }
+        monthlyTrend[month].revenue += inv.amount
+      }
+      for (const exp of expenses.filter((e) => e.date >= sixMonthsAgo)) {
+        const month = exp.date.toISOString().slice(0, 7)
+        if (!monthlyTrend[month]) monthlyTrend[month] = { revenue: 0, expense: 0 }
+        monthlyTrend[month].expense += exp.amount
+      }
+
+      const trendData = Object.entries(monthlyTrend)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, data]) => ({ month, ...data }))
+
+      const pendingApprovals = await prisma.approvalRequest.count({
+        where: { entityType: 'SchoolExpense', status: { in: ['PENDING', 'LEVEL1_APPROVED'] } },
+      })
+
+      res.json({
+        success: true,
+        data: {
+          totalFees,
+          collected,
+          outstanding,
+          collectionRate,
+          overdueCount: overdueInvoices.length,
+          overdueInvoices,
+          recentPayments,
+          monthlyTrend: trendData,
+          pendingApprovals,
+        },
+      })
+    } catch (error) {
+      console.error('GET /finance/dashboard error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
 // POST /finance/fees/check-overdue — scan and flag overdue invoices
 router.post(
   '/fees/check-overdue',

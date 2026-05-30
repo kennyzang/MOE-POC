@@ -41,18 +41,23 @@ const CommandCenterPage = lazy(() => import('@/pages/dashboard/CommandCenterPage
 
 // SIS
 const StudentDirectoryPage = lazy(() => import('@/pages/sis/StudentDirectoryPage'))
+const StudentDetailPage = lazy(() => import('@/pages/sis/StudentDetailPage'))
 const AdmissionsPage = lazy(() => import('@/pages/sis/AdmissionsPage'))
 const GradeManagementPage = lazy(() => import('@/pages/sis/GradeManagementPage'))
 const AttendanceTrackingPage = lazy(() => import('@/pages/sis/AttendanceTrackingPage'))
 
 // EMS
 const TeacherDirectoryPage = lazy(() => import('@/pages/ems/TeacherDirectoryPage'))
+const TeacherDetailPage = lazy(() => import('@/pages/ems/TeacherDetailPage'))
 const CertificationsPage = lazy(() => import('@/pages/ems/CertificationsPage'))
 const TeachingWorkloadPage = lazy(() => import('@/pages/ems/TeachingWorkloadPage'))
 const PerformanceEvaluationPage = lazy(() => import('@/pages/ems/PerformanceEvaluationPage'))
+const LeaveManagementPage = lazy(() => import('@/pages/ems/LeaveManagementPage'))
+const CpdWorkshopsPage = lazy(() => import('@/pages/ems/CpdWorkshopsPage'))
 
 // SMS
 const CourseManagementPage = lazy(() => import('@/pages/sms/CourseManagementPage'))
+const CourseDetailPage = lazy(() => import('@/pages/sms/CourseDetailPage'))
 const SchoolResourcesPage = lazy(() => import('@/pages/sms/SchoolResourcesPage'))
 const FinancialReportsPage = lazy(() => import('@/pages/sms/FinancialReportsPage'))
 const TimetablePage = lazy(() => import('@/pages/sms/TimetablePage'))
@@ -81,6 +86,19 @@ const FeesPage = lazy(() => import('@/pages/sis/FeesPage'))
 
 // Approvals
 const ApprovalsInboxPage = lazy(() => import('@/pages/approvals/ApprovalsInboxPage'))
+
+// Counselor Portal
+const CounselorDashboardPage = lazy(() => import('@/pages/counselor/CounselorDashboardPage'))
+const CounselorCasesPage = lazy(() => import('@/pages/counselor/CounselorCasesPage'))
+
+// HOD Portal
+const HodDashboardPage = lazy(() => import('@/pages/hod/HodDashboardPage'))
+
+// Finance Portal
+const FinanceDashboardPage = lazy(() => import('@/pages/finance/FinanceDashboardPage'))
+
+// Parent Portal additions
+const ParentFeesPage = lazy(() => import('@/pages/parent/ParentFeesPage'))
 
 // Error pages
 const NotFoundPage = lazy(() => import('@/pages/errors/NotFoundPage'))
@@ -117,6 +135,7 @@ export const router = createBrowserRouter([
 
       // SIS
       { path: 'sis/students', element: r(['admin', 'manager', 'teacher'], <StudentDirectoryPage />) },
+      { path: 'sis/students/:id', element: r(['admin', 'manager', 'teacher', 'counselor', 'principal'], <StudentDetailPage />) },
       { path: 'sis/admissions', element: r(['admin', 'manager', 'admissions'], <AdmissionsPage />) },
       { path: 'sis/grades', element: r(['admin', 'manager', 'teacher'], <GradeManagementPage />) },
       { path: 'sis/attendance', element: r(['admin', 'manager', 'teacher'], <AttendanceTrackingPage />) },
@@ -124,12 +143,16 @@ export const router = createBrowserRouter([
 
       // EMS
       { path: 'ems/teachers', element: r(['admin', 'manager'], <TeacherDirectoryPage />) },
+      { path: 'ems/teachers/:id', element: r(['admin', 'manager', 'hod', 'principal'], <TeacherDetailPage />) },
       { path: 'ems/certifications', element: r(['admin', 'manager', 'teacher'], <CertificationsPage />) },
       { path: 'ems/workload', element: r(['admin', 'manager', 'teacher'], <TeachingWorkloadPage />) },
       { path: 'ems/performance-evaluations', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <PerformanceEvaluationPage />) },
+      { path: 'ems/leave', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <LeaveManagementPage />) },
+      { path: 'ems/cpd-workshops', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <CpdWorkshopsPage />) },
 
       // SMS
       { path: 'sms/courses', element: r(['admin', 'manager'], <CourseManagementPage />) },
+      { path: 'sms/courses/:id', element: r(['admin', 'manager', 'teacher'], <CourseDetailPage />) },
       { path: 'sms/resources', element: r(['admin', 'manager'], <SchoolResourcesPage />) },
       { path: 'sms/timetable', element: r(['admin', 'manager', 'principal'], <TimetablePage />) },
       { path: 'sms/calendar', element: r(['admin', 'manager', 'principal', 'teacher', 'hod'], <SchoolCalendarPage />) },
@@ -151,6 +174,19 @@ export const router = createBrowserRouter([
 
       // Approvals Inbox
       { path: 'approvals', element: r(['admin', 'manager', 'hod', 'principal'], <ApprovalsInboxPage />) },
+
+      // Counselor Portal
+      { path: 'counselor/dashboard', element: r(['counselor', 'admin', 'principal'], <CounselorDashboardPage />) },
+      { path: 'counselor/cases', element: r(['counselor', 'admin', 'principal'], <CounselorCasesPage />) },
+
+      // HOD Portal
+      { path: 'hod/dashboard', element: r(['hod', 'admin', 'principal'], <HodDashboardPage />) },
+
+      // Finance Portal
+      { path: 'finance/dashboard', element: r(['finance', 'admin', 'manager', 'principal'], <FinanceDashboardPage />) },
+
+      // Parent Portal additions
+      { path: 'parent/fees', element: r(['parent'], <ParentFeesPage />) },
 
       // Settings
       { path: 'settings', element: r(['admin'], <SettingsPage />) },

@@ -1,6 +1,7 @@
 import { Card, Row, Col, Typography, Tag, Spin, Alert, Badge, List, Progress } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import {
   Users,
   GraduationCap,
@@ -136,7 +137,10 @@ const DashboardPage = () => {
   const { t } = useTranslation()
   const { user } = useAuthStore()
 
+  const navigate = useNavigate()
   const isTeacher = user?.role === 'teacher'
+  const isPrincipal = user?.role === 'principal'
+  const isManager = user?.role === 'manager'
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
@@ -291,6 +295,135 @@ const DashboardPage = () => {
             </Card>
           </Col>
         </Row>
+      </div>
+    )
+  }
+
+  // ── Principal Dashboard ──────────────────────────────────────────
+  if (isPrincipal) {
+    const adminStats = stats as DashboardStats | undefined
+
+    return (
+      <div>
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #003a8c 0%, #0958d9 65%, #1677ff 100%)',
+            borderRadius: 12,
+            padding: '20px 28px',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div>
+            <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+              {t('dashboard.welcomeBack', { name: user?.displayName ?? '' })}
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13 }}>
+              School Strategic Overview
+            </div>
+          </div>
+          <School size={48} color="rgba(255,255,255,0.15)" />
+        </div>
+
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <KpiCard icon={Users} color="#165DFF" bg="#EBF1FF" title={t('dashboard.totalStudents')} value={adminStats?.totalStudents ?? 0} />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={5}>
+            <KpiCard icon={GraduationCap} color="#722ED1" bg="#F9F0FF" title={t('dashboard.totalTeachers')} value={adminStats?.totalTeachers ?? 0} />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={5}>
+            <KpiCard icon={TrendingUp} color="#52C41A" bg="#F6FFED" title={t('dashboard.attendanceRate')} value={adminStats?.attendanceRate ?? 0} suffix="%" precision={1} />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={5}>
+            <KpiCard icon={ClipboardCheck} color="#FA8C16" bg="#FFF7E6" title={t('dashboard.pendingAdmissions')} value={adminStats?.pendingAdmissions ?? 0} />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={5}>
+            <KpiCard icon={DollarSign} color="#F53F3F" bg="#FFF2F0" title={t('dashboard.outstanding')} value={`${((adminStats?.financeSummary?.outstanding ?? 0) / 1000).toFixed(0)}k BND`} />
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={24} lg={14}>
+            <Card title={t('dashboard.enrollmentByGrade')} style={{ height: '100%' }}>
+              <div style={{ width: '100%', height: 260 }}>
+                <ResponsiveContainer>
+                  <BarChart data={(adminStats?.enrollmentByGrade ?? []).map((i) => ({ grade: i.gradeLevel, count: i.count }))} barCategoryGap="35%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <XAxis dataKey="grade" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: 8 }} cursor={{ fill: '#f0f4ff' }} />
+                    <Bar dataKey="count" fill="#003a8c" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 11, fill: '#86909c' }} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} lg={10}>
+            <Card title={t('dashboard.attendanceTrendWeekly')} style={{ height: '100%' }}>
+              <div style={{ width: '100%', height: 260 }}>
+                <ResponsiveContainer>
+                  <AreaChart
+                    data={(adminStats?.weeklyAttendance ?? []).map(w => ({ ...w, rate: w.rate ?? undefined }))}
+                    margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="principalGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#003a8c" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#003a8c" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <XAxis dataKey="week" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
+                    <Tooltip formatter={(v: number) => [`${v?.toFixed(1)}%`, t('dashboard.attendanceRate')]} contentStyle={{ borderRadius: 8 }} />
+                    <Area type="monotone" dataKey="rate" stroke="#003a8c" strokeWidth={2} fill="url(#principalGrad)" dot={{ r: 4, fill: '#003a8c' }} connectNulls />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
+        {adminStats?.staffStatus && (
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={12}>
+              <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Users size={16} />{t('dashboard.staffStatus')}</span>}>
+                <Row gutter={16}>
+                  {[{ label: t('dashboard.staffActive'), value: adminStats.staffStatus.active, color: '#52c41a', Icon: UserCheck },
+                    { label: t('dashboard.staffOnLeave'), value: adminStats.staffStatus.onLeave, color: '#faad14', Icon: UserX },
+                    { label: t('dashboard.staffInTraining'), value: adminStats.staffStatus.inTraining, color: '#165DFF', Icon: BookMarked }].map(({ label, value, color, Icon }) => (
+                    <Col span={8} key={label}>
+                      <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                        <Icon size={28} style={{ color, marginBottom: 8 }} />
+                        <div style={{ fontSize: 28, fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
+                        <div style={{ fontSize: 12, color: '#00000073', marginTop: 4 }}>{label}</div>
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+              </Card>
+            </Col>
+            <Col xs={24} lg={12}>
+              <Card title={t('dashboard.financeSummary')}>
+                <Row gutter={16}>
+                  {[
+                    { label: t('dashboard.totalFees'), value: adminStats.financeSummary?.totalFees ?? 0, color: '#165DFF' },
+                    { label: t('dashboard.collected'), value: adminStats.financeSummary?.collected ?? 0, color: '#52c41a' },
+                    { label: t('dashboard.outstanding'), value: adminStats.financeSummary?.outstanding ?? 0, color: '#f53f3f' },
+                  ].map(({ label, value, color }) => (
+                    <Col span={8} key={label} style={{ textAlign: 'center', padding: '8px 0' }}>
+                      <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color }}>{(value / 1000).toFixed(0)}k</div>
+                    </Col>
+                  ))}
+                </Row>
+              </Card>
+            </Col>
+          </Row>
+        )}
       </div>
     )
   }

@@ -1,4 +1,4 @@
-import { Card, Table, Tag, Spin, Typography, Row, Col, Statistic, Progress } from 'antd'
+import { Card, Table, Tag, Spin, Typography, Row, Col, Statistic, Progress, Space } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Award, BookOpen } from 'lucide-react'
@@ -6,6 +6,12 @@ import type { ColumnsType } from 'antd/es/table'
 import api from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
 import type { StudentDashboardStats } from '../../types'
+
+interface SubjectScore {
+  courseId: string
+  studentScore: number | null
+  classAverage: number | null
+}
 
 const { Title, Text } = Typography
 
@@ -118,6 +124,9 @@ const StudentGradesPage = () => {
   const gpa = stats?.gpa ?? 0
   const gpaColor = GPA_COLOR(gpa)
   const courseGroups = grades ? groupByCourse(grades) : []
+  const subjectScoreMap = new Map<string, SubjectScore>(
+    ((stats as (StudentDashboardStats & { subjectScores?: SubjectScore[] }) | undefined)?.subjectScores ?? []).map((s) => [s.courseId, s])
+  )
 
   const columns: ColumnsType<GradeRecord> = [
     {
@@ -242,9 +251,16 @@ const StudentGradesPage = () => {
                     <Tag color="blue" style={{ marginRight: 8 }}>{group.courseCode}</Tag>
                     {group.courseName}
                   </span>
-                  <span style={{ fontWeight: 700, color: avgColor, fontSize: 15 }}>
-                    {t('grades.weightedAvg')}: {group.weightedAvg.toFixed(1)}%
-                  </span>
+                  <Space>
+                    <span style={{ fontWeight: 700, color: avgColor, fontSize: 14 }}>
+                      {t('grades.weightedAvg')}: {group.weightedAvg.toFixed(1)}%
+                    </span>
+                    {subjectScoreMap.get(group.courseId)?.classAverage != null && (
+                      <Tag color="blue" style={{ fontSize: 11 }}>
+                        Class: {subjectScoreMap.get(group.courseId)!.classAverage!.toFixed(1)}%
+                      </Tag>
+                    )}
+                  </Space>
                 </div>
               }
             >

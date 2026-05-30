@@ -254,10 +254,13 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
         return
       }
 
-      const [attendanceRecords, grades, enrollments] = await Promise.all([
+      const eightWeeksAgo = new Date()
+      eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56)
+
+      const [attendanceRecords, grades, enrollments, latestRisk, recentSessions, notifications] = await Promise.all([
         prisma.attendanceRecord.findMany({
           where: { studentId: student.id },
-          select: { status: true },
+          select: { status: true, session: { select: { date: true } } },
         }),
         prisma.grade.findMany({
           where: { studentId: student.id },
@@ -269,9 +272,36 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
             course: {
               include: {
                 assignments: { select: { schedule: true, semester: true }, take: 1 },
+                gradeItems: {
+                  include: {
+                    grades: {
+                      select: { score: true },
+                    },
+                  },
+                },
               },
             },
           },
+        }),
+        prisma.riskScore.findFirst({
+          where: { studentId: student.id },
+          orderBy: { computedAt: 'desc' },
+          select: { score: true, band: true },
+        }),
+        prisma.attendanceSession.findMany({
+          where: { date: { gte: eightWeeksAgo } },
+          include: {
+            records: {
+              where: { studentId: student.id },
+              select: { status: true },
+            },
+          },
+          orderBy: { date: 'asc' },
+        }),
+        prisma.notification.findMany({
+          where: { userId, read: false },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
         }),
       ])
 
@@ -304,21 +334,75 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
         }
       }
 
+      // Weekly GPA trend (last 8 weeks): compute GPA using only grades up to that week boundary
+      const weeklyGpa = Array.from({ length: 8 }, (_, i) => {
+        const weekEnd = new Date(eightWeeksAgo)
+        weekEnd.setDate(weekEnd.getDate() + (i + 1) * 7)
+        const gradesUpTo = grades.filter((g) => !g.gradedAt || new Date(g.gradedAt) <= weekEnd)
+        return {
+          week: `W${i + 1}`,
+          gpa: calcWeightedGpa(gradesUpTo),
+        }
+      })
+
+      // Per-subject scores: student avg vs class avg (anonymized)
+      const subjectScores = enrollments.map((e) => {
+        const studentGrades = grades.filter((g) => g.gradeItem.courseId === e.courseId)
+        const studentAvg = calcWeightedGpa(studentGrades) * 25 // convert 4.0 → approx percentage
+
+        // Class average: all grades for this course's grade items
+        let classTotal = 0, classCount = 0
+        for (const gi of e.course.gradeItems) {
+          for (const cg of gi.grades) {
+            if (cg.score != null) {
+              classTotal += (cg.score / gi.maxScore) * 100
+              classCount++
+            }
+          }
+        }
+        const classAvg = classCount > 0 ? Math.round((classTotal / classCount) * 10) / 10 : null
+
+        const myPct = (() => {
+          let tw = 0, ws = 0
+          for (const g of studentGrades) {
+            if (g.score === null) continue
+            ws += (g.score / g.gradeItem.maxScore) * g.gradeItem.weight
+            tw += g.gradeItem.weight
+          }
+          return tw > 0 ? Math.round((ws / tw) * 10000) / 100 : null
+        })()
+
+        return {
+          courseId: e.courseId,
+          courseName: e.course.name,
+          courseCode: e.course.code,
+          studentScore: myPct,
+          classAverage: classAvg,
+        }
+      })
+
       res.json({
         success: true,
         data: {
           enrolledCourses: enrollments.length,
           attendanceRate: calcAttendanceRate(attendanceRecords),
           gpa: calcWeightedGpa(grades),
+          riskBand: latestRisk?.band ?? 'LOW_RISK',
           upcomingItems,
           courseSchedules,
           attendanceBreakdown,
+          weeklyGpaTrend: weeklyGpa,
+          subjectScores,
+          recentNotifications: notifications,
         },
       })
       return
     }
 
     if (role === 'parent') {
+      const fourteenDaysAgo = new Date()
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+
       const parent = await prisma.parent.findUnique({
         where: { userId },
         include: {
@@ -329,6 +413,24 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
                   user: { select: { id: true, displayName: true } },
                   grades: { include: { gradeItem: { select: { maxScore: true, weight: true } } } },
                   attendances: { select: { status: true } },
+                  riskScores: {
+                    orderBy: { computedAt: 'desc' },
+                    take: 1,
+                    select: { score: true, band: true },
+                  },
+                  enrollments: {
+                    where: { status: 'enrolled' },
+                    include: {
+                      course: {
+                        include: {
+                          assignments: {
+                            include: { teacher: { include: { user: { select: { displayName: true, email: true } } } } },
+                            take: 1,
+                          },
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -336,12 +438,28 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
         },
       })
 
+      // Recent absences in last 14 days per child
+      const childIds = parent?.childLinks.map((l) => l.student.id) ?? []
+      const recentAbsenceRecords = childIds.length > 0
+        ? await prisma.attendanceRecord.findMany({
+            where: {
+              studentId: { in: childIds },
+              status: 'absent',
+              session: { date: { gte: fourteenDaysAgo } },
+            },
+            select: { studentId: true },
+          })
+        : []
+
+      const absenceCountByChild = recentAbsenceRecords.reduce<Record<string, number>>((acc, r) => {
+        acc[r.studentId] = (acc[r.studentId] ?? 0) + 1
+        return acc
+      }, {})
+
       const children = (parent?.childLinks || []).map((link) => {
         const s = link.student
         const grades = s.grades
-        // Weighted percentage average (0-100)
-        let totalWeight = 0
-        let weightedSum = 0
+        let totalWeight = 0, weightedSum = 0
         for (const g of grades) {
           if (g.score === null) continue
           const pct = g.score / g.gradeItem.maxScore
@@ -349,6 +467,16 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           totalWeight += g.gradeItem.weight
         }
         const gradeAverage = totalWeight === 0 ? 0 : Math.round((weightedSum / totalWeight) * 10000) / 100
+
+        // Teachers for this child
+        const teachers = s.enrollments.flatMap((e) =>
+          e.course.assignments.map((a) => ({
+            courseId: e.courseId,
+            courseName: e.course.name,
+            teacherName: a.teacher.user.displayName,
+            teacherEmail: a.teacher.user.email ?? '',
+          })),
+        )
 
         return {
           id: s.id,
@@ -359,6 +487,10 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           gpa: calcWeightedGpa(grades),
           gradeAverage,
           attendanceRate: calcAttendanceRate(s.attendances),
+          riskBand: s.riskScores[0]?.band ?? 'LOW_RISK',
+          riskScore: s.riskScores[0]?.score ?? null,
+          recentAbsences: absenceCountByChild[s.id] ?? 0,
+          teachers,
         }
       })
 

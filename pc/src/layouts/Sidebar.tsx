@@ -21,6 +21,8 @@ import {
   CheckSquare,
   SlidersHorizontal,
   Receipt,
+  HeartHandshake,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -43,14 +45,14 @@ interface NavItem {
 const ROLE_HOME: Record<UserRole, string> = {
   admin: '/dashboard',
   manager: '/dashboard',
-  finance: '/sms/finance',
+  finance: '/finance/dashboard',
   admissions: '/sis/admissions',
   teacher: '/dashboard',
   student: '/student/dashboard',
   parent: '/parent/children',
-  hod: '/ems/performance-evaluations',
+  hod: '/hod/dashboard',
   principal: '/dashboard',
-  counselor: '/dashboard',
+  counselor: '/counselor/dashboard',
 }
 
 const Sidebar = () => {
@@ -108,6 +110,8 @@ const Sidebar = () => {
           { key: '/ems/certifications', label: t('nav.emsCertifications'), roles: ['admin', 'manager', 'teacher'] },
           { key: '/ems/workload', label: t('nav.emsWorkload'), roles: ['admin', 'manager', 'teacher'] },
           { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['admin', 'manager', 'hod', 'principal', 'teacher'] },
+          { key: '/ems/leave', label: 'Leave & Substitutes', roles: ['admin', 'manager', 'hod', 'principal', 'teacher'] },
+          { key: '/ems/cpd-workshops', label: 'CPD Workshops', roles: ['admin', 'manager', 'hod', 'principal', 'teacher'] },
         ],
       },
       // SMS - School Management System
@@ -134,6 +138,45 @@ const Sidebar = () => {
           { key: '/egnc/integration', label: t('nav.egncIntegration'), roles: ['admin', 'manager'] },
         ],
       },
+      // Counselor Portal
+      {
+        key: '/counselor',
+        label: t('nav.counselorPortal', { defaultValue: 'Counselor Portal' }),
+        icon: icon(HeartHandshake),
+        roles: ['counselor'],
+        children: [
+          { key: '/counselor/dashboard', label: t('common.dashboard'), roles: ['counselor'] },
+          { key: '/counselor/cases', label: t('nav.counselorCases', { defaultValue: 'Case Management' }), roles: ['counselor'] },
+          { key: '/dashboard/at-risk', label: t('nav.atRisk'), roles: ['counselor'] },
+        ],
+      },
+      // HOD Portal
+      {
+        key: '/hod',
+        label: t('nav.hodPortal', { defaultValue: 'HOD Portal' }),
+        icon: icon(TrendingUp),
+        roles: ['hod'],
+        children: [
+          { key: '/hod/dashboard', label: t('common.dashboard'), roles: ['hod'] },
+          { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['hod'] },
+          { key: '/ems/leave', label: 'Leave & Substitutes', roles: ['hod'] },
+          { key: '/ems/cpd-workshops', label: 'CPD Workshops', roles: ['hod'] },
+          { key: '/approvals', label: t('nav.approvals', { defaultValue: 'Approvals Inbox' }), roles: ['hod'] },
+          { key: '/sms/calendar', label: t('nav.smsCalendar'), roles: ['hod'] },
+        ],
+      },
+      // Finance Portal
+      {
+        key: '/finance',
+        label: t('nav.financePortal', { defaultValue: 'Finance Portal' }),
+        icon: icon(DollarSign),
+        roles: ['finance'],
+        children: [
+          { key: '/finance/dashboard', label: t('common.dashboard'), roles: ['finance'] },
+          { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['finance'] },
+          { key: '/sis/fees', label: t('nav.sisFees', { defaultValue: 'Fee Invoices' }), roles: ['finance'] },
+        ],
+      },
       // Student Portal
       {
         key: '/student',
@@ -157,6 +200,7 @@ const Sidebar = () => {
           { key: '/parent/children', label: t('nav.parentChildren'), roles: ['parent'] },
           { key: '/parent/grades', label: t('nav.parentGrades'), roles: ['parent'] },
           { key: '/parent/attendance', label: t('nav.parentAttendance'), roles: ['parent'] },
+          { key: '/parent/fees', label: t('nav.parentFees', { defaultValue: 'Fee Invoices' }), roles: ['parent'] },
         ],
       },
       // Approvals
@@ -164,7 +208,7 @@ const Sidebar = () => {
         key: '/approvals',
         label: t('nav.approvals', { defaultValue: 'Approvals Inbox' }),
         icon: icon(CheckSquare),
-        roles: ['admin', 'manager', 'hod', 'principal'],
+        roles: ['admin', 'manager', 'principal'],
       },
       // Settings
       {

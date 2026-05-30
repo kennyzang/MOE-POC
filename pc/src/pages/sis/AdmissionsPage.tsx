@@ -178,6 +178,22 @@ const AdmissionsPage = () => {
     },
   })
 
+  interface PipelineData {
+    pipeline: Record<string, number>
+    total: number
+    acceptanceRate: number
+    avgEligibility: number
+    newThisWeek: number
+  }
+
+  const { data: pipelineData } = useQuery({
+    queryKey: ['admissions-pipeline'],
+    queryFn: async () => {
+      const { data } = await api.get('/admissions/pipeline')
+      return data.data as PipelineData
+    },
+  })
+
   const updateMutation = useMutation({
     mutationFn: async ({
       id,
@@ -605,6 +621,73 @@ const AdmissionsPage = () => {
           </Button>
         </Col>
       </Row>
+
+      {/* Pipeline KPI Cards */}
+      {pipelineData && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={12} sm={6}>
+            <Card size="small">
+              <Statistic title={t('admissions.newThisWeek', { defaultValue: 'New This Week' })} value={pipelineData.newThisWeek} styles={{ content: { color: '#165DFF' } }} />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card size="small">
+              <Statistic title={t('admissions.pendingReview')} value={(pipelineData.pipeline['pending'] ?? 0) + (pipelineData.pipeline['submitted'] ?? 0) + (pipelineData.pipeline['under_review'] ?? 0)} styles={{ content: { color: '#fa8c16' } }} />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card size="small">
+              <Statistic title={t('admissions.acceptanceRate', { defaultValue: 'Acceptance Rate' })} value={pipelineData.acceptanceRate} suffix="%" precision={1} styles={{ content: { color: '#52c41a' } }} />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card size="small">
+              <Statistic title={t('admissions.avgEligibility', { defaultValue: 'Avg Eligibility Score' })} value={pipelineData.avgEligibility} suffix="/100" precision={1} styles={{ content: { color: '#722ED1' } }} />
+            </Card>
+          </Col>
+        </Row>
+      )}
+
+      {/* Application Pipeline Funnel */}
+      {pipelineData && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14 }}>
+            {t('admissions.pipeline', { defaultValue: 'Application Pipeline' })}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, overflowX: 'auto' }}>
+            {[
+              { key: 'draft', label: 'Draft', color: '#d9d9d9' },
+              { key: 'submitted', label: 'Submitted', color: '#165DFF' },
+              { key: 'under_review', label: 'Under Review', color: '#fa8c16' },
+              { key: 'offer_issued', label: 'Offer Issued', color: '#722ED1' },
+              { key: 'offer_accepted', label: 'Accepted', color: '#52c41a' },
+              { key: 'rejected', label: 'Rejected', color: '#f5222d' },
+            ].map((stage, i, arr) => (
+              <div key={stage.key} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 80 }}>
+                <div
+                  style={{
+                    flex: 1,
+                    background: stage.color,
+                    borderRadius: i === 0 ? '8px 0 0 8px' : i === arr.length - 1 ? '0 8px 8px 0' : 0,
+                    padding: '10px 8px',
+                    textAlign: 'center',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: 18,
+                    lineHeight: 1,
+                  }}
+                >
+                  {pipelineData.pipeline[stage.key] ?? 0}
+                  <div style={{ fontSize: 10, fontWeight: 400, marginTop: 4, opacity: 0.85 }}>{stage.label}</div>
+                </div>
+                {i < arr.length - 1 && (
+                  <div style={{ width: 0, height: 0, borderTop: '20px solid transparent', borderBottom: '20px solid transparent', borderLeft: `10px solid ${stage.color}`, flexShrink: 0 }} />
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Stat Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
