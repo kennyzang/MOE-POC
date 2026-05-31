@@ -83,7 +83,7 @@ export default function FileUploader({
   const handlePreviewLastUploaded = async () => {
     if (!lastUploaded) return
     try {
-      const viewUrl = lastUploaded.downloadUrl.replace('/download', '/view')
+      const viewUrl = lastUploaded.downloadUrl.replace('/download', '/view').replace(/^\/api\/v1/, '')
       const response = await api.get(viewUrl, { responseType: 'blob' })
       const blob = new Blob([response.data], { type: lastUploaded.mimeType })
       const url = URL.createObjectURL(blob)

@@ -72,7 +72,7 @@ export default function FileList({ entityType, entityId, canDelete }: FileListPr
   const handlePreview = async (file: FileAttachment) => {
     setPreviewLoading(file.id)
     try {
-      const viewUrl = file.downloadUrl.replace('/download', '/view')
+      const viewUrl = file.downloadUrl.replace('/download', '/view').replace(/^\/api\/v1/, '')
       const response = await api.get(viewUrl, { responseType: 'blob' })
       const blob = new Blob([response.data], { type: file.mimeType })
       const objectUrl = URL.createObjectURL(blob)

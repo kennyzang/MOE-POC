@@ -5,7 +5,9 @@ import api from './api'
  * Uses fetch with the Authorization header, then triggers a browser download via a blob URL.
  */
 export async function downloadFile(apiPath: string, filename?: string): Promise<void> {
-  const response = await api.get(apiPath, { responseType: 'blob' })
+  // Strip /api/v1 prefix — the api instance already has baseURL: '/api/v1'
+  const path = apiPath.replace(/^\/api\/v1/, '')
+  const response = await api.get(path, { responseType: 'blob' })
   const blob = new Blob([response.data], { type: response.headers['content-type'] ?? 'application/octet-stream' })
 
   // Derive filename from Content-Disposition if not provided
