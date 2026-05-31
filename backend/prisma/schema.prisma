@@ -658,3 +658,18 @@ model ParentTeacherMeeting {
   teacher       Teacher   @relation(fields: [teacherId], references: [id])
   student       Student   @relation(fields: [studentId], references: [id])
 }
+
+// ─── File Attachments ─────────────────────────────────────────────
+
+model FileAttachment {
+  id           String   @id @default(uuid())
+  filename     String   // stored filename on disk (UUID-based)
+  originalName String   // original filename from user
+  mimeType     String
+  size         Int      // bytes
+  entityType   String   // admission, certification, leave_application, course, invoice, grade_report, other
+  entityId     String?  // ID of the related entity
+  uploadedBy   String   // User.id
+  description  String?
+  createdAt    DateTime @default(now())
+}

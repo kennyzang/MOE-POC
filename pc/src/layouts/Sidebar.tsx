@@ -51,7 +51,7 @@ const ROLE_HOME: Record<UserRole, string> = {
   student: '/student/dashboard',
   parent: '/parent/children',
   hod: '/hod/dashboard',
-  principal: '/dashboard',
+  principal: '/admin/command-center',
   counselor: '/counselor/dashboard',
 }
 

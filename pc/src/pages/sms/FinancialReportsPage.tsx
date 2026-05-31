@@ -10,13 +10,18 @@ import {
   Typography,
   Statistic,
   Tabs,
+  Button,
+  Tooltip,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { DollarSign, TrendingUp, TrendingDown, CreditCard } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, CreditCard, FileDown, Paperclip } from 'lucide-react'
 import api from '../../lib/api'
+import { downloadFile } from '../../lib/download'
 import type { FeeInvoice, SchoolExpense } from '../../types'
+import FileUploader from '../../components/FileUploader'
+import FileList from '../../components/FileList'
 
 const { Title } = Typography
 
@@ -110,6 +115,31 @@ const FinancialReportsPage = () => {
         <Tag color={INVOICE_STATUS_COLORS[val] ?? 'default'}>
           {t(`finance.${val}` as never, val)}
         </Tag>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 160,
+      render: (_: unknown, record: FeeInvoice) => (
+        <Space size={4}>
+          <Tooltip title="Open printable invoice in new tab">
+            <Button
+              size="small"
+              icon={<FileDown size={13} />}
+              onClick={async () => {
+                const { data: blob } = await api.get(`/files/invoice/${record.id}`, { responseType: 'blob' })
+                const url = URL.createObjectURL(new Blob([blob], { type: 'text/html' }))
+                window.open(url, '_blank')
+              }}
+            >
+              Invoice
+            </Button>
+          </Tooltip>
+          <Tooltip title="Attach receipt/proof">
+            <FileUploader entityType="invoice" entityId={record.id} label="Attach" accept=".pdf,.jpg,.jpeg,.png" />
+          </Tooltip>
+        </Space>
       ),
     },
   ]

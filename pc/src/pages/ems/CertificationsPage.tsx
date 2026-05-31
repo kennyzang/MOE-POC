@@ -8,13 +8,16 @@ import {
   Row,
   Col,
   Typography,
+  Popover,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Award } from 'lucide-react'
+import { Award, Paperclip } from 'lucide-react'
 import api from '../../lib/api'
 import type { Certification, Teacher } from '../../types'
+import FileUploader from '../../components/FileUploader'
+import FileList from '../../components/FileList'
 
 const { Title } = Typography
 
@@ -101,6 +104,30 @@ const CertificationsPage = () => {
           </Tag>
         )
       },
+    },
+    {
+      title: 'Documents',
+      key: 'documents',
+      width: 200,
+      render: (_, record) => (
+        <Popover
+          trigger="click"
+          title="Certification Documents"
+          content={
+            <div style={{ width: 320 }}>
+              <div style={{ marginBottom: 8 }}>
+                <FileUploader entityType="certification" entityId={record.id} accept=".pdf,.jpg,.jpeg,.png" label="Attach Document" />
+              </div>
+              <FileList entityType="certification" entityId={record.id} canDelete />
+            </div>
+          }
+        >
+          <Space style={{ cursor: 'pointer', color: '#1677ff', fontSize: 13 }}>
+            <Paperclip size={13} />
+            Files
+          </Space>
+        </Popover>
+      ),
     },
   ]
 

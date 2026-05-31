@@ -28,6 +28,8 @@ import approvalsRoutes from './routes/approvals'
 import counselorRoutes from './routes/counselor'
 import hodRoutes from './routes/hod'
 import parentRoutes from './routes/parent'
+import fileRoutes from './routes/files'
+import path from 'path'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
 const app = express()
@@ -78,6 +80,10 @@ app.use('/api/v1/approvals', approvalsRoutes)
 app.use('/api/v1/counselor', counselorRoutes)
 app.use('/api/v1/hod', hodRoutes)
 app.use('/api/v1/parent', parentRoutes)
+app.use('/api/v1/files', fileRoutes)
+
+// Serve uploaded files (used by download route — not direct public access)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
 
 // Error handling
 app.use(notFound)

@@ -5,11 +5,12 @@ import {
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { FolderOpen, AlertTriangle, MessageSquare } from 'lucide-react'
+import { FolderOpen, AlertTriangle, MessageSquare, ExternalLink } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import type { ColumnsType } from 'antd/es/table'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 
 const { Title, Text, Paragraph } = Typography
@@ -62,6 +63,7 @@ const RISK_FILTER_OPTIONS = [
 
 const CounselorCasesPage = () => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState('')
   const [riskFilter, setRiskFilter] = useState('')
@@ -212,6 +214,17 @@ const CounselorCasesPage = () => {
             <AlertTriangle size={16} />
             {t('counselor.caseDetail', { defaultValue: 'Case Detail' })}
           </Space>
+        }
+        extra={
+          caseDetail ? (
+            <Button
+              size="small"
+              icon={<ExternalLink size={13} />}
+              onClick={() => navigate(`/sis/students/${caseDetail.studentId}`)}
+            >
+              {t('counselor.viewStudentProfile', { defaultValue: 'View Student' })}
+            </Button>
+          ) : null
         }
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}

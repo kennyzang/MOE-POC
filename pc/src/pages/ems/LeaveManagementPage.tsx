@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import {
   Table, Tag, Button, Card, Row, Col, Typography, Space, Modal,
-  Descriptions, Badge, Alert, Tooltip, message, Spin, Steps,
+  Descriptions, Badge, Alert, Tooltip, message, Spin, Steps, Popover,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, UserCheck, Users, CheckCircle2, Loader2 } from 'lucide-react'
+import { CalendarDays, UserCheck, Users, CheckCircle2, Loader2, Paperclip } from 'lucide-react'
 import api from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
+import FileUploader from '../../components/FileUploader'
+import FileList from '../../components/FileList'
 
 const { Title, Text } = Typography
 
@@ -134,6 +136,40 @@ const LeaveManagementPage = () => {
       dataIndex: 'substituteId',
       render: v => v ? <Tag color="success" icon={<CheckCircle2 size={12} />}>Assigned</Tag> : <Tag color="warning">Pending</Tag>,
       width: 110,
+    },
+    {
+      title: 'Documents',
+      key: 'documents',
+      width: 130,
+      render: (_, record) => (
+        <Popover
+          trigger="click"
+          title={
+            <Space>
+              <Paperclip size={13} />
+              Supporting Documents
+            </Space>
+          }
+          content={
+            <div style={{ width: 300 }}>
+              <div style={{ marginBottom: 8 }}>
+                <FileUploader
+                  entityType="leave_application"
+                  entityId={record.id}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  label="Attach (e.g. medical cert)"
+                  description="Supporting document"
+                />
+              </div>
+              <FileList entityType="leave_application" entityId={record.id} canDelete />
+            </div>
+          }
+        >
+          <Button size="small" icon={<Paperclip size={13} />}>
+            Docs
+          </Button>
+        </Popover>
+      ),
     },
     {
       title: 'Actions',

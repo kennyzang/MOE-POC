@@ -109,6 +109,15 @@ async function main() {
     data: { username: 'farah', password: hash('Demo@2026'), displayName: 'Ms. Farah Binti Aziz', email: 'farah@moe.edu.bn', role: 'counselor' },
   })
 
+  // Demo script personas — matches MOE_SERPS_POC_Demo_v3 run book accounts
+  const sitiUser = await prisma.user.create({
+    data: { username: 'parent.siti', password: hash('Demo@2026'), displayName: 'Mrs. Siti Binti Mohamed', email: 'siti.mohamed@gmail.com', role: 'parent' },
+  })
+
+  const ridwanUser = await prisma.user.create({
+    data: { username: 'teacher.ridwan', password: hash('Demo@2026'), displayName: 'Mr. Ridwan Bin Jamal', email: 'ridwan@moe.edu.bn', role: 'teacher' },
+  })
+
   // Students
   const student001User = await prisma.user.create({
     data: { username: 'student001', password: hash('student123'), displayName: 'Ahmad Bin Abdullah', email: 'ahmad@student.moe.edu.bn', role: 'student' },
@@ -174,6 +183,22 @@ async function main() {
       subjects: 'Mathematics,Science',
       joinDate: new Date('2018-08-01'),
       cpdHours: 18,
+      cpdTarget: 20,
+      employmentStatus: 'active',
+    },
+  })
+
+  // Mr. Ridwan — substitute Maths teacher (Year 8), free when Aminah teaches Year 7
+  const ridwan = await prisma.teacher.create({
+    data: {
+      userId: ridwanUser.id,
+      staffId: 'T2026004',
+      designation: 'Teacher',
+      department: 'Science & Mathematics',
+      qualification: 'BSc Mathematics, Universiti Teknologi Brunei',
+      subjects: 'Mathematics,Science',
+      joinDate: new Date('2022-01-10'),
+      cpdHours: 14,
       cpdTarget: 20,
       employmentStatus: 'active',
     },
@@ -448,6 +473,18 @@ async function main() {
     ],
   })
 
+  // Demo script parent — Mrs. Siti Binti Mohamed, mother of Ahmad and Hafiz
+  const sitiParent = await prisma.parent.create({
+    data: { userId: sitiUser.id, phone: '+673 8123 4567', occupation: 'Nurse', relationship: 'mother' },
+  })
+
+  await prisma.parentStudent.createMany({
+    data: [
+      { parentId: sitiParent.id, studentId: ahmad.id },
+      { parentId: sitiParent.id, studentId: hafiz.id },
+    ],
+  })
+
   // ─── Courses: Enrollments for Ahmad, adam, nurul ──────────────────────────
 
   for (const course of courses) {
@@ -652,16 +689,16 @@ async function main() {
   }
 
   // ─── Risk Score for Ahmad ─────────────────────────────────────────────────
-  // score=0.21, band=LOW_RISK, absences14d=2, gradeAvg=78
+  // Demo script requires Ahmad at HIGH RISK 82% — "60% attendance, declining grades"
 
   await prisma.riskScore.create({
     data: {
       studentId: ahmad.id,
-      score: 0.21,
-      band: 'LOW_RISK',
-      absences14d: 2,
-      gradeAvg: 78,
-      gradeTrend: -5.0,
+      score: 0.82,
+      band: 'HIGH_RISK',
+      absences14d: 22,
+      gradeAvg: 45,
+      gradeTrend: -8.0,
       computedAt: new Date(),
     },
   })
@@ -736,7 +773,7 @@ async function main() {
       parentName: 'Mrs. Siti Binti Mohamed',
       parentPhone: '+673 8123 4567',
       parentEmail: 'siti.mohamed@gmail.com',
-      guardianUserId: parent01User.id,
+      guardianUserId: sitiUser.id,
       gradeApplied: 'Year 7',
       programmeStream: 'Academic',
       previousSchool: 'Sekolah Rendah Berakas',
@@ -1327,10 +1364,10 @@ async function main() {
   console.log(`  FeeInvoices:              ${feeInvoiceCount}`)
   console.log(`  RiskScores:               ${riskScoreCount}`)
   console.log(`  CounselorCases:           ${counselorCaseCount} [TARGET: 4]`)
-  console.log(`  Ahmad risk score:         ${ahmadRisk?.score}  [TARGET: 0.21]`)
-  console.log(`  Ahmad risk band:          ${ahmadRisk?.band}  [TARGET: LOW_RISK]`)
-  console.log(`  Ahmad absences14d:        ${ahmadRisk?.absences14d}  [TARGET: 2]`)
-  console.log(`  Ahmad gradeAvg:           ${ahmadRisk?.gradeAvg}  [TARGET: 78]`)
+  console.log(`  Ahmad risk score:         ${ahmadRisk?.score}  [TARGET: 0.82]`)
+  console.log(`  Ahmad risk band:          ${ahmadRisk?.band}  [TARGET: HIGH_RISK]`)
+  console.log(`  Ahmad absences14d:        ${ahmadRisk?.absences14d}  [TARGET: 22]`)
+  console.log(`  Ahmad gradeAvg:           ${ahmadRisk?.gradeAvg}  [TARGET: 45]`)
   console.log(`  Aminah CPD hours:         ${aminahTeacher?.cpdHours}  [TARGET: 18]`)
   console.log(`  Hafiz className:          ${hafizCheck?.className}  [TARGET: 9C]`)
   console.log(`  Hafiz gradeLevel:         ${hafizCheck?.gradeLevel}  [TARGET: Year 9]`)

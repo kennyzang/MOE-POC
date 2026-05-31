@@ -13,16 +13,17 @@ import type { LoginRequest, LoginResponse } from '@/types'
 const { Title, Text } = Typography
 
 const DEMO_ACCOUNTS = [
-  { username: 'admin',     label: 'Admin',       password: 'admin123',     color: '#722ED1', bg: '#F9F0FF' },
-  { username: 'principal', label: 'Principal',   password: 'principal123', color: '#096DD9', bg: '#E6F4FF' },
-  { username: 'hod01',     label: 'HOD',         password: 'hod123',       color: '#531DAB', bg: '#F9F0FF' },
-  { username: 'manager',   label: 'Manager',     password: 'Demo@2026',    color: '#1677FF', bg: '#E6F4FF' },
-  { username: 'drsiti',    label: 'Teacher',     password: 'Demo@2026',    color: '#FA8C16', bg: '#FFF7E6' },
-  { username: 'adam',      label: 'Student',     password: 'Demo@2026',    color: '#52C41A', bg: '#F6FFED' },
-  { username: 'fatimah',   label: 'Parent',      password: 'Demo@2026',    color: '#EB2F96', bg: '#FFF0F6' },
-  { username: 'finance',   label: 'Finance',     password: 'finance123',   color: '#13C2C2', bg: '#E6FFFB' },
-  { username: 'farah',     label: 'Counselor',   password: 'Demo@2026',    color: '#D46B08', bg: '#FFF7E6' },
-  { username: 'admission', label: 'Admissions',  password: 'admission123', color: '#08979C', bg: '#E6FFFB' },
+  // Demo run-book personas (matches MOE_SERPS_POC_Demo_v3)
+  { username: 'parent.siti',    label: "Ahmad's Parent",  password: 'Demo@2026',    color: '#EB2F96', bg: '#FFF0F6' },
+  { username: 'admission',      label: 'Admissions',      password: 'admission123', color: '#08979C', bg: '#E6FFFB' },
+  { username: 'teacher01',      label: 'Form Teacher',    password: 'teacher123',   color: '#FA8C16', bg: '#FFF7E6' },
+  { username: 'hod01',          label: 'HOD',             password: 'hod123',       color: '#531DAB', bg: '#F9F0FF' },
+  { username: 'principal',      label: 'Principal',       password: 'principal123', color: '#096DD9', bg: '#E6F4FF' },
+  { username: 'farah',          label: 'Counselor',       password: 'Demo@2026',    color: '#D46B08', bg: '#FFF7E6' },
+  { username: 'admin',          label: 'Admin',           password: 'admin123',     color: '#722ED1', bg: '#F9F0FF' },
+  { username: 'finance',        label: 'Finance',         password: 'finance123',   color: '#13C2C2', bg: '#E6FFFB' },
+  { username: 'adam',           label: 'Student',         password: 'Demo@2026',    color: '#52C41A', bg: '#F6FFED' },
+  { username: 'teacher.ridwan', label: 'Substitute',      password: 'Demo@2026',    color: '#1677FF', bg: '#E6F4FF' },
 ]
 
 const LoginPage = () => {

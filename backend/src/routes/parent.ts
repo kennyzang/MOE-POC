@@ -144,4 +144,98 @@ router.get(
   },
 )
 
+// GET /parent/applications — admission applications submitted by this parent
+router.get(
+  '/applications',
+  authenticate,
+  requireRole('parent'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const applications = await prisma.admission.findMany({
+        where: { guardianUserId: req.user!.userId },
+        include: { documents: true },
+        orderBy: { createdAt: 'desc' },
+      })
+      res.json({ success: true, data: applications })
+    } catch (error) {
+      console.error('GET /parent/applications error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// GET /parent/meetings — list meetings for this parent
+router.get(
+  '/meetings',
+  authenticate,
+  requireRole('parent'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const meetings = await prisma.parentTeacherMeeting.findMany({
+        where: { parentUserId: req.user!.userId },
+        include: {
+          teacher: { include: { user: { select: { displayName: true, email: true } } } },
+          student: { include: { user: { select: { displayName: true } } } },
+        },
+        orderBy: { meetingDate: 'desc' },
+      })
+      res.json({ success: true, data: meetings })
+    } catch (error) {
+      console.error('GET /parent/meetings error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// GET /parent/meetings/teachers — list teachers for the parent's children (for meeting booking)
+router.get(
+  '/meetings/teachers',
+  authenticate,
+  requireRole('parent'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const childIds = await getChildStudentIds(req.user!.userId)
+      if (childIds.length === 0) {
+        res.json({ success: true, data: [] })
+        return
+      }
+      // Get courses assigned to teachers who teach the parent's children
+      const enrollments = await prisma.enrollment.findMany({
+        where: { studentId: { in: childIds }, status: 'enrolled' },
+        include: {
+          course: {
+            include: {
+              assignments: {
+                include: { teacher: { include: { user: { select: { id: true, displayName: true, email: true } } } } },
+              },
+            },
+          },
+          student: { include: { user: { select: { displayName: true } } } },
+        },
+      })
+      // Deduplicate teachers
+      const teacherMap = new Map<string, { teacherId: string; teacherName: string; teacherEmail: string; courses: string[] }>()
+      for (const e of enrollments) {
+        for (const a of e.course.assignments) {
+          const t = a.teacher
+          if (!teacherMap.has(t.id)) {
+            teacherMap.set(t.id, {
+              teacherId: t.id,
+              teacherName: t.user.displayName,
+              teacherEmail: t.user.email ?? '',
+              courses: [],
+            })
+          }
+          const existing = teacherMap.get(t.id)!
+          if (!existing.courses.includes(e.course.name)) existing.courses.push(e.course.name)
+        }
+      }
+      res.json({ success: true, data: Array.from(teacherMap.values()) })
+    } catch (error) {
+      console.error('GET /parent/meetings/teachers error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
 export default router
