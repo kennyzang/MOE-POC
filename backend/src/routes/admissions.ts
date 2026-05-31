@@ -680,6 +680,10 @@ router.post(
         },
       })
 
+      // Notify all clients so pipeline and KPI refresh
+      const pendingCount = await prisma.admission.count({ where: { status: { in: ['draft', 'submitted', 'under_review'] } } })
+      broadcast('dashboard', 'dashboard.applications.changed', { pendingApplications: pendingCount, decision })
+
       res.json({ success: true, data: updated })
     } catch (error) {
       console.error('POST /admissions/applications/:id/decide error:', error)

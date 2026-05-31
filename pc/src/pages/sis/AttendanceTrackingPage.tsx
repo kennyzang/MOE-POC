@@ -131,19 +131,14 @@ const AttendanceTrackingPage = () => {
 
   const stats = useMemo(() => {
     const totalSessions = sessions.length
-    // Collect all record counts to estimate present rate
     let totalRecords = 0
     let presentCount = 0
-    // We only have _count from sessions; for a more accurate rate we'd need all records.
-    // Use session _count as total, and estimate from available data.
     sessions.forEach((s) => {
-      if (s._count?.records) {
-        totalRecords += s._count.records
-      }
+      totalRecords += s._count?.records ?? 0
+      presentCount += (s.presentCount ?? 0) + (s.lateCount ?? 0)
     })
-    // Present rate will be computed from actual records if we had them all.
-    // For now, show the total sessions count and a placeholder rate.
-    return { totalSessions, totalRecords, presentCount }
+    const presentRate = totalRecords > 0 ? Math.round((presentCount / totalRecords) * 1000) / 10 : 0
+    return { totalSessions, totalRecords, presentCount, presentRate }
   }, [sessions])
 
   // ─── Handlers ─────────────────────────────────────────────────
@@ -166,16 +161,16 @@ const AttendanceTrackingPage = () => {
     saveRecordsMutation.mutate({ sessionId: activeSessionId, records })
   }
 
-  // Pre-populate attendance map from existing records
+  // Pre-populate attendance map: existing records take priority; new sessions default all to "present"
   useMemo(() => {
-    if (existingRecords.length > 0 && markModalOpen) {
-      const map: Record<string, string> = {}
-      existingRecords.forEach((r) => {
-        map[r.studentId] = r.status
-      })
-      setAttendanceMap(map)
-    }
-  }, [existingRecords, markModalOpen])
+    if (!markModalOpen || enrollments.length === 0) return
+    const map: Record<string, string> = {}
+    // Default all enrolled students to "present"
+    enrollments.forEach((e) => { map[e.studentId] = 'present' })
+    // Override with saved records if any
+    existingRecords.forEach((r) => { map[r.studentId] = r.status })
+    setAttendanceMap(map)
+  }, [existingRecords, enrollments, markModalOpen])
 
   // ─── Table Columns ────────────────────────────────────────────
 
@@ -310,12 +305,9 @@ const AttendanceTrackingPage = () => {
             <Card>
               <Statistic
                 title={t('attendance.presentRate')}
-                value={
-                  stats.totalRecords > 0
-                    ? ((stats.totalRecords / (stats.totalSessions || 1)) * 100).toFixed(1)
-                    : '-'
-                }
+                value={stats.totalRecords > 0 ? stats.presentRate.toFixed(1) : '-'}
                 suffix={stats.totalRecords > 0 ? '%' : ''}
+                valueStyle={{ color: stats.presentRate >= 80 ? '#52c41a' : stats.presentRate >= 60 ? '#fa8c16' : '#ff4d4f' }}
               />
             </Card>
           </Col>

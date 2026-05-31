@@ -149,6 +149,8 @@ export interface AttendanceSession {
   status: string
   course?: Course
   _count?: { records: number }
+  presentCount?: number
+  lateCount?: number
 }
 
 export interface AttendanceRecord {
@@ -328,4 +330,16 @@ export interface EgncService {
   status: 'connected' | 'disconnected' | 'maintenance'
   lastSync: string | null
   description: string
+}
+
+export interface FileAttachment {
+  id: string
+  originalName: string
+  mimeType: string
+  size: number
+  entityType: string
+  entityId: string | null
+  description: string | null
+  createdAt: string
+  downloadUrl: string
 }

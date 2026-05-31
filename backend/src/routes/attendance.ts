@@ -53,7 +53,30 @@ router.get(
         orderBy: { date: 'desc' },
       })
 
-      res.json({ success: true, data: sessions })
+      // Augment each session with present/late counts (one extra query, efficient groupBy)
+      const sessionIds = sessions.map((s) => s.id)
+      const presentGroups = sessionIds.length > 0
+        ? await prisma.attendanceRecord.groupBy({
+            by: ['sessionId', 'status'],
+            where: { sessionId: { in: sessionIds }, status: { in: ['present', 'late'] } },
+            _count: { id: true },
+          })
+        : []
+
+      const presentMap: Record<string, number> = {}
+      const lateMap: Record<string, number> = {}
+      for (const g of presentGroups) {
+        if (g.status === 'present') presentMap[g.sessionId] = g._count.id
+        if (g.status === 'late') lateMap[g.sessionId] = g._count.id
+      }
+
+      const data = sessions.map((s) => ({
+        ...s,
+        presentCount: presentMap[s.id] ?? 0,
+        lateCount: lateMap[s.id] ?? 0,
+      }))
+
+      res.json({ success: true, data })
     } catch (error) {
       console.error('GET /attendance/sessions error:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })

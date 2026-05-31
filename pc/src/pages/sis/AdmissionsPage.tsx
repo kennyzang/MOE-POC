@@ -34,7 +34,10 @@ import {
   ArrowLeft,
   ArrowRight,
   Gavel,
+  Paperclip,
 } from 'lucide-react'
+import FileUploader from '../../components/FileUploader'
+import FileList from '../../components/FileList'
 import dayjs from 'dayjs'
 import api from '../../lib/api'
 import type { Admission } from '../../types'
@@ -208,6 +211,7 @@ const AdmissionsPage = () => {
     onSuccess: () => {
       message.success(t('common.success'))
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
+      queryClient.invalidateQueries({ queryKey: ['admissions-pipeline'] })
       setActionType(null)
       setRemarks('')
       setDetailOpen(false)
@@ -262,6 +266,7 @@ const AdmissionsPage = () => {
     onSuccess: () => {
       message.success(t('admissions.decideSuccess', { defaultValue: 'Decision recorded successfully' }))
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
+      queryClient.invalidateQueries({ queryKey: ['admissions-pipeline'] })
       setDecideOpen(false)
       setDecideDecision('')
       setDecideNotes('')
@@ -883,6 +888,24 @@ const AdmissionsPage = () => {
                 </Descriptions.Item>
               )}
             </Descriptions>
+
+            {/* Supporting Documents */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Paperclip size={14} />
+                Supporting Documents
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <FileUploader
+                  entityType="admission"
+                  entityId={selectedAdmission.id}
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  description="Application document"
+                  label="Attach Document (IC, birth cert, report card…)"
+                />
+              </div>
+              <FileList entityType="admission" entityId={selectedAdmission.id} canDelete />
+            </div>
 
             {/* Decide button (new spec endpoint) */}
             {canDecide && !actionType && (

@@ -75,7 +75,7 @@ const Sidebar = () => {
       },
       {
         key: '/admin/command-center',
-        label: t('nav.commandCenterKpi', { defaultValue: 'Command Center' }),
+        label: t('nav.commandCenterKpi', { defaultValue: 'Live KPI Center' }),
         icon: icon(LayoutDashboard),
         roles: ['admin', 'principal'],
       },
