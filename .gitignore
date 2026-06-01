@@ -3,6 +3,7 @@ dist
 dev-dist
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 *.mp4
