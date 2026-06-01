@@ -85,7 +85,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const { role, userId } = req.user!
 
     // Role check
-    if (!['admin', 'manager', 'teacher', 'student', 'parent'].includes(role)) {
+    if (!['admin', 'manager', 'teacher', 'student', 'parent', 'counselor', 'hod', 'admissions', 'principal'].includes(role)) {
       res.status(403).json({ success: false, message: 'Forbidden' })
       return
     }
