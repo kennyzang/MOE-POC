@@ -23,6 +23,7 @@ import {
   SlidersHorizontal,
   Receipt,
   HeartHandshake,
+  Brain,
   TrendingUp,
   MessageSquare,
   BookMarked,
@@ -106,6 +107,7 @@ const Sidebar = () => {
           { key: '/sis/announcements', label: 'Announcements', icon: icon(Bell), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
           { key: '/sis/behavior', label: 'Behavior & Discipline', icon: icon(ShieldAlert), roles: ['admin', 'manager', 'principal', 'hod', 'counselor'] },
           { key: '/admin/transitions', label: 'Transitions', icon: icon(TrendingUp), roles: ['admin', 'manager', 'principal', 'hod', 'admissions'] },
+          { key: '/sen/students', label: t('nav.sen', { defaultValue: 'SEN / IEP' }), icon: icon(Brain), roles: ['admin', 'manager', 'principal', 'hod', 'counselor'] },
         ],
       },
       // EMS - Educator Management System
@@ -173,6 +175,7 @@ const Sidebar = () => {
           { key: '/dashboard/at-risk', label: t('nav.atRisk'), roles: ['counselor'] },
           { key: '/sis/students', label: t('nav.sisStudents'), roles: ['counselor'] },
           { key: '/sis/behavior', label: 'Behavior Records', icon: icon(ShieldAlert), roles: ['counselor'] },
+          { key: '/sen/students', label: t('nav.sen', { defaultValue: 'SEN / IEP' }), icon: icon(Brain), roles: ['counselor'] },
         ],
       },
       // HOD Portal

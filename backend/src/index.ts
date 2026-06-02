@@ -37,6 +37,7 @@ import ccaRoutes from './routes/cca'
 import schoolsRoutes from './routes/schools'
 import transitionsRoutes from './routes/transitions'
 import examRoutes from './routes/exams'
+import senRoutes from './routes/sen'
 import path from 'path'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
@@ -97,6 +98,7 @@ app.use('/api/v1/cca', ccaRoutes)
 app.use('/api/v1/schools', schoolsRoutes)
 app.use('/api/v1/transitions', transitionsRoutes)
 app.use('/api/v1/exams', examRoutes)
+app.use('/api/v1/sen', senRoutes)
 
 // Serve uploaded files (used by download route — not direct public access)
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))

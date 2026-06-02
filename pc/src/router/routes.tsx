@@ -55,6 +55,9 @@ const PerformanceEvaluationPage = lazy(() => import('@/pages/ems/PerformanceEval
 const LeaveManagementPage = lazy(() => import('@/pages/ems/LeaveManagementPage'))
 const CpdWorkshopsPage = lazy(() => import('@/pages/ems/CpdWorkshopsPage'))
 
+// SEN
+const SenStudentsPage = lazy(() => import('@/pages/sen/SenStudentsPage'))
+
 // SMS
 const ExamsPage = lazy(() => import('@/pages/sms/ExamsPage'))
 const CourseManagementPage = lazy(() => import('@/pages/sms/CourseManagementPage'))
@@ -178,6 +181,8 @@ export const router = createBrowserRouter([
       { path: 'ems/cpd-workshops', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <CpdWorkshopsPage />) },
 
       // SMS
+      { path: 'sen/students', element: r(['admin', 'manager', 'principal', 'hod', 'counselor'], <SenStudentsPage />) },
+
       { path: 'sms/exams', element: r(['admin', 'manager', 'principal', 'hod', 'teacher'], <ExamsPage />) },
       { path: 'sms/courses', element: r(['admin', 'manager', 'teacher', 'hod', 'principal'], <CourseManagementPage />) },
       { path: 'sms/courses/:id', element: r(['admin', 'manager', 'teacher', 'hod', 'principal'], <CourseDetailPage />) },
