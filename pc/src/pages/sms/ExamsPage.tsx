@@ -13,6 +13,8 @@ import api from '../../lib/api'
 import FileUploader from '../../components/FileUploader'
 import FileList from '../../components/FileList'
 import { useAuthStore } from '../../stores/authStore'
+import type { StudentSearchResult } from '../../types'
+import { useStudentSearch } from '../../hooks/useStudentSearch'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -45,13 +47,7 @@ interface ExamCandidate {
   className: string | null
 }
 
-interface StudentOption {
-  id: string
-  studentId: string
-  gradeLevel: string | null
-  className: string | null
-  user: { displayName: string }
-}
+type StudentOption = StudentSearchResult
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -149,15 +145,7 @@ export default function ExamsPage() {
     enabled: !!selectedExam && drawerOpen && activeTab === 'seating',
   })
 
-  const { data: studentOptions = [] } = useQuery({
-    queryKey: ['students-search', studentSearch],
-    queryFn: async () => {
-      if (studentSearch.length < 2) return []
-      const { data } = await api.get<{ data: StudentOption[] }>(`/students?search=${encodeURIComponent(studentSearch)}&limit=20`)
-      return data.data
-    },
-    enabled: studentSearch.length >= 2,
-  })
+  const { data: studentOptions = [] } = useStudentSearch(studentSearch)
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 

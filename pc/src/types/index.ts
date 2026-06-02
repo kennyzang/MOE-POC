@@ -10,6 +10,21 @@ export type UserRole =
   | 'principal'
   | 'counselor'
 
+export interface SchoolConfig {
+  id: string
+  name: string
+  code: string
+  authority: 'MOE' | 'MORA' | 'PRIVATE'
+  schoolType: string
+  gradeLevels: string[]
+  programmes: string[]
+  classLetters: string[]
+  address?: string
+  phone?: string
+  principal?: string
+  establishedYear?: number
+}
+
 export interface User {
   id: string
   username: string
@@ -17,6 +32,9 @@ export interface User {
   email?: string
   role: UserRole
   avatar?: string
+  schoolId: string | null
+  systemAdmin: boolean
+  school?: SchoolConfig | null
 }
 
 export interface LoginRequest {
@@ -330,6 +348,15 @@ export interface EgncService {
   status: 'connected' | 'disconnected' | 'maintenance'
   lastSync: string | null
   description: string
+}
+
+/** Lightweight student record used in search-as-you-type dropdowns across multiple pages */
+export interface StudentSearchResult {
+  id: string
+  studentId: string
+  gradeLevel: string | null
+  className: string | null
+  user: { displayName: string }
 }
 
 export interface FileAttachment {

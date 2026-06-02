@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
   Table, Button, Tag, Modal, Form, Input, Select, Switch, Tabs,
   Space, Popconfirm, message, Typography, Row, Col, InputNumber,
@@ -12,6 +12,8 @@ import dayjs from 'dayjs'
 import api from '../../lib/api'
 import SyncBadge from '../../components/SyncBadge'
 import { useAuthStore } from '../../stores/authStore'
+import type { StudentSearchResult } from '../../types'
+import { useStudentSearch } from '../../hooks/useStudentSearch'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -65,13 +67,7 @@ interface FineEntry {
   paid: boolean
 }
 
-interface StudentOption {
-  id: string
-  studentId: string
-  gradeLevel: string | null
-  className: string | null
-  user: { displayName: string }
-}
+type StudentOption = StudentSearchResult
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -100,11 +96,11 @@ export default function LibraryPage() {
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>()
   const [availableOnly, setAvailableOnly] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const searchTimer = { current: 0 }
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
   const handleSearchChange = (v: string) => {
     setSearch(v)
     clearTimeout(searchTimer.current)
-    searchTimer.current = window.setTimeout(() => setDebouncedSearch(v), 400)
+    searchTimer.current = setTimeout(() => setDebouncedSearch(v), 400)
   }
 
   // Loans filter
@@ -170,25 +166,8 @@ export default function LibraryPage() {
     enabled: activeTab === 'fines',
   })
 
-  const { data: borrowStudents = [] } = useQuery({
-    queryKey: ['students-search', borrowSearch],
-    queryFn: async () => {
-      if (borrowSearch.length < 2) return []
-      const { data } = await api.get<{ data: StudentOption[] }>(`/students?search=${encodeURIComponent(borrowSearch)}&limit=20`)
-      return data.data
-    },
-    enabled: borrowSearch.length >= 2,
-  })
-
-  const { data: holdStudents = [] } = useQuery({
-    queryKey: ['students-search', holdSearch],
-    queryFn: async () => {
-      if (holdSearch.length < 2) return []
-      const { data } = await api.get<{ data: StudentOption[] }>(`/students?search=${encodeURIComponent(holdSearch)}&limit=20`)
-      return data.data
-    },
-    enabled: holdSearch.length >= 2,
-  })
+  const { data: borrowStudents = [] } = useStudentSearch(borrowSearch)
+  const { data: holdStudents = [] } = useStudentSearch(holdSearch)
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 

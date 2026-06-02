@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
   Table, Button, Tag, Modal, Form, Input, Select, DatePicker, InputNumber,
   Drawer, Space, Popconfirm, message, Typography, Row, Col, Divider,
@@ -89,11 +89,11 @@ export default function InventoryPage() {
   const [locationFilter, setLocationFilter] = useState('')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const searchTimer = { current: 0 }
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
   const handleSearch = (v: string) => {
     setSearch(v)
     clearTimeout(searchTimer.current)
-    searchTimer.current = window.setTimeout(() => setDebouncedSearch(v), 400)
+    searchTimer.current = setTimeout(() => setDebouncedSearch(v), 400)
   }
 
   // Asset modal
