@@ -27,6 +27,7 @@ import {
   TrendingUp,
   MessageSquare,
   BookMarked,
+  Library,
   ShieldAlert,
   UserSquare2,
   type LucideIcon,
@@ -138,6 +139,7 @@ const Sidebar = () => {
           { key: '/sms/calendar', label: t('nav.smsCalendar'), roles: ['admin', 'manager', 'principal', 'teacher', 'hod'] },
           { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['admin', 'manager', 'finance', 'principal'] },
           { key: '/sms/cca', label: 'CCA', icon: icon(Award), roles: ['admin', 'manager', 'teacher', 'hod', 'principal'] },
+          { key: '/sms/library', label: t('nav.smsLibrary', { defaultValue: 'Library' }), icon: icon(Library), roles: ['admin', 'manager', 'principal', 'teacher', 'finance'] },
           { key: '/sms/exams', label: t('nav.smsExams', { defaultValue: 'Exam Management' }), icon: icon(ClipboardList), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
         ],
       },
@@ -205,6 +207,7 @@ const Sidebar = () => {
           { key: '/finance/dashboard', label: t('common.dashboard'), roles: ['finance'] },
           { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['finance'] },
           { key: '/sis/fees', label: t('nav.sisFees', { defaultValue: 'Fee Invoices' }), roles: ['finance'] },
+          { key: '/sms/library', label: t('nav.smsLibrary', { defaultValue: 'Library' }), icon: icon(Library), roles: ['finance'] },
         ],
       },
       // Student Portal
