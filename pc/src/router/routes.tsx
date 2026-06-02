@@ -53,7 +53,26 @@ const CertificationsPage = lazy(() => import('@/pages/ems/CertificationsPage'))
 const TeachingWorkloadPage = lazy(() => import('@/pages/ems/TeachingWorkloadPage'))
 const PerformanceEvaluationPage = lazy(() => import('@/pages/ems/PerformanceEvaluationPage'))
 const LeaveManagementPage = lazy(() => import('@/pages/ems/LeaveManagementPage'))
-const CpdWorkshopsPage = lazy(() => import('@/pages/ems/CpdWorkshopsPage'))
+const LeaveBalancePage    = lazy(() => import('@/pages/ems/LeaveBalancePage'))
+const LeaveCalendarPage   = lazy(() => import('@/pages/ems/LeaveCalendarPage'))
+const LeaveReportsPage    = lazy(() => import('@/pages/ems/LeaveReportsPage'))
+const CpdWorkshopsPage    = lazy(() => import('@/pages/ems/CpdWorkshopsPage'))
+
+// Attendance
+const StaffCheckInPage           = lazy(() => import('@/pages/attendance/StaffCheckInPage'))
+const StaffAttendanceHistoryPage = lazy(() => import('@/pages/attendance/StaffAttendanceHistoryPage'))
+const StaffAttendanceDashboard   = lazy(() => import('@/pages/attendance/StaffAttendanceDashboard'))
+
+// Retirement
+const MyRetirementPage    = lazy(() => import('@/pages/ems/MyRetirementPage'))
+const RetirementDashboard = lazy(() => import('@/pages/ems/RetirementDashboard'))
+
+// Awards
+const StaffAwardsPage = lazy(() => import('@/pages/ems/StaffAwardsPage'))
+
+// Surveys
+const SurveysAdminPage  = lazy(() => import('@/pages/ems/SurveysAdminPage'))
+const SurveyRespondPage = lazy(() => import('@/pages/ems/SurveyRespondPage'))
 
 // SEN
 const SenStudentsPage = lazy(() => import('@/pages/sen/SenStudentsPage'))
@@ -187,7 +206,26 @@ export const router = createBrowserRouter([
       { path: 'ems/workload', element: r(['admin', 'manager', 'teacher'], <TeachingWorkloadPage />) },
       { path: 'ems/performance-evaluations', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <PerformanceEvaluationPage />) },
       { path: 'ems/leave', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <LeaveManagementPage />) },
+      { path: 'ems/leave/balance', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <LeaveBalancePage />) },
+      { path: 'ems/leave/calendar', element: r(['admin', 'manager', 'hod', 'principal'], <LeaveCalendarPage />) },
+      { path: 'ems/leave/reports', element: r(['admin', 'manager', 'hod', 'principal'], <LeaveReportsPage />) },
       { path: 'ems/cpd-workshops', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <CpdWorkshopsPage />) },
+
+      // Retirement
+      { path: 'ems/retirement', element: r(['teacher', 'hod'], <MyRetirementPage />) },
+      { path: 'ems/retirement/dashboard', element: r(['admin', 'manager', 'principal', 'hod'], <RetirementDashboard />) },
+
+      // Awards
+      { path: 'ems/awards', element: r(['admin', 'manager', 'principal', 'hod', 'teacher'], <StaffAwardsPage />) },
+
+      // Surveys
+      { path: 'ems/surveys', element: r(['admin', 'manager', 'principal', 'hod', 'teacher'], <SurveysAdminPage />) },
+      { path: 'ems/surveys/:id/respond', element: r(['teacher', 'hod', 'admin', 'manager', 'principal'], <SurveyRespondPage />) },
+
+      // Attendance
+      { path: 'attendance/staff-check-in', element: r(['teacher', 'hod'], <StaffCheckInPage />) },
+      { path: 'attendance/staff-history', element: r(['teacher', 'hod'], <StaffAttendanceHistoryPage />) },
+      { path: 'attendance/staff-dashboard', element: r(['admin', 'manager', 'principal', 'hod'], <StaffAttendanceDashboard />) },
 
       // SMS
       { path: 'sen/students', element: r(['admin', 'manager', 'principal', 'hod', 'counselor'], <SenStudentsPage />) },

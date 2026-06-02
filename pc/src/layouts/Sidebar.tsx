@@ -31,6 +31,7 @@ import {
   Package,
   ShieldAlert,
   UserSquare2,
+  ClockCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -126,7 +127,26 @@ const Sidebar = () => {
           { key: '/ems/workload', label: t('nav.emsWorkload'), roles: ['admin', 'manager', 'teacher'] },
           { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['admin', 'manager', 'principal', 'teacher'] },
           { key: '/ems/leave', label: 'Leave & Substitutes', roles: ['admin', 'manager', 'principal', 'teacher'] },
+          { key: '/ems/leave/balance', label: 'My Leave Balance', roles: ['teacher'] },
+          { key: '/ems/leave/calendar', label: 'Leave Calendar', roles: ['admin', 'manager', 'principal'] },
+          { key: '/ems/leave/reports', label: 'Leave Reports', roles: ['admin', 'manager', 'principal'] },
           { key: '/ems/cpd-workshops', label: 'CPD Workshops', roles: ['admin', 'manager', 'principal', 'teacher'] },
+          { key: '/ems/retirement', label: t('nav.myRetirement', 'My Retirement'), roles: ['teacher'] },
+          { key: '/ems/retirement/dashboard', label: t('nav.retirementMgmt', 'Retirement Mgmt'), roles: ['admin', 'manager', 'principal', 'hod'] },
+          { key: '/ems/awards', label: t('nav.awardsRecognition', 'Awards & Recognition'), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
+          { key: '/ems/surveys', label: t('nav.surveys', 'Staff Surveys'), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
+        ],
+      },
+      // Attendance
+      {
+        key: '/attendance',
+        label: t('nav.attendance', 'Attendance'),
+        icon: icon(ClockCheck),
+        roles: ['admin', 'manager', 'principal', 'hod', 'teacher'],
+        children: [
+          { key: '/attendance/staff-check-in', label: t('nav.staffCheckIn', 'Check In / Out'), roles: ['teacher', 'hod'] },
+          { key: '/attendance/staff-history', label: t('nav.staffHistory', 'My Attendance'), roles: ['teacher', 'hod'] },
+          { key: '/attendance/staff-dashboard', label: t('nav.staffDashboard', 'Staff Dashboard'), roles: ['admin', 'manager', 'principal', 'hod'] },
         ],
       },
       // SMS - School Management System
@@ -199,6 +219,8 @@ const Sidebar = () => {
           { key: '/ems/workload', label: t('nav.emsWorkload'), roles: ['hod'] },
           { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['hod'] },
           { key: '/ems/leave', label: 'Leave & Substitutes', roles: ['hod'] },
+          { key: '/ems/leave/calendar', label: 'Leave Calendar', roles: ['hod'] },
+          { key: '/ems/leave/reports', label: 'Leave Reports', roles: ['hod'] },
           { key: '/ems/cpd-workshops', label: 'CPD Workshops', roles: ['hod'] },
           { key: '/approvals', label: t('nav.approvals', { defaultValue: 'Approvals Inbox' }), roles: ['hod'] },
           { key: '/sms/timetable', label: t('nav.smsTimetable'), roles: ['hod'] },

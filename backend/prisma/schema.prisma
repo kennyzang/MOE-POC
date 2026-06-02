@@ -90,11 +90,17 @@ model Teacher {
   cpdTarget        Float    @default(20)     // CPD annual target (default 20h)
   employmentStatus String   @default("active") // active | onLeave | inTraining
   staffType        String   @default("TEACHING") // TEACHING | ADMINISTRATIVE | SUPPORT | SECURITY
-  annualLeaveBalance  Int   @default(14)     // remaining annual leave days this year
-  medicalLeaveBalance Int   @default(14)     // remaining medical leave days this year
-  leaveBalanceYear    String @default("2025/2026")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  annualLeaveBalance     Int      @default(14)
+  medicalLeaveBalance    Int      @default(14)
+  maternityLeaveBalance  Int      @default(90)
+  paternityLeaveBalance  Int      @default(7)
+  unpaidLeaveBalance     Int      @default(30)
+  leaveBalanceYear       String   @default("2025/2026")
+  ssmLastSyncedAt        DateTime?
+  ssmBalances            String?  // JSON snapshot of SSM leave balances
+  dateOfBirth            DateTime?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   schoolId         String?  // which school this teacher belongs to
 
@@ -108,6 +114,10 @@ model Teacher {
   cpdEnrollments  CpdEnrollment[]
   parentTeacherMeetings ParentTeacherMeeting[]
   assignments     Assignment[]
+  staffAttendanceRecords StaffAttendanceRecord[]
+  retirementApplication  RetirementApplication?
+  awards                 Award[]
+  postingHistory         PostingRecord[]
 }
 
 // ─── Parent ─────────────────────────────────────────────────────
@@ -537,22 +547,29 @@ model CounselorCase {
 // ─── Leave Applications (EMS) ────────────────────────────────────
 
 model LeaveApplication {
-  id              String   @id @default(uuid())
-  teacherId       String
-  leaveType       String   // ANNUAL, MEDICAL, MATERNITY, PATERNITY, EMERGENCY
-  startDate       DateTime
-  endDate         DateTime
-  daysRequested   Int
-  reason          String?
-  status          String   @default("PENDING") // PENDING, HOD_APPROVED, PRINCIPAL_APPROVED, REJECTED
-  hodApproverId   String?
-  hodApprovedAt   DateTime?
-  hodRemarks      String?
-  substituteId    String?  // assigned substitute Teacher.id
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    String    @id @default(uuid())
+  teacherId             String
+  leaveType             String    // ANNUAL, MEDICAL, MATERNITY, PATERNITY, UNPAID, HAJJ, COMPASSIONATE, EMERGENCY
+  startDate             DateTime
+  endDate               DateTime
+  daysRequested         Int
+  reason                String?
+  status                String    @default("PENDING") // PENDING, HOD_APPROVED, PRINCIPAL_APPROVED, REJECTED, CANCELLED
+  hodApproverId         String?
+  hodApprovedAt         DateTime?
+  hodRemarks            String?
+  principalApproverId   String?
+  principalApprovedAt   DateTime?
+  principalRemarks      String?
+  substituteId          String?
+  documentUrl           String?   // medical certificate or supporting doc path
+  cancellationReason    String?
+  cancelledAt           DateTime?
+  cancelledBy           String?   // User.id who cancelled
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  teacher         Teacher  @relation(fields: [teacherId], references: [id])
+  teacher               Teacher   @relation(fields: [teacherId], references: [id])
 }
 
 // ─── Audit Events ─────────────────────────────────────────────────
@@ -1075,4 +1092,156 @@ model AssetMaintenanceLog {
   createdAt   DateTime @default(now())
 
   asset       Asset    @relation(fields: [assetId], references: [id])
+}
+
+// ─── Public Holidays ─────────────────────────────────────────────
+
+model PublicHoliday {
+  id        String   @id @default(uuid())
+  date      DateTime
+  name      String
+  schoolId  String?  // null = applies to all schools
+  createdAt DateTime @default(now())
+}
+
+// ─── Staff Attendance ─────────────────────────────────────────────
+
+model StaffAttendanceRecord {
+  id            String    @id @default(uuid())
+  teacherId     String
+  date          DateTime
+  checkInAt     DateTime?
+  checkOutAt    DateTime?
+  status        String    @default("ABSENT") // PRESENT | LATE | ABSENT
+  lateMinutes   Int       @default(0)
+  locationLat   Float?
+  locationLng   Float?
+  locationLabel String?
+  autoMarked    Boolean   @default(false)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  teacher       Teacher   @relation(fields: [teacherId], references: [id])
+
+  @@unique([teacherId, date])
+}
+
+// ─── Awards & Recognition ────────────────────────────────────────
+
+model Award {
+  id          String   @id @default(uuid())
+  teacherId   String
+  title       String
+  category    String   @default("EXCELLENCE") // EXCELLENCE | SERVICE | INNOVATION | LEADERSHIP | COMMUNITY | OTHER
+  description String?
+  awardedDate DateTime
+  awardedBy   String?
+  badgeColor  String   @default("gold") // gold | silver | bronze | blue | green | purple
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+}
+
+model PostingRecord {
+  id          String    @id @default(uuid())
+  teacherId   String
+  schoolName  String
+  position    String
+  department  String?
+  startDate   DateTime
+  endDate     DateTime?
+  isCurrent   Boolean   @default(false)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  teacher     Teacher   @relation(fields: [teacherId], references: [id])
+}
+
+// ─── Retirement Planning ──────────────────────────────────────────
+
+model RetirementApplication {
+  id              String    @id @default(uuid())
+  teacherId       String    @unique
+  retirementType  String    @default("NORMAL") // NORMAL | VOLUNTARY_EARLY | MEDICAL
+  requestedDate   DateTime
+  reason          String?
+  documentUrl     String?
+  status          String    @default("SUBMITTED") // SUBMITTED | UNDER_REVIEW | APPROVED | REJECTED
+  submittedAt     DateTime  @default(now())
+  reviewedById    String?
+  reviewedAt      DateTime?
+  reviewRemarks   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  teacher         Teacher   @relation(fields: [teacherId], references: [id])
+}
+
+model StaffAttendanceConfig {
+  id                    String   @id @default(uuid())
+  schoolId              String   @unique
+  startTime             String   @default("07:30")
+  cutoffTime            String   @default("09:00")
+  absenceAlertDays      Int      @default(3)
+  frequentAbsenceDays   Int      @default(3)
+  frequentLatenessCount Int      @default(5)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// ─── Staff Feedback Surveys ───────────────────────────────────────
+
+model Survey {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  category    String    @default("GENERAL") // GENERAL | PROFESSIONAL_DEVELOPMENT | WELL_BEING | SCHOOL_MANAGEMENT
+  isAnonymous Boolean   @default(true)
+  status      String    @default("DRAFT") // DRAFT | ACTIVE | CLOSED
+  createdById String
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  questions   SurveyQuestion[]
+  responses   SurveyResponse[]
+}
+
+model SurveyQuestion {
+  id        String   @id @default(uuid())
+  surveyId  String
+  order     Int
+  text      String
+  type      String   @default("RATING") // RATING | TEXT | MULTIPLE_CHOICE | YES_NO
+  options   String?  // JSON array for MULTIPLE_CHOICE
+  required  Boolean  @default(true)
+
+  survey    Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers   SurveyAnswer[]
+}
+
+model SurveyResponse {
+  id          String   @id @default(uuid())
+  surveyId    String
+  responderId String?  // null when anonymous
+  submittedAt DateTime @default(now())
+
+  survey      Survey        @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers     SurveyAnswer[]
+
+  @@unique([surveyId, responderId])
+}
+
+model SurveyAnswer {
+  id         String   @id @default(uuid())
+  responseId String
+  questionId String
+  value      String
+
+  response   SurveyResponse  @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question   SurveyQuestion  @relation(fields: [questionId], references: [id])
 }

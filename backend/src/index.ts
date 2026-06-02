@@ -40,6 +40,12 @@ import examRoutes from './routes/exams'
 import senRoutes from './routes/sen'
 import libraryRoutes from './routes/library'
 import inventoryRoutes from './routes/inventory'
+import leaveEnhancedRoutes from './routes/leaveEnhanced'
+import staffAttendanceRoutes from './routes/staffAttendance'
+import retirementRoutes from './routes/retirement'
+import awardsRoutes from './routes/awards'
+import postingsRoutes from './routes/postings'
+import surveysRoutes from './routes/surveys'
 import path from 'path'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
@@ -80,6 +86,7 @@ app.use('/api/v1/dashboard', dashboardRoutes)
 app.use('/api/v1/enrollments', enrollmentRoutes)
 app.use('/api/v1/egnc', egncRoutes)
 app.use('/api/v1/ems', emsRoutes)
+app.use('/api/v1/leave', leaveEnhancedRoutes)
 app.use('/api/v1/sms', smsRoutes)
 app.use('/api/v1/ai', aiRoutes)
 app.use('/api/v1/notifications', notificationRoutes)
@@ -103,6 +110,11 @@ app.use('/api/v1/exams', examRoutes)
 app.use('/api/v1/sen', senRoutes)
 app.use('/api/v1/library', libraryRoutes)
 app.use('/api/v1/inventory', inventoryRoutes)
+app.use('/api/v1/staff-attendance', staffAttendanceRoutes)
+app.use('/api/v1/retirement', retirementRoutes)
+app.use('/api/v1/awards', awardsRoutes)
+app.use('/api/v1/postings', postingsRoutes)
+app.use('/api/v1/surveys', surveysRoutes)
 
 // Serve uploaded files (used by download route — not direct public access)
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
