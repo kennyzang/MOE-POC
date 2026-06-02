@@ -44,3 +44,4 @@
 | 2026-05-31 10:30 | [260531-1030.md](260531-1030.md) | 全角色Playwright浏览器实测，修复5个Bug：出勤率>100%/出勤记录未保存全/招生漏斗不刷新/重复侧边栏标签/文件预览URL双前缀 | ~120k |
 | 2026-05-31 15:00 | [260531-1500.md](260531-1500.md) | Scenarios 2-8完成：Principal主页→CommandCenter、Counselor案例抽屉添加View Student按钮、提交上期遗漏变更（FileAttachment模型+家长会议路由+i18n） | ~25k |
 | 2026-06-01 12:00 | [260601-1200.md](260601-1200.md) | Scenarios 2-8 全流程Playwright实测：7角色全部通过，修复counselor/hod/admissions/principal访问学生详情403 Bug | ~45k |
+| 2026-06-02 23:00 | [260602-2300.md](260602-2300.md) | Gap模块Phases 1-5完成：Leave Enhancement、Staff Attendance、Retirement Planning、Awards+Posting History、Anonymous Surveys（6新模型、7新路由、16新页面） | ~180k |
