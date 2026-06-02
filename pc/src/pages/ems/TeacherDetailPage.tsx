@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
+import SyncBadge from '@/components/SyncBadge'
 
 const { Title, Text } = Typography
 
@@ -454,22 +455,27 @@ export default function TeacherDetailPage() {
   const certifications = teacher.certifications ?? []
   const cpdPct = Math.min(100, Math.round(((teacher.cpdHours ?? 0) / (teacher.cpdTarget ?? 20)) * 100))
 
+  const isTeaching = !teacher.staffType || teacher.staffType === 'TEACHING'
+
   const tabItems = [
     {
       key: 'overview',
       label: <Space size={4}><User size={14} />Overview</Space>,
       children: <OverviewTab teacher={teacher} />,
     },
-    {
-      key: 'courses',
-      label: <Space size={4}><BookOpen size={14} />Courses ({teacher.courseAssignments?.length ?? 0})</Space>,
-      children: <CoursesTab teacher={teacher} />,
-    },
-    {
-      key: 'performance',
-      label: <Space size={4}><BarChart2 size={14} />Performance ({evaluations.length})</Space>,
-      children: <PerformanceTab evaluations={evaluations} />,
-    },
+    // Teaching-only tabs
+    ...(isTeaching ? [
+      {
+        key: 'courses',
+        label: <Space size={4}><BookOpen size={14} />Courses ({teacher.courseAssignments?.length ?? 0})</Space>,
+        children: <CoursesTab teacher={teacher} />,
+      },
+      {
+        key: 'performance',
+        label: <Space size={4}><BarChart2 size={14} />Performance ({evaluations.length})</Space>,
+        children: <PerformanceTab evaluations={evaluations} />,
+      },
+    ] : []),
     {
       key: 'certifications',
       label: (
@@ -483,17 +489,19 @@ export default function TeacherDetailPage() {
       ),
       children: <CertificationsTab certifications={certifications} />,
     },
-    {
-      key: 'cpd',
-      label: (
-        <Space size={4}>
-          <GraduationCap size={14} />
-          CPD
-          {cpdPct >= 100 ? <CheckCircle size={14} color="#52c41a" /> : <Clock size={14} color="#fa8c16" />}
-        </Space>
-      ),
-      children: <CpdTab teacher={teacher} cpdEnrollments={cpdEnrollments} />,
-    },
+    ...(isTeaching ? [
+      {
+        key: 'cpd',
+        label: (
+          <Space size={4}>
+            <GraduationCap size={14} />
+            CPD
+            {cpdPct >= 100 ? <CheckCircle size={14} color="#52c41a" /> : <Clock size={14} color="#fa8c16" />}
+          </Space>
+        ),
+        children: <CpdTab teacher={teacher} cpdEnrollments={cpdEnrollments} />,
+      },
+    ] : []),
     {
       key: 'leave',
       label: (
@@ -539,7 +547,10 @@ export default function TeacherDetailPage() {
                 </Text>
               </div>
               <div>
-                <Title level={4} style={{ margin: 0 }}>{teacher.user?.displayName}</Title>
+                <Space align="center" size={8}>
+                  <Title level={4} style={{ margin: 0 }}>{teacher.user?.displayName}</Title>
+                  <SyncBadge source="SSM" relativeTime="2 min ago" absoluteTime="Synced from SSM Civil Service HR System" />
+                </Space>
                 <Space size={8}>
                   <Text type="secondary" style={{ fontSize: 13 }}>{teacher.staffId}</Text>
                   <Text type="secondary">·</Text>

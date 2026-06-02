@@ -15,15 +15,22 @@ model User {
   password    String
   displayName String
   email       String?
-  role        String   // student, teacher, parent, admin, manager, finance, admissions
+  role        String   // student, teacher, parent, admin, manager, finance, admissions, systemAdmin
   avatar      String?
   status      String   @default("active")
+  schoolId    String?  // null = system-level account (not bound to a school)
+  systemAdmin Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   student  Student?
   teacher  Teacher?
   parent   Parent?
+  school   School?  @relation(fields: [schoolId], references: [id])
+
+  authoredAnnouncements Announcement[]
+  behaviorRecordsLogged BehaviorRecord[]
+  sentMessages          DirectMessage[]
 }
 
 // ─── Student ────────────────────────────────────────────────────
@@ -32,19 +39,21 @@ model Student {
   id            String   @id @default(uuid())
   userId        String   @unique
   studentId     String   @unique // e.g. "2026001"
+  schoolId      String?  // which school this student belongs to
   dateOfBirth   DateTime?
   gender        String?
   nationality   String?
   icNumber      String?  // IC number e.g. BN20100312
-  gradeLevel    String?  // e.g. "Year 7"
+  gradeLevel    String?  // e.g. "Year 7" or "Tingkatan 1" or "Year 3" — depends on school type
   className     String?  // e.g. "7A"
-  enrollmentStatus String @default("pending") // pending, enrolled, graduated
-  academicStanding String @default("GOOD_STANDING") // GOOD_STANDING, ACADEMIC_WATCH, PROBATION, AT_RISK
+  enrollmentStatus String @default("pending") // pending, enrolled, graduated, transferred
+  academicStanding String @default("GOOD_STANDING")
   academicStandingUpdatedAt DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   user          User     @relation(fields: [userId], references: [id])
+  school        School?  @relation(fields: [schoolId], references: [id])
   parentLinks   ParentStudent[]
   enrollments   Enrollment[]
   attendances   AttendanceRecord[]
@@ -54,6 +63,15 @@ model Student {
   feeInvoices   FeeInvoice[]
   standingHistory AcademicStandingHistory[]
   parentTeacherMeetings ParentTeacherMeeting[]
+  submissions     AssignmentSubmission[]
+  behaviorRecords BehaviorRecord[]
+  ccaEnrollments  CcaEnrollment[]
+  ccaAttendances  CcaAttendance[]
+  transitions     StudentTransition[] @relation("TransitionStudent")
+  examCandidacies ExamCandidate[]
+  libraryLoans    LibraryLoan[]
+  libraryHolds    LibraryHold[]
+  senRecord       SenStudent?
 }
 
 // ─── Teacher ────────────────────────────────────────────────────
@@ -71,13 +89,17 @@ model Teacher {
   cpdHours         Float    @default(0)      // CPD completed hours
   cpdTarget        Float    @default(20)     // CPD annual target (default 20h)
   employmentStatus String   @default("active") // active | onLeave | inTraining
+  staffType        String   @default("TEACHING") // TEACHING | ADMINISTRATIVE | SUPPORT | SECURITY
   annualLeaveBalance  Int   @default(14)     // remaining annual leave days this year
   medicalLeaveBalance Int   @default(14)     // remaining medical leave days this year
   leaveBalanceYear    String @default("2025/2026")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  schoolId         String?  // which school this teacher belongs to
+
   user            User     @relation(fields: [userId], references: [id])
+  school          School?  @relation(fields: [schoolId], references: [id])
   certifications  Certification[]
   courseAssignments CourseAssignment[]
   performanceEvaluations PerformanceEvaluation[]
@@ -85,6 +107,7 @@ model Teacher {
   leaveApplications LeaveApplication[]
   cpdEnrollments  CpdEnrollment[]
   parentTeacherMeetings ParentTeacherMeeting[]
+  assignments     Assignment[]
 }
 
 // ─── Parent ─────────────────────────────────────────────────────
@@ -116,32 +139,51 @@ model ParentStudent {
 // ─── Academic Structure ─────────────────────────────────────────
 
 model School {
-  id        String   @id @default(uuid())
-  name      String
-  code      String   @unique
-  type      String   // primary, secondary
-  address   String?
-  phone     String?
-  principal String?
-  createdAt DateTime @default(now())
+  id             String   @id @default(uuid())
+  name           String
+  code           String   @unique
+  authority      String   @default("MOE")  // MOE | MORA | PRIVATE
+  schoolType     String   @default("secondary") // primary | secondary | pre_university | vocational | religious_primary | religious_secondary | combined
+  address        String?
+  phone          String?
+  principal      String?
+  gradeLevels    String   @default("[\"Year 7\",\"Year 8\",\"Year 9\",\"Year 10\",\"Year 11\"]")  // JSON array
+  programmes     String   @default("[\"Academic\"]")  // JSON array
+  classLetters   String   @default("[\"A\",\"B\",\"C\",\"D\",\"E\"]")  // JSON array
+  establishedYear Int?
+  motto          String?
+  createdAt      DateTime @default(now())
+
+  users      User[]
+  students   Student[]
+  teachers   Teacher[]
+  courses    Course[]
+  rosters    ClassRoster[]
+  fromTransitions StudentTransition[] @relation("TransitionFromSchool")
+  toTransitions   StudentTransition[] @relation("TransitionToSchool")
 }
 
 model Course {
   id          String   @id @default(uuid())
-  code        String   @unique
+  code        String   // unique within a school — see @@unique below
   name        String
   description String?
-  gradeLevel  String?  // which year/grade this course is for
+  gradeLevel  String?
   creditHours Int      @default(1)
   status      String   @default("active")
+  schoolId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  school         School? @relation(fields: [schoolId], references: [id])
   assignments    CourseAssignment[]
   enrollments    Enrollment[]
   attendanceSessions AttendanceSession[]
   gradeItems     GradeItem[]
   timetableSlots TimetableSlot[]
+  hwAssignments  Assignment[]
+
+  @@unique([code, schoolId])
 }
 
 model CourseAssignment {
@@ -307,6 +349,7 @@ model Admission {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  schoolId            String?  // target school for this application
   documents           AdmissionDocument[]
 }
 
@@ -409,6 +452,7 @@ model Notification {
   title     String
   message   String
   type      String   @default("info") // info, warning, success, error
+  link      String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 }
@@ -541,14 +585,17 @@ model FeeType {
 
 model ClassRoster {
   id            String   @id @default(uuid())
-  gradeLevel    String   // "Year 7"
-  className     String   // "7A"
+  gradeLevel    String
+  className     String
   academicYear  String   // "2025/2026"
   capacity      Int      @default(35)
-  programme     String?  // Academic, Vocational, Religious
-  formTeacherId String?  // Teacher.id
+  programme     String?
+  formTeacherId String?
+  schoolId      String?
 
-  @@unique([className, academicYear])
+  school        School?  @relation(fields: [schoolId], references: [id])
+
+  @@unique([className, academicYear, schoolId])
 }
 
 // ─── Academic Standing History ────────────────────────────────────
@@ -672,4 +719,360 @@ model FileAttachment {
   uploadedBy   String   // User.id
   description  String?
   createdAt    DateTime @default(now())
+}
+
+// ─── Assignments & Homework ──────────────────────────────────────
+
+model Assignment {
+  id          String   @id @default(uuid())
+  courseId    String
+  teacherId   String
+  title       String
+  description String?
+  type        String   @default("homework")  // homework | project | quiz | reading
+  dueDate     DateTime?
+  maxScore    Float    @default(100)
+  status      String   @default("published") // draft | published | closed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course      Course   @relation(fields: [courseId], references: [id])
+  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+  submissions AssignmentSubmission[]
+}
+
+model AssignmentSubmission {
+  id           String     @id @default(uuid())
+  assignmentId String
+  studentId    String
+  content      String?
+  fileUrl      String?
+  submittedAt  DateTime   @default(now())
+  isLate       Boolean    @default(false)
+  score        Float?
+  feedback     String?
+  gradedAt     DateTime?
+  status       String     @default("submitted") // submitted | late | graded
+
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  student      Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([assignmentId, studentId])
+}
+
+// ─── Announcements ───────────────────────────────────────────────
+
+model Announcement {
+  id             String    @id @default(uuid())
+  title          String
+  content        String
+  authorId       String
+  targetAudience String    @default("all") // all | students | parents | teachers | grade:Year7
+  gradeLevel     String?
+  priority       String    @default("normal") // normal | high | urgent
+  isPinned       Boolean   @default(false)
+  publishedAt    DateTime  @default(now())
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  author         User      @relation(fields: [authorId], references: [id])
+}
+
+// ─── Behavior & Discipline ───────────────────────────────────────
+
+model BehaviorRecord {
+  id             String   @id @default(uuid())
+  studentId      String
+  recordedById   String
+  type           String   // merit | demerit | incident
+  category       String   // academic | conduct | attendance | achievement | other
+  points         Int      @default(0)
+  description    String
+  actionTaken    String?
+  severity       String?  // minor | moderate | major
+  parentNotified Boolean  @default(false)
+  date           DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  student        Student  @relation(fields: [studentId], references: [id])
+  recordedBy     User     @relation(fields: [recordedById], references: [id])
+}
+
+// ─── Direct Messaging ────────────────────────────────────────────
+
+model MessageThread {
+  id            String    @id @default(uuid())
+  subject       String
+  parentUserId  String
+  teacherUserId String
+  studentId     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  messages      DirectMessage[]
+}
+
+model DirectMessage {
+  id        String        @id @default(uuid())
+  threadId  String
+  senderId  String
+  content   String
+  readAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  thread    MessageThread @relation(fields: [threadId], references: [id])
+  sender    User          @relation(fields: [senderId], references: [id])
+}
+
+// ─── CCA (Co-Curricular Activities) ─────────────────────────────
+
+model CcaActivity {
+  id                String   @id @default(uuid())
+  name              String
+  category          String   // sports | arts | academic | community | other
+  description       String?
+  schedule          String?
+  venue             String?
+  teacherInChargeId String?
+  capacity          Int      @default(30)
+  status            String   @default("active") // active | inactive
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  enrollments CcaEnrollment[]
+  sessions    CcaSession[]
+}
+
+model CcaEnrollment {
+  id         String      @id @default(uuid())
+  ccaId      String
+  studentId  String
+  enrolledAt DateTime    @default(now())
+  status     String      @default("active") // active | withdrawn
+
+  cca        CcaActivity @relation(fields: [ccaId], references: [id])
+  student    Student     @relation(fields: [studentId], references: [id])
+
+  @@unique([ccaId, studentId])
+}
+
+model CcaSession {
+  id        String      @id @default(uuid())
+  ccaId     String
+  date      DateTime
+  notes     String?
+  createdAt DateTime    @default(now())
+
+  cca         CcaActivity   @relation(fields: [ccaId], references: [id])
+  attendances CcaAttendance[]
+}
+
+model CcaAttendance {
+  id        String     @id @default(uuid())
+  sessionId String
+  studentId String
+  status    String     @default("present") // present | absent | excused
+
+  session   CcaSession @relation(fields: [sessionId], references: [id])
+  student   Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([sessionId, studentId])
+}
+
+// ─── Education Transitions ───────────────────────────────────────
+
+model StudentTransition {
+  id              String   @id @default(uuid())
+  studentId       String
+  fromSchoolId    String?  // null = student is new to system
+  toSchoolId      String
+  fromGradeLevel  String?  // "Year 6" or "Darjah 6"
+  toGradeLevel    String?  // "Year 7" or "Tingkatan 1"
+  fromClassName   String?
+  toClassName     String?
+  transitionType  String   @default("GRADE_PROMOTION")
+  // GRADE_PROMOTION = within same school, one grade up
+  // PRIMARY_TO_SECONDARY = cross-school (e.g. primary Year 6 → secondary Year 7)
+  // SCHOOL_TRANSFER = mid-year or same-level transfer
+  // GRADUATION = completing final grade, leaving system
+  academicYear    String   // "2025/2026"
+  effectiveDate   DateTime
+  status          String   @default("planned")
+  // planned | approved | completed | cancelled
+  notes           String?
+  processedById   String?  // User.id of admin who processed
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  student    Student  @relation("TransitionStudent", fields: [studentId], references: [id])
+  fromSchool School?  @relation("TransitionFromSchool", fields: [fromSchoolId], references: [id])
+  toSchool   School   @relation("TransitionToSchool", fields: [toSchoolId], references: [id])
+}
+
+// ─── Integration Log (SIM-IL) ────────────────────────────────────
+
+model IntegrationLog {
+  id          String   @id @default(uuid())
+  system      String   // BRUNEI_ID | EGNC | NIH | SSM | KOHA
+  endpoint    String
+  payloadSize Int      @default(0)
+  status      String   @default("success") // success | error
+  triggeredBy String?  // User.id who triggered
+  createdAt   DateTime @default(now())
+}
+
+// ─── Exam Management ─────────────────────────────────────────────
+
+model Exam {
+  id         String          @id @default(uuid())
+  schoolId   String
+  examType   String          // PSR | O_LEVEL | A_LEVEL | IGCSE
+  year       Int
+  examDate   DateTime
+  venue      String?
+  status     String          @default("upcoming") // upcoming | ongoing | completed
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  candidates ExamCandidate[]
+}
+
+model ExamCandidate {
+  id          String  @id @default(uuid())
+  examId      String
+  studentId   String
+  subjectCode String
+  seatNumber  String?
+  status      String  @default("registered") // registered | present | absent
+
+  exam        Exam    @relation(fields: [examId], references: [id])
+  student     Student @relation(fields: [studentId], references: [id])
+
+  @@unique([examId, studentId, subjectCode])
+}
+
+// ─── SEN / Special Education ─────────────────────────────────────
+
+model SenStudent {
+  id            String          @id @default(uuid())
+  studentId     String          @unique
+  diagnosisType String          // AUTISM | DYSLEXIA | ADHD | HEARING | VISUAL | PHYSICAL | OTHER
+  supportLevel  String          @default("LEVEL_1") // LEVEL_1 | LEVEL_2 | LEVEL_3
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  student       Student         @relation(fields: [studentId], references: [id])
+  goals         IepGoal[]
+  sessionLogs   IepSessionLog[]
+}
+
+model IepGoal {
+  id           String     @id @default(uuid())
+  senStudentId String
+  subject      String
+  description  String
+  targetDate   DateTime
+  status       String     @default("active") // active | achieved | revised
+  createdAt    DateTime   @default(now())
+
+  senStudent   SenStudent @relation(fields: [senStudentId], references: [id])
+}
+
+model IepSessionLog {
+  id           String     @id @default(uuid())
+  senStudentId String
+  date         DateTime
+  durationMins Int
+  conductedBy  String     // User.id
+  notes        String
+  createdAt    DateTime   @default(now())
+
+  senStudent   SenStudent @relation(fields: [senStudentId], references: [id])
+}
+
+// ─── Library ─────────────────────────────────────────────────────
+
+model LibraryBook {
+  id              String        @id @default(uuid())
+  schoolId        String
+  isbn            String?
+  title           String
+  author          String
+  category        String        // Fiction | Non-Fiction | Reference | Textbook | Science | History | etc.
+  totalCopies     Int           @default(1)
+  availableCopies Int           @default(1)
+  kohaId          String?       // fake KOHA system ID for provenance
+  createdAt       DateTime      @default(now())
+
+  loans           LibraryLoan[]
+  holds           LibraryHold[]
+}
+
+model LibraryLoan {
+  id         String       @id @default(uuid())
+  bookId     String
+  studentId  String
+  borrowedAt DateTime     @default(now())
+  dueDate    DateTime
+  returnedAt DateTime?
+  fineAmount Float        @default(0)
+
+  book       LibraryBook  @relation(fields: [bookId], references: [id])
+  student    Student      @relation(fields: [studentId], references: [id])
+}
+
+model LibraryHold {
+  id          String      @id @default(uuid())
+  bookId      String
+  studentId   String
+  requestedAt DateTime    @default(now())
+  status      String      @default("waiting") // waiting | ready | cancelled
+
+  book        LibraryBook @relation(fields: [bookId], references: [id])
+  student     Student     @relation(fields: [studentId], references: [id])
+}
+
+// ─── Inventory / Assets ──────────────────────────────────────────
+
+model AssetCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  schoolId    String?
+  createdAt   DateTime @default(now())
+
+  assets      Asset[]
+}
+
+model Asset {
+  id           String               @id @default(uuid())
+  assetTag     String               @unique
+  name         String
+  categoryId   String
+  schoolId     String?
+  location     String?
+  condition    String               @default("Good") // Good | Fair | Poor | Condemned
+  purchaseDate DateTime?
+  value        Float?
+  notes        String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  category     AssetCategory        @relation(fields: [categoryId], references: [id])
+  maintenanceLogs AssetMaintenanceLog[]
+}
+
+model AssetMaintenanceLog {
+  id          String   @id @default(uuid())
+  assetId     String
+  date        DateTime
+  type        String   // Repair | Service | Inspection | Disposal
+  cost        Float?
+  conductedBy String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  asset       Asset    @relation(fields: [assetId], references: [id])
 }

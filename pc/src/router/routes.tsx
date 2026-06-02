@@ -64,6 +64,9 @@ const LibraryPage = lazy(() => import('@/pages/sms/LibraryPage'))
 // Inventory
 const InventoryPage = lazy(() => import('@/pages/sms/InventoryPage'))
 
+// School Profile
+const SchoolProfilePage = lazy(() => import('@/pages/sms/SchoolProfilePage'))
+
 // SMS
 const ExamsPage = lazy(() => import('@/pages/sms/ExamsPage'))
 const CourseManagementPage = lazy(() => import('@/pages/sms/CourseManagementPage'))
@@ -191,6 +194,7 @@ export const router = createBrowserRouter([
 
       { path: 'sms/library', element: r(['admin', 'manager', 'principal', 'teacher', 'finance'], <LibraryPage />) },
       { path: 'sms/inventory', element: r(['admin', 'manager'], <InventoryPage />) },
+      { path: 'sms/school-profile', element: r(['admin', 'manager', 'principal'], <SchoolProfilePage />) },
       { path: 'sms/exams', element: r(['admin', 'manager', 'principal', 'hod', 'teacher'], <ExamsPage />) },
       { path: 'sms/courses', element: r(['admin', 'manager', 'teacher', 'hod', 'principal'], <CourseManagementPage />) },
       { path: 'sms/courses/:id', element: r(['admin', 'manager', 'teacher', 'hod', 'principal'], <CourseDetailPage />) },

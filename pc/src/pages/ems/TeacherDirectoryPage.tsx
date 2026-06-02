@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Table, Input, Select, Tag, Card, Space, Row, Col, Typography, Button,
+  Table, Input, Select, Tag, Card, Space, Row, Col, Typography, Button, Segmented,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -10,18 +10,32 @@ import api from '../../lib/api'
 import type { Teacher, ApiResponse } from '../../types'
 import type { ColumnsType } from 'antd/es/table'
 
+const STAFF_TYPE_LABELS: Record<string, string> = {
+  TEACHING: 'Teaching',
+  ADMINISTRATIVE: 'Administrative',
+  SUPPORT: 'Support',
+  SECURITY: 'Security',
+}
+
 const TeacherDirectoryPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [department, setDepartment] = useState<string | undefined>(undefined)
+  const [staffTypeSegment, setStaffTypeSegment] = useState<'all' | 'teaching' | 'support'>('all')
+
+  const staffTypeParam =
+    staffTypeSegment === 'teaching' ? 'TEACHING' :
+    staffTypeSegment === 'support' ? 'ADMINISTRATIVE,SUPPORT,SECURITY' :
+    undefined
 
   const { data: teachers = [], isLoading } = useQuery({
-    queryKey: ['teachers', search, department],
+    queryKey: ['teachers', search, department, staffTypeParam],
     queryFn: async () => {
       const params: Record<string, string> = {}
       if (search) params.search = search
       if (department) params.department = department
+      if (staffTypeParam) params.staffType = staffTypeParam
       const res = await api.get<ApiResponse<Teacher[]>>('/teachers', { params })
       return res.data.data
     },
@@ -32,6 +46,8 @@ const TeacherDirectoryPage = () => {
     teachers.forEach((t) => { if (t.department) deps.add(t.department) })
     return Array.from(deps).map((d) => ({ label: d, value: d }))
   }, [teachers])
+
+  const isAdminSupport = staffTypeSegment === 'support'
 
   const columns: ColumnsType<Teacher> = [
     { title: t('teachers.staffId'), dataIndex: 'staffId', key: 'staffId', width: 120 },
@@ -46,7 +62,19 @@ const TeacherDirectoryPage = () => {
     },
     { title: t('teachers.designation'), dataIndex: 'designation', render: (v) => v || '-' },
     { title: t('teachers.department'), dataIndex: 'department', render: (v) => v || '-' },
-    { title: t('teachers.subjects'), dataIndex: 'subjects', render: (v) => v || '-' },
+    // Show "Role/Function" for Admin & Support; "Subjects" for Teaching / All
+    ...(isAdminSupport ? [
+      {
+        title: t('ems.roleFunction'),
+        key: 'roleFunction',
+        width: 140,
+        render: (_: unknown, record: Teacher) => (
+          <Tag>{STAFF_TYPE_LABELS[(record as any).staffType ?? 'TEACHING']}</Tag>
+        ),
+      },
+    ] : [
+      { title: t('teachers.subjects'), dataIndex: 'subjects', render: (v: string) => v || '-' },
+    ]) as ColumnsType<Teacher>,
     {
       title: t('common.status'), dataIndex: 'status', width: 100,
       render: (s: string) => (
@@ -63,9 +91,10 @@ const TeacherDirectoryPage = () => {
         return <Tag color={colorMap[val] ?? 'default'}>{t(labelKey[val] ?? val)}</Tag>
       },
     },
-    {
+    // CPD hours only for teaching staff
+    ...(!isAdminSupport ? [{
       title: t('ems.cpdHours'), key: 'cpd', width: 110,
-      render: (_, record) => {
+      render: (_: unknown, record: Teacher) => {
         const hours = record.cpdHours ?? 0
         const target = record.cpdTarget ?? 20
         return (
@@ -75,7 +104,7 @@ const TeacherDirectoryPage = () => {
           </Space>
         )
       },
-    },
+    }] as ColumnsType<Teacher> : []),
     {
       title: t('common.actions'), key: 'actions', width: 90,
       render: (_, record) => (
@@ -100,6 +129,15 @@ const TeacherDirectoryPage = () => {
         </Col>
         <Col>
           <Space>
+            <Segmented
+              value={staffTypeSegment}
+              onChange={v => setStaffTypeSegment(v as 'all' | 'teaching' | 'support')}
+              options={[
+                { label: t('ems.allStaff'), value: 'all' },
+                { label: t('ems.teachingStaff'), value: 'teaching' },
+                { label: t('ems.adminAndSupport'), value: 'support' },
+              ]}
+            />
             <Input.Search
               placeholder={t('common.search')}
               prefix={<Search size={16} />}

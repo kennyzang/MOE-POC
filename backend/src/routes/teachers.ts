@@ -1,6 +1,6 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
-import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { authenticate, requireRole, schoolFilter, type AuthRequest } from '../middleware/auth'
 
 const router = Router()
 
@@ -11,12 +11,17 @@ router.get(
   requireRole('admin', 'manager', 'hod', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const { search, department } = req.query
+      const { search, department, staffType } = req.query as { search?: string; department?: string; staffType?: string }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const where: any = {}
+      const where: any = { ...schoolFilter(req) }
 
-      if (department) where.department = department as string
+      if (department) where.department = department
+      // staffType filter: pass comma-separated values like "ADMINISTRATIVE,SUPPORT,SECURITY"
+      if (staffType) {
+        const types = staffType.split(',').map(s => s.trim()).filter(Boolean)
+        where.staffType = types.length === 1 ? types[0] : { in: types }
+      }
 
       if (search) {
         where.OR = [
@@ -190,6 +195,89 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     res.json({ success: true, data: teacher })
   } catch (error) {
     console.error('Error getting teacher:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /teachers/me/form-class — form teacher's class roster + summary
+router.get('/me/form-class', authenticate, requireRole('teacher', 'hod', 'admin', 'manager'), async (req: AuthRequest, res: Response) => {
+  try {
+    const teacher = await prisma.teacher.findUnique({ where: { userId: req.user!.userId } })
+    if (!teacher) { res.status(404).json({ success: false, message: 'Teacher not found' }); return }
+
+    const roster = await prisma.classRoster.findFirst({
+      where: { formTeacherId: teacher.id },
+    })
+    if (!roster) { res.json({ success: true, data: null }); return }
+
+    // Students in this class
+    const students = await prisma.student.findMany({
+      where: { className: roster.className, gradeLevel: roster.gradeLevel, enrollmentStatus: 'enrolled' },
+      include: { user: { select: { displayName: true } } },
+    })
+
+    const studentIds = students.map((s) => s.id)
+
+    // Attendance last 30 days per student
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const attendances = await prisma.attendanceRecord.findMany({
+      where: { studentId: { in: studentIds }, session: { date: { gte: since } } },
+    })
+
+    // Grade averages
+    const grades = await prisma.grade.findMany({
+      where: { studentId: { in: studentIds }, score: { not: null } },
+      include: { gradeItem: { select: { maxScore: true, weight: true } } },
+    })
+
+    // Behavior net points
+    const behaviors = await prisma.behaviorRecord.findMany({
+      where: { studentId: { in: studentIds } },
+    })
+
+    const studentData = students.map((s) => {
+      const att = attendances.filter((a) => a.studentId === s.id)
+      const total = att.length
+      const present = att.filter((a) => a.status === 'present' || a.status === 'late').length
+      const attRate = total > 0 ? Math.round((present / total) * 100) : null
+
+      const g = grades.filter((gr) => gr.studentId === s.id)
+      let gpa: number | null = null
+      if (g.length > 0) {
+        const sum = g.reduce((acc, gr) => acc + (gr.score ?? 0) / (gr.gradeItem.maxScore || 100) * 100 * gr.gradeItem.weight, 0)
+        const w = g.reduce((acc, gr) => acc + gr.gradeItem.weight, 0)
+        gpa = w > 0 ? Math.round((sum / w) * 10) / 10 : null
+      }
+
+      const beh = behaviors.filter((b) => b.studentId === s.id)
+      const netPoints = beh.reduce((acc, b) => acc + b.points, 0)
+
+      return {
+        id: s.id,
+        studentId: s.studentId,
+        displayName: s.user.displayName,
+        academicStanding: s.academicStanding,
+        attendanceRate: attRate,
+        gradeAverage: gpa,
+        netBehaviorPoints: netPoints,
+      }
+    })
+
+    res.json({
+      success: true,
+      data: {
+        roster,
+        students: studentData,
+        summary: {
+          total: students.length,
+          presentToday: null,
+          avgGpa: studentData.filter((s) => s.gradeAverage !== null).reduce((a, s) => a + (s.gradeAverage ?? 0), 0) / (studentData.filter((s) => s.gradeAverage !== null).length || 1),
+          netBehavior: studentData.reduce((a, s) => a + s.netBehaviorPoints, 0),
+        },
+      },
+    })
+  } catch (error) {
+    console.error('GET /teachers/me/form-class error:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })

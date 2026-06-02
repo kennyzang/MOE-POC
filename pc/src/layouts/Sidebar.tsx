@@ -142,6 +142,7 @@ const Sidebar = () => {
           { key: '/sms/cca', label: 'CCA', icon: icon(Award), roles: ['admin', 'manager', 'teacher', 'hod', 'principal'] },
           { key: '/sms/library', label: t('nav.smsLibrary', { defaultValue: 'Library' }), icon: icon(Library), roles: ['admin', 'manager', 'principal', 'teacher', 'finance'] },
           { key: '/sms/inventory', label: t('nav.smsInventory', { defaultValue: 'Inventory' }), icon: icon(Package), roles: ['admin', 'manager'] },
+          { key: '/sms/school-profile', label: t('nav.smsSchoolProfile', { defaultValue: 'School Profile' }), icon: icon(School), roles: ['admin', 'manager', 'principal'] },
           { key: '/sms/exams', label: t('nav.smsExams', { defaultValue: 'Exam Management' }), icon: icon(ClipboardList), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
         ],
       },
