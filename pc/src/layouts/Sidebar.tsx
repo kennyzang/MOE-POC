@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   BookOpen,
   Award,
+  ClipboardList,
   Briefcase,
   School,
   DollarSign,
@@ -23,11 +24,16 @@ import {
   Receipt,
   HeartHandshake,
   TrendingUp,
+  MessageSquare,
+  BookMarked,
+  ShieldAlert,
+  UserSquare2,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useUIStore } from '@/stores/uiStore'
+import { AUTHORITY_META } from '@/hooks/useSchoolConfig'
 import type { UserRole } from '@/types'
 
 const { Sider } = Layout
@@ -97,6 +103,9 @@ const Sidebar = () => {
           { key: '/sis/grades', label: t('nav.sisGrades'), roles: ['admin', 'manager', 'teacher', 'principal'] },
           { key: '/sis/attendance', label: t('nav.sisAttendance'), roles: ['admin', 'manager', 'teacher', 'principal'] },
           { key: '/sis/fees', label: t('nav.sisFees', { defaultValue: 'Fee Invoices' }), icon: icon(Receipt), roles: ['admin', 'manager', 'finance', 'principal'] },
+          { key: '/sis/announcements', label: 'Announcements', icon: icon(Bell), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
+          { key: '/sis/behavior', label: 'Behavior & Discipline', icon: icon(ShieldAlert), roles: ['admin', 'manager', 'principal', 'hod', 'counselor'] },
+          { key: '/admin/transitions', label: 'Transitions', icon: icon(TrendingUp), roles: ['admin', 'manager', 'principal', 'hod', 'admissions'] },
         ],
       },
       // EMS - Educator Management System
@@ -126,6 +135,8 @@ const Sidebar = () => {
           { key: '/sms/timetable', label: t('nav.smsTimetable'), icon: icon(Calendar), roles: ['admin', 'manager', 'principal', 'teacher', 'hod'] },
           { key: '/sms/calendar', label: t('nav.smsCalendar'), roles: ['admin', 'manager', 'principal', 'teacher', 'hod'] },
           { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['admin', 'manager', 'finance', 'principal'] },
+          { key: '/sms/cca', label: 'CCA', icon: icon(Award), roles: ['admin', 'manager', 'teacher', 'hod', 'principal'] },
+          { key: '/sms/exams', label: t('nav.smsExams', { defaultValue: 'Exam Management' }), icon: icon(ClipboardList), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
         ],
       },
       // EGNC
@@ -136,6 +147,18 @@ const Sidebar = () => {
         roles: ['admin', 'manager'],
         children: [
           { key: '/egnc/integration', label: t('nav.egncIntegration'), roles: ['admin', 'manager'] },
+        ],
+      },
+      // Teacher Portal
+      {
+        key: '/teacher',
+        label: 'Teacher Portal',
+        icon: icon(UserSquare2),
+        roles: ['teacher'],
+        children: [
+          { key: '/teacher/form-class', label: 'My Form Class', icon: icon(Users), roles: ['teacher'] },
+          { key: '/teacher/assignments', label: 'Assignments', icon: icon(BookOpen), roles: ['teacher'] },
+          { key: '/teacher/messages', label: 'Messages', icon: icon(MessageSquare), roles: ['teacher'] },
         ],
       },
       // Counselor Portal
@@ -149,6 +172,7 @@ const Sidebar = () => {
           { key: '/counselor/cases', label: t('nav.counselorCases', { defaultValue: 'Case Management' }), roles: ['counselor'] },
           { key: '/dashboard/at-risk', label: t('nav.atRisk'), roles: ['counselor'] },
           { key: '/sis/students', label: t('nav.sisStudents'), roles: ['counselor'] },
+          { key: '/sis/behavior', label: 'Behavior Records', icon: icon(ShieldAlert), roles: ['counselor'] },
         ],
       },
       // HOD Portal
@@ -191,6 +215,11 @@ const Sidebar = () => {
           { key: '/student/profile', label: t('nav.studentProfile'), roles: ['student'] },
           { key: '/student/courses', label: t('nav.studentCourses'), roles: ['student'] },
           { key: '/student/grades', label: t('nav.studentGrades'), roles: ['student'] },
+          { key: '/student/assignments', label: 'Assignments', icon: icon(BookOpen), roles: ['student'] },
+          { key: '/student/announcements', label: 'Announcements', icon: icon(Bell), roles: ['student'] },
+          { key: '/student/behavior', label: 'Merit & Conduct', icon: icon(Award), roles: ['student'] },
+          { key: '/student/report-card', label: 'Report Card', icon: icon(FileText), roles: ['student'] },
+          { key: '/sms/cca', label: 'CCA Activities', icon: icon(BookMarked), roles: ['student'] },
         ],
       },
       // Parent Portal
@@ -204,6 +233,10 @@ const Sidebar = () => {
           { key: '/parent/grades', label: t('nav.parentGrades'), roles: ['parent'] },
           { key: '/parent/attendance', label: t('nav.parentAttendance'), roles: ['parent'] },
           { key: '/parent/fees', label: t('nav.parentFees', { defaultValue: 'Fee Invoices' }), roles: ['parent'] },
+          { key: '/parent/homework', label: 'Homework', icon: icon(BookOpen), roles: ['parent'] },
+          { key: '/parent/announcements', label: 'Announcements', icon: icon(Bell), roles: ['parent'] },
+          { key: '/parent/behavior', label: 'Conduct Record', icon: icon(ShieldAlert), roles: ['parent'] },
+          { key: '/parent/messages', label: 'Messages', icon: icon(MessageSquare), roles: ['parent'] },
           { key: '/parent/apply', label: t('nav.parentApply', { defaultValue: 'Apply for Admission' }), roles: ['parent'] },
           { key: '/parent/meetings', label: t('nav.parentMeetings', { defaultValue: 'Book Meeting' }), roles: ['parent'] },
         ],
@@ -214,6 +247,13 @@ const Sidebar = () => {
         label: t('nav.approvals', { defaultValue: 'Approvals Inbox' }),
         icon: icon(CheckSquare),
         roles: ['admin', 'manager', 'principal'],
+      },
+      // Multi-School Management (system admin only)
+      {
+        key: '/admin/schools',
+        label: 'All Schools',
+        icon: icon(Landmark),
+        roles: ['admin'],
       },
       // Settings
       {
@@ -316,29 +356,36 @@ const Sidebar = () => {
           <School size={18} color="#fff" />
         </div>
         {!collapsed && (
-          <div style={{ overflow: 'hidden' }}>
-            <div
-              style={{
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 700,
-                letterSpacing: 0.3,
-                lineHeight: 1.25,
-                whiteSpace: 'nowrap',
-              }}
-            >
+          <div style={{ overflow: 'hidden', flex: 1 }}>
+            <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 0.3, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
               MOE SERPS
             </div>
-            <div
-              style={{
-                color: 'rgba(255,255,255,0.45)',
-                fontSize: 11,
-                marginTop: 1,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              School ERP System
-            </div>
+            {user?.school ? (
+              <div>
+                <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 170 }}>
+                  {user.school.code}
+                </div>
+                <div
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 9,
+                    fontWeight: 600,
+                    background: AUTHORITY_META[user.school.authority]?.color ?? '#888',
+                    color: '#fff',
+                    borderRadius: 3,
+                    padding: '0 4px',
+                    marginTop: 2,
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  {user.school.authority}
+                </div>
+              </div>
+            ) : user?.systemAdmin ? (
+              <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, marginTop: 1 }}>System Administrator</div>
+            ) : (
+              <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, marginTop: 1 }}>School ERP System</div>
+            )}
           </div>
         )}
       </div>

@@ -29,6 +29,14 @@ import counselorRoutes from './routes/counselor'
 import hodRoutes from './routes/hod'
 import parentRoutes from './routes/parent'
 import fileRoutes from './routes/files'
+import assignmentRoutes from './routes/assignments'
+import announcementRoutes from './routes/announcements'
+import behaviorRoutes from './routes/behavior'
+import messageRoutes from './routes/messages'
+import ccaRoutes from './routes/cca'
+import schoolsRoutes from './routes/schools'
+import transitionsRoutes from './routes/transitions'
+import examRoutes from './routes/exams'
 import path from 'path'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
@@ -81,6 +89,14 @@ app.use('/api/v1/counselor', counselorRoutes)
 app.use('/api/v1/hod', hodRoutes)
 app.use('/api/v1/parent', parentRoutes)
 app.use('/api/v1/files', fileRoutes)
+app.use('/api/v1/assignments', assignmentRoutes)
+app.use('/api/v1/announcements', announcementRoutes)
+app.use('/api/v1/behavior', behaviorRoutes)
+app.use('/api/v1/messages', messageRoutes)
+app.use('/api/v1/cca', ccaRoutes)
+app.use('/api/v1/schools', schoolsRoutes)
+app.use('/api/v1/transitions', transitionsRoutes)
+app.use('/api/v1/exams', examRoutes)
 
 // Serve uploaded files (used by download route — not direct public access)
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
