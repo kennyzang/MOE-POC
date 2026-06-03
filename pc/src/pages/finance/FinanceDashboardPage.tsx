@@ -165,7 +165,7 @@ const FinanceDashboardPage = () => {
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `BND ${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
-                  formatter={(v: number) => [fmt(v)]}
+                  formatter={(v) => [fmt(v as number)]}
                   contentStyle={{ borderRadius: 8 }}
                 />
                 <Legend />

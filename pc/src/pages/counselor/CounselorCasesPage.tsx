@@ -289,7 +289,7 @@ const CounselorCasesPage = () => {
                         tick={{ fontSize: 10 }}
                       />
                       <YAxis domain={[0, 1]} tick={{ fontSize: 10 }} tickFormatter={(v: number) => `${Math.round(v * 100)}%`} />
-                      <Tooltip formatter={(v: number) => [`${Math.round(v * 100)}%`, 'Risk']} />
+                      <Tooltip formatter={(v) => [`${Math.round((v as number) * 100)}%`, 'Risk']} />
                       <Line type="monotone" dataKey="score" stroke="#f5222d" strokeWidth={2} dot={{ r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>

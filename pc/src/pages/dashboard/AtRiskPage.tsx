@@ -106,7 +106,7 @@ const StudentChart = ({ student }: { student: StudentRisk }) => {
           <XAxis dataKey="week" tick={{ fontSize: 11 }} />
           <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
           <RechartTooltip
-            formatter={(value: number, name: string) => [`${value}%`, name === 'attendance' ? 'Attendance' : 'Score']}
+            formatter={(value, name) => [`${value as number}%`, (name as string) === 'attendance' ? 'Attendance' : 'Score']}
           />
           <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
           <Bar dataKey="attendance" fill="#165DFF" fillOpacity={0.2} stroke="#165DFF" name="Attendance" />
