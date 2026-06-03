@@ -135,7 +135,7 @@ cd pc && npm run build   # 完整构建，等同于 Docker 里的行为
 
 ### 常见类型错误模式（已踩过的坑）
 - **Recharts `Tooltip formatter`**：参数类型是 `ValueType | undefined`，不是 `number`。用 `(v) => [(v as number).toFixed(1), 'label']`
-- **Lucide React 图标**：不接受 `style` prop，用 `color` prop 代替
+- **Lucide React 图标**：此版本只接受 `size` 和 `className`，不接受 `style` 或 `color`。需要着色时用 `<span style={{ color: '...' }}><Icon /></span>` 包裹
 - **AxiosHeaders**：`response.headers['content-type']` 类型宽，需 `as string` 转型
 
 ## Git Rules
