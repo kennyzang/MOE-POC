@@ -378,7 +378,7 @@ const DashboardPage = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                     <XAxis dataKey="week" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
-                    <Tooltip formatter={(v: number) => [`${v?.toFixed(1)}%`, t('dashboard.attendanceRate')]} contentStyle={{ borderRadius: 8 }} />
+                    <Tooltip formatter={(v) => [`${(v as number)?.toFixed(1)}%`, t('dashboard.attendanceRate')]} contentStyle={{ borderRadius: 8 }} />
                     <Area type="monotone" dataKey="rate" stroke="#003a8c" strokeWidth={2} fill="url(#principalGrad)" dot={{ r: 4, fill: '#003a8c' }} connectNulls />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -638,7 +638,7 @@ const DashboardPage = () => {
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false}
                     tickFormatter={(v: number) => `${v}%`} />
                   <Tooltip
-                    formatter={(v: number) => [`${v?.toFixed(1)}%`, t('dashboard.attendanceRate')]}
+                    formatter={(v) => [`${(v as number)?.toFixed(1)}%`, t('dashboard.attendanceRate')]}
                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e6eb', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
                   />
                   <Area type="monotone" dataKey="rate" stroke="#165DFF" strokeWidth={2}

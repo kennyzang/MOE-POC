@@ -188,7 +188,7 @@ const CounselorDashboardPage = () => {
                         <Cell key={index} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: number) => [v, 'Students']} />
+                    <Tooltip formatter={(v) => [v as number, 'Students']} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>

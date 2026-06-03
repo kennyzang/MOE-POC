@@ -185,7 +185,7 @@ const StudentDashboardPage = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                     <XAxis dataKey="week" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis domain={[0, 4]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toFixed(1)} />
-                    <Tooltip formatter={(v: number) => [v.toFixed(2), t('dashboard.gpa')]} />
+                    <Tooltip formatter={(v) => [(v as number).toFixed(2), t('dashboard.gpa')]} />
                     <Line type="monotone" dataKey="gpa" stroke="#fa8c16" strokeWidth={2} dot={{ r: 4, fill: '#fa8c16' }} connectNulls />
                   </LineChart>
                 </ResponsiveContainer>

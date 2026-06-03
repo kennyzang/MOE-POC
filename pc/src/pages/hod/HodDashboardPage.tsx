@@ -221,7 +221,7 @@ const HodDashboardPage = () => {
                   <PolarGrid />
                   <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
                   <Radar name="Avg Score" dataKey="score" stroke="#165DFF" fill="#165DFF" fillOpacity={0.25} />
-                  <Tooltip formatter={(v: number) => [`${v}/100`, 'Avg Score']} />
+                  <Tooltip formatter={(v) => [`${v as number}/100`, 'Avg Score']} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>

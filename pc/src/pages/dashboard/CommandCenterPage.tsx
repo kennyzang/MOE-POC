@@ -208,7 +208,7 @@ export default function CommandCenterPage() {
               >
                 <div className={styles.kpiHeader}>
                   <div className={styles.kpiIconWrap} style={{ background: widget.bg }}>
-                    <IconComp size={20} style={{ color: widget.color }} />
+                    <IconComp size={20} color={widget.color} />
                   </div>
                   <Space size={4}>
                     {(isWarning || isCritical) && (
