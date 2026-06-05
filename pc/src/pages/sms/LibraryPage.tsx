@@ -96,7 +96,7 @@ export default function LibraryPage() {
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>()
   const [availableOnly, setAvailableOnly] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const handleSearchChange = (v: string) => {
     setSearch(v)
     clearTimeout(searchTimer.current)

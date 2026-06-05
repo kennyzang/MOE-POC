@@ -620,17 +620,4 @@ const LeaveManagementPage = () => {
   )
 }
 
-// Minimal Row/Col shims for the substitute card layout
-const Row = ({ children, justify, align, style }: {
-  children: React.ReactNode
-  justify?: string; align?: string; style?: React.CSSProperties
-}) => (
-  <div style={{ display: 'flex', justifyContent: justify === 'space-between' ? 'space-between' : undefined, alignItems: align === 'middle' ? 'center' : undefined, ...style }}>
-    {children}
-  </div>
-)
-const Col = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-  <div style={style}>{children}</div>
-)
-
 export default LeaveManagementPage
