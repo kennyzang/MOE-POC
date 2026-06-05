@@ -2,7 +2,7 @@
 set -e
 
 echo "[MOE Backend] Pushing database schema..."
-npx prisma db push
+npx prisma db push --accept-data-loss
 
 echo "[MOE Backend] Checking if seed is needed..."
 USER_COUNT=$(node -e "
