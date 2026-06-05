@@ -357,7 +357,7 @@ const ParentChildrenPage = () => {
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                         <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                         <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
-                        <Tooltip formatter={(v: number) => [`${v?.toFixed(1)}%`, t('parentPortal.gradeOverview')]} />
+                        <Tooltip formatter={(v) => [`${(v as number)?.toFixed(1)}%`, t('parentPortal.gradeOverview')]} />
                         <Line type="monotone" dataKey="average" stroke="#165DFF" strokeWidth={2} dot={{ r: 5, fill: '#165DFF' }} />
                       </LineChart>
                     </ResponsiveContainer>

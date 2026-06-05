@@ -479,7 +479,7 @@ export default function SelfServicePortalPage() {
         onCancel={() => setReviewModal({ open: false, request: null })}
         onOk={() => {
           if (!openReq || !reviewStatus) { message.warning('Please select a decision'); return }
-          reviewMutation.mutate({ id: openReq.id, status: reviewStatus, reviewerRemarks, documentUrl: documentUrl || undefined })
+          reviewMutation.mutate({ id: openReq.id, status: reviewStatus, reviewerRemarks: reviewRemarks, documentUrl: documentUrl || undefined })
         }}
         okButtonProps={{ loading: reviewMutation.isPending, disabled: !reviewStatus }}
         okText="Confirm Decision"
