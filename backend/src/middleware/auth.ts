@@ -2,7 +2,13 @@ import { Request, Response, NextFunction } from 'express'
 import { verifyToken } from '../lib/jwt'
 
 export interface AuthRequest extends Request {
-  user?: { userId: string; role: string; username: string }
+  user?: {
+    userId: string
+    role: string
+    username: string
+    schoolId: string | null
+    systemAdmin: boolean
+  }
 }
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
@@ -28,3 +34,10 @@ export const requireRole =
     }
     next()
   }
+
+/** Returns a Prisma where-clause fragment scoping to the user's school.
+ *  System admins (schoolId=null, systemAdmin=true) see all schools. */
+export function schoolFilter(req: AuthRequest): { schoolId?: string } {
+  if (req.user?.systemAdmin || !req.user?.schoolId) return {}
+  return { schoolId: req.user.schoolId }
+}

@@ -20,6 +20,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarCheck, Plus, CheckSquare } from 'lucide-react'
+import SyncBadge from '../../components/SyncBadge'
 import dayjs from 'dayjs'
 import api from '../../lib/api'
 import type { Course, AttendanceSession, AttendanceRecord, Enrollment } from '../../types'
@@ -241,6 +242,7 @@ const AttendanceTrackingPage = () => {
             <Title level={4} style={{ margin: 0 }}>
               {t('attendance.title')}
             </Title>
+            <SyncBadge source="NIH" relativeTime="09:14" absoluteTime="Last pushed to National Information Hub at 09:14" />
           </Space>
         </Col>
         <Col>

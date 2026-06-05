@@ -3,6 +3,8 @@ import prisma from '../lib/prisma'
 import { authenticate, type AuthRequest } from '../middleware/auth'
 import { send, sendMany } from '../services/notificationService'
 import { calculateWorkingDays } from '../lib/leaveCalendar'
+import { USER_SELECT_BASIC, USER_SELECT_NAME } from '../lib/querySelects'
+import { principalDecide, cancelLeave, LeaveWorkflowError } from '../services/leaveWorkflowService'
 
 const router = Router()
 
@@ -179,7 +181,7 @@ router.post('/apply', authenticate, async (req: AuthRequest, res: Response) => {
         status: 'PENDING',
         documentUrl: documentUrl ?? null,
       },
-      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
+      include: { teacher: { include: { user: { select: USER_SELECT_BASIC } } } },
     })
 
     const hodUsers = await prisma.user.findMany({
@@ -215,54 +217,15 @@ router.patch('/:id/principal-approve', authenticate, async (req: AuthRequest, re
     }
 
     const leaveId = req.params.id as string
-
-    const application = await prisma.leaveApplication.findUnique({
-      where: { id: leaveId },
-      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
-    })
-    if (!application) { res.status(404).json({ success: false, message: 'Leave application not found' }); return }
-    if (application.status !== 'HOD_APPROVED') {
-      res.status(400).json({ success: false, message: 'Application must be HOD_APPROVED first' }); return
+    const result = await principalDecide(leaveId, decision, userId, remarks)
+    res.json({ success: true, data: result })
+  } catch (err) {
+    if (err instanceof LeaveWorkflowError) {
+      const statusCode = { NOT_FOUND: 404, INVALID_STATUS: 400, FORBIDDEN: 403 }[err.code]
+      res.status(statusCode).json({ success: false, message: err.message })
+    } else {
+      res.status(500).json({ success: false, message: 'Internal server error' })
     }
-
-    const newStatus = decision === 'APPROVE' ? 'PRINCIPAL_APPROVED' : 'REJECTED'
-
-    const updated = await prisma.leaveApplication.update({
-      where: { id: leaveId },
-      data: {
-        status: newStatus,
-        principalApproverId: userId,
-        principalApprovedAt: new Date(),
-        principalRemarks: remarks ?? null,
-      },
-    })
-
-    if (decision === 'APPROVE') {
-      const field = LEAVE_BALANCE_FIELD[application.leaveType]
-      if (field) {
-        const teacherRec = await prisma.teacher.findUnique({ where: { id: application.teacherId } })
-        if (teacherRec) {
-          const current = teacherRec[field] as number
-          await prisma.teacher.update({
-            where: { id: application.teacherId },
-            data: { [field]: Math.max(0, current - application.daysRequested) },
-          })
-        }
-      }
-    }
-
-    await send({
-      userId: application.teacher.user.id,
-      title: decision === 'APPROVE' ? 'Leave Approved by Principal' : 'Leave Rejected by Principal',
-      message: decision === 'APPROVE'
-        ? `Your ${application.leaveType} leave (${application.startDate.toDateString()} – ${application.endDate.toDateString()}) has been finally approved.`
-        : `Your leave application was rejected by the Principal.${remarks ? ' Reason: ' + remarks : ''}`,
-      type: decision === 'APPROVE' ? 'success' : 'warning',
-    })
-
-    res.json({ success: true, data: updated })
-  } catch {
-    res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })
 
@@ -271,65 +234,16 @@ router.patch('/:id/cancel', authenticate, async (req: AuthRequest, res: Response
   try {
     const { userId } = req.user!
     const { cancellationReason } = req.body as { cancellationReason?: string }
-
     const cancelId = req.params.id as string
-
-    const application = await prisma.leaveApplication.findUnique({
-      where: { id: cancelId },
-      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
-    })
-    if (!application) { res.status(404).json({ success: false, message: 'Leave application not found' }); return }
-
-    const ownTeacher = await prisma.teacher.findUnique({ where: { userId } })
-    const isOwner = ownTeacher?.id === application.teacherId
-    const isAdmin = ['admin', 'manager', 'principal'].includes(req.user!.role)
-    if (!isOwner && !isAdmin) { res.status(403).json({ success: false, message: 'Forbidden' }); return }
-
-    if (['CANCELLED', 'REJECTED'].includes(application.status)) {
-      res.status(400).json({ success: false, message: 'Cannot cancel a leave that is already cancelled or rejected' }); return
+    const result = await cancelLeave(cancelId, userId, cancellationReason)
+    res.json({ success: true, data: result })
+  } catch (err) {
+    if (err instanceof LeaveWorkflowError) {
+      const statusCode = { NOT_FOUND: 404, INVALID_STATUS: 400, FORBIDDEN: 403 }[err.code]
+      res.status(statusCode).json({ success: false, message: err.message })
+    } else {
+      res.status(500).json({ success: false, message: 'Internal server error' })
     }
-
-    // Restore balance if already fully approved
-    if (application.status === 'PRINCIPAL_APPROVED') {
-      const field = LEAVE_BALANCE_FIELD[application.leaveType]
-      if (field) {
-        const teacherRec = await prisma.teacher.findUnique({ where: { id: application.teacherId } })
-        if (teacherRec) {
-          const current = teacherRec[field] as number
-          await prisma.teacher.update({
-            where: { id: application.teacherId },
-            data: { [field]: current + application.daysRequested },
-          })
-        }
-      }
-    }
-
-    const updated = await prisma.leaveApplication.update({
-      where: { id: cancelId },
-      data: {
-        status: 'CANCELLED',
-        cancellationReason: cancellationReason ?? null,
-        cancelledAt: new Date(),
-        cancelledBy: userId,
-      },
-    })
-
-    const notifyUsers = await prisma.user.findMany({
-      where: { role: { in: ['hod', 'principal', 'admin', 'manager'] } },
-      select: { id: true },
-    })
-    await sendMany(
-      notifyUsers.map(u => u.id),
-      {
-        title: 'Leave Cancelled',
-        message: `${application.teacher.user.displayName}'s ${application.leaveType} leave has been cancelled.${cancellationReason ? ' Reason: ' + cancellationReason : ''}`,
-        type: 'warning',
-      },
-    )
-
-    res.json({ success: true, data: updated })
-  } catch {
-    res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })
 
@@ -353,7 +267,7 @@ router.get('/calendar', authenticate, async (req: AuthRequest, res: Response) =>
         endDate:   { gte: startDate },
       },
       include: {
-        teacher: { include: { user: { select: { id: true, displayName: true } } } },
+        teacher: { include: { user: { select: USER_SELECT_BASIC } } },
       },
       orderBy: { startDate: 'asc' },
     })
@@ -379,7 +293,7 @@ router.get('/today-count', authenticate, async (req: AuthRequest, res: Response)
         endDate:   { gte: today },
       },
       include: {
-        teacher: { include: { user: { select: { id: true, displayName: true } } } },
+        teacher: { include: { user: { select: USER_SELECT_BASIC } } },
       },
     })
 
@@ -423,7 +337,7 @@ router.get('/reports/on-mc', authenticate, async (req: AuthRequest, res: Respons
         endDate:   { gte: from },
       },
       include: {
-        teacher: { include: { user: { select: { displayName: true } } } },
+        teacher: { include: { user: { select: USER_SELECT_NAME } } },
       },
       orderBy: { startDate: 'asc' },
     })
@@ -474,7 +388,7 @@ router.get('/reports/all-leave', authenticate, async (req: AuthRequest, res: Res
         endDate:   { gte: from },
       },
       include: {
-        teacher: { include: { user: { select: { displayName: true } } } },
+        teacher: { include: { user: { select: USER_SELECT_NAME } } },
       },
       orderBy: { startDate: 'asc' },
     })

@@ -7,6 +7,7 @@ interface Notification {
   title: string
   message: string
   type: string
+  link?: string | null
   read: boolean
   createdAt: string
 }

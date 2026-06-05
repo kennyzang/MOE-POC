@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { USER_SELECT_NAME, USER_SELECT_BASIC } from '../lib/querySelects'
 
 const router = Router()
 
@@ -95,7 +96,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           prisma.courseAssignment.findMany({
             include: {
               course: { select: { name: true, code: true } },
-              teacher: { include: { user: { select: { displayName: true } } } },
+              teacher: { include: { user: { select: USER_SELECT_NAME } } },
             },
           }),
           prisma.attendanceSession.findMany({
@@ -185,7 +186,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           where: { gradeItem: { courseId: { in: courseIds } } },
           include: {
             gradeItem: { select: { name: true, courseId: true } },
-            student: { include: { user: { select: { displayName: true } } } },
+            student: { include: { user: { select: USER_SELECT_NAME } } },
           },
           orderBy: { gradedAt: 'desc' },
           take: 10,
@@ -199,7 +200,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
           select: {
             studentId: true,
             status: true,
-            student: { select: { user: { select: { displayName: true } }, className: true } },
+            student: { select: { user: { select: USER_SELECT_NAME }, className: true } },
           },
         }),
       ])
@@ -410,7 +411,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
             include: {
               student: {
                 include: {
-                  user: { select: { id: true, displayName: true } },
+                  user: { select: USER_SELECT_BASIC },
                   grades: { include: { gradeItem: { select: { maxScore: true, weight: true } } } },
                   attendances: { select: { status: true } },
                   riskScores: {

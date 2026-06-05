@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
-import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { authenticate, requireRole, schoolFilter, type AuthRequest } from '../middleware/auth'
+import { USER_SELECT_BASIC, USER_SELECT_CONTACT } from '../lib/querySelects'
 
 const router = Router()
 
@@ -14,7 +15,7 @@ router.get(
       const { search, gradeLevel, status } = req.query
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const where: any = {}
+      const where: any = { ...schoolFilter(req) }
 
       if (gradeLevel) where.gradeLevel = gradeLevel as string
       if (status) where.status = status as string
@@ -33,12 +34,7 @@ router.get(
             include: {
               teacher: {
                 include: {
-                  user: {
-                    select: {
-                      id: true,
-                      displayName: true,
-                    },
-                  },
+                  user: { select: USER_SELECT_BASIC },
                 },
               },
             },
@@ -62,7 +58,7 @@ router.get(
   requireRole('admin', 'manager', 'teacher'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const { id } = req.params
+      const id = req.params['id'] as string
 
       const course = await prisma.course.findUnique({
         where: { id },
@@ -71,7 +67,7 @@ router.get(
             include: {
               teacher: {
                 include: {
-                  user: { select: { id: true, displayName: true, email: true } },
+                  user: { select: USER_SELECT_CONTACT },
                 },
               },
             },
@@ -80,7 +76,7 @@ router.get(
             include: {
               student: {
                 include: {
-                  user: { select: { id: true, displayName: true } },
+                  user: { select: USER_SELECT_BASIC },
                   grades: {
                     include: { gradeItem: true },
                     where: { gradeItem: { courseId: id } },
@@ -149,7 +145,7 @@ router.post(
         return
       }
 
-      const existing = await prisma.course.findUnique({ where: { code } })
+      const existing = await prisma.course.findFirst({ where: { code, schoolId: req.user!.schoolId ?? null } })
       if (existing) {
         res.status(409).json({ success: false, message: 'Course code already exists' })
         return

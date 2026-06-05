@@ -632,7 +632,7 @@ router.patch(
   requireRole('admin', 'manager', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const { id } = req.params
+      const id = req.params.id as string
       const { title, date, endDate, type, description } = req.body
       const data: any = {}
       if (title !== undefined) data.title = title

@@ -72,6 +72,9 @@ model Student {
   libraryLoans    LibraryLoan[]
   libraryHolds    LibraryHold[]
   senRecord       SenStudent?
+  financialAids   FinancialAid[]
+  hostelRecord    HostelRecord?
+  busRecord       BusRecord?
 }
 
 // ─── Teacher ────────────────────────────────────────────────────
@@ -118,6 +121,7 @@ model Teacher {
   retirementApplication  RetirementApplication?
   awards                 Award[]
   postingHistory         PostingRecord[]
+  selfServiceRequests    SelfServiceRequest[]
 }
 
 // ─── Parent ─────────────────────────────────────────────────────
@@ -171,6 +175,111 @@ model School {
   rosters    ClassRoster[]
   fromTransitions StudentTransition[] @relation("TransitionFromSchool")
   toTransitions   StudentTransition[] @relation("TransitionToSchool")
+  licenses          SchoolLicense[]
+  inspections       SchoolInspection[]
+  circularTargets   CircularTarget[]
+  privEdProfile     PrivateSchoolProfile?
+}
+
+// ─── Private Education Oversight ─────────────────────────────────
+// Used by the Dept of Private Education (DPE) regulator role to track
+// licensing, inspections, and compliance circulars for PRIVATE schools.
+
+model PrivateSchoolProfile {
+  id                String   @id @default(uuid())
+  schoolId          String   @unique
+  registrationNo    String   @unique          // e.g. "DPE/2024/0142"
+  ownerOrganisation String
+  ownerContactName  String?
+  ownerContactPhone String?
+  ownerContactEmail String?
+  district          String                    // Brunei-Muara | Belait | Tutong | Temburong
+  curriculumModel   String                    // National | Cambridge | IB | Mixed
+  studentCapacity   Int      @default(0)
+  feeRangeBnd       String?                   // free text — e.g. "BND 4,000–6,000/yr"
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  school            School   @relation(fields: [schoolId], references: [id])
+}
+
+model SchoolLicense {
+  id                String   @id @default(uuid())
+  schoolId          String
+  licenseNumber     String   @unique          // e.g. "DPE-LIC-2024-0142"
+  issuedDate        DateTime
+  expiryDate        DateTime
+  status            String   @default("ACTIVE") // ACTIVE | EXPIRING_SOON | EXPIRED | SUSPENDED | REVOKED
+  authorisedLevels  String   @default("[]")  // JSON array of grade levels e.g. ["Year 7","Year 8"]
+  conditions        String?                   // Free-text conditions/restrictions
+  documentPath      String?                   // PDF of license certificate
+  issuedByUserId    String?                   // DPE officer who issued
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  school            School   @relation(fields: [schoolId], references: [id])
+  renewals          LicenseRenewal[]
+}
+
+model LicenseRenewal {
+  id                String   @id @default(uuid())
+  licenseId         String
+  previousExpiry    DateTime
+  newExpiry         DateTime
+  renewedAt         DateTime @default(now())
+  renewedByUserId   String
+  notes             String?
+
+  license           SchoolLicense @relation(fields: [licenseId], references: [id])
+}
+
+model SchoolInspection {
+  id                String   @id @default(uuid())
+  schoolId          String
+  inspectionDate    DateTime
+  inspectorUserId   String
+  inspectionType    String                    // ROUTINE | COMPLAINT | RENEWAL | FOLLOW_UP
+  rating            String?                   // EXCELLENT | GOOD | SATISFACTORY | NEEDS_IMPROVEMENT | UNSATISFACTORY
+  findings          String   @default("[]")  // JSON array of {category, severity, observation, recommendation}
+  followUpDueDate   DateTime?
+  resolved          Boolean  @default(false)
+  resolvedAt        DateTime?
+  reportPath        String?                   // PDF inspection report
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  school            School   @relation(fields: [schoolId], references: [id])
+}
+
+model ComplianceCircular {
+  id                String   @id @default(uuid())
+  circularNumber    String   @unique          // e.g. "DPE/CIR/2026/03"
+  title             String
+  bodyMarkdown      String
+  effectiveDate     DateTime
+  acknowledgementDueDate DateTime?
+  targetScope       String                    // ALL_PRIVATE | BY_DISTRICT | SPECIFIC
+  targetDistrict    String?                   // when scope = BY_DISTRICT
+  issuedByUserId    String
+  createdAt         DateTime @default(now())
+
+  targets           CircularTarget[]
+}
+
+model CircularTarget {
+  id                String   @id @default(uuid())
+  circularId        String
+  schoolId          String
+  acknowledgedAt    DateTime?
+  acknowledgedByUserId String?
+  acknowledgedNotes String?
+
+  circular          ComplianceCircular @relation(fields: [circularId], references: [id])
+  school            School   @relation(fields: [schoolId], references: [id])
+
+  @@unique([circularId, schoolId])
 }
 
 model Course {
@@ -337,20 +446,26 @@ model Admission {
   gender              String?
   icNumber            String?
   nationality         String?
+  homeAddress         String?  // SR-02
   parentName          String?
+  parentIcNumber      String?  // for status lookup without login (SR-05)
   parentPhone         String?
   parentEmail         String?
+  parentRelationship  String?  // father | mother | guardian
   guardianUserId      String?  // links to User (parent)
   gradeApplied        String   // which year/grade
   programmeStream     String?  // Academic / Vocational / Religious
   previousSchool      String?
   medicalConditions   String?
-  status              String   @default("draft") // draft, submitted, under_review, offer_issued, offer_accepted, rejected, waitlisted
+  specialNeeds        String?  // SR-02 special needs / other medical info
+  status              String   @default("draft") // draft, submitted, under_review, documents_required, offer_issued, offer_accepted, rejected, waitlisted
   eligibilityScore    Float?   // computed on submit: 0-100
+  eligibilityFlags    String?  // JSON: [{flag, passed, message}] — SR-09
   hasSiblingPriority  Boolean  @default(false)
   siblingName         String?
   siblingStudentId    String?  // matched Student.id
   docsComplete        Boolean  @default(false)
+  documentsRequiredNote String?  // admin note when requesting more documents
   previousAcademicAvg Float?   // 0-100, from report card
   offerLetterPath     String?  // path to generated PDF
   submittedAt         DateTime?
@@ -364,13 +479,15 @@ model Admission {
 }
 
 model AdmissionDocument {
-  id            String   @id @default(uuid())
-  admissionId   String
-  admission     Admission @relation(fields: [admissionId], references: [id])
-  type          String   // BIRTH_CERTIFICATE, REPORT_CARD, IC_COPY, OTHER
-  filename      String
-  filePath      String?
-  uploadedAt    DateTime @default(now())
+  id              String   @id @default(uuid())
+  admissionId     String
+  admission       Admission @relation(fields: [admissionId], references: [id])
+  type            String   // BIRTH_CERTIFICATE, STUDENT_IC, PARENT_IC, PHOTO, REPORT_CARD, MEDICAL, OTHER
+  filename        String
+  filePath        String?
+  docStatus       String   @default("pending")  // pending | verified | rejected | required
+  rejectionReason String?
+  uploadedAt      DateTime @default(now())
 }
 
 // ─── Finance (SMS) ──────────────────────────────────────────────
@@ -1244,4 +1361,150 @@ model SurveyAnswer {
 
   response   SurveyResponse  @relation(fields: [responseId], references: [id], onDelete: Cascade)
   question   SurveyQuestion  @relation(fields: [questionId], references: [id])
+}
+
+// ─── Module 5: Student Support Records ───────────────────────────
+
+model FinancialAid {
+  id                String   @id @default(uuid())
+  studentId         String
+  student           Student  @relation(fields: [studentId], references: [id])
+  aidType           String   // SCHOLARSHIP | BURSARY | MEAL_SUBSIDY | BOOK_ALLOWANCE | OTHER
+  amount            Float?
+  startDate         DateTime?
+  endDate           DateTime?
+  eligibilityStatus String   @default("active") // active | expired | suspended
+  approvedDate      DateTime?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model HostelRecord {
+  id               String   @id @default(uuid())
+  studentId        String   @unique
+  student          Student  @relation(fields: [studentId], references: [id])
+  hostelName       String
+  roomNumber       String?
+  checkInDate      DateTime?
+  emergencyContact String?
+  semester         String?
+  status           String   @default("active") // active | vacated
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model BusRecord {
+  id           String   @id @default(uuid())
+  studentId    String   @unique
+  student      Student  @relation(fields: [studentId], references: [id])
+  busRoute     String
+  busNumber    String?
+  provider     String?
+  pickupPoint  String?
+  dropoffPoint String?
+  semester     String?
+  status       String   @default("active") // active | inactive
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── Module 9: Notification Auto-Triggers ────────────────────────
+
+model StockItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String   @default("GENERAL") // STATIONERY | CLEANING | MEDICAL | SPORTS | GENERAL
+  unit        String   @default("pcs")     // pcs, reams, boxes, litres
+  quantity    Int      @default(0)
+  minQuantity Int      @default(5)
+  schoolId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NotificationTriggerLog {
+  id                  String   @id @default(uuid())
+  triggerType         String   // STUDENT_ABSENCE | GRADE_DROP | FEE_OVERDUE | CPD_DEADLINE | EXAM_REGISTRATION | LOW_STOCK | MAINTENANCE_DUE
+  ranAt               DateTime @default(now())
+  notificationsSent   Int      @default(0)
+  affectedCount       Int      @default(0)
+  status              String   @default("success") // success | partial | error
+  summary             String?  // brief description of what was triggered
+}
+
+// ─── Module 8: Parent-Teacher Communication ───────────────────────
+
+model ConsentForm {
+  id              String    @id @default(uuid())
+  title           String
+  description     String
+  type            String    @default("OTHER") // FIELD_TRIP | PHOTO_RELEASE | POLICY_ACKNOWLEDGMENT | OTHER
+  schoolId        String?
+  createdById     String    // User.id
+  status          String    @default("DRAFT") // DRAFT | ACTIVE | CLOSED
+  dueDate         DateTime?
+  targetGradeLevel String?  // null = all grades; "Year 7" = specific grade
+  targetStudentIds String?  // JSON array of Student IDs; null = all in grade/school
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  recipients      ConsentFormRecipient[]
+}
+
+model ConsentFormRecipient {
+  id                  String    @id @default(uuid())
+  formId              String
+  form                ConsentForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  parentUserId        String    // User.id of parent
+  studentId           String    // which student this is for
+  acknowledgedAt      DateTime?
+  acknowledgmentNote  String?
+  createdAt           DateTime  @default(now())
+
+  @@unique([formId, parentUserId, studentId])
+}
+
+// ─── Module 7: Self-Service Educator Portal ───────────────────────
+
+model SelfServiceRequest {
+  id             String   @id @default(uuid())
+  teacherId      String
+  teacher        Teacher  @relation(fields: [teacherId], references: [id])
+  type           String   // TRANSFER | PROMOTION | TRAINING | DOCUMENT | PROFILE_UPDATE
+
+  // TRANSFER
+  preferredSchools     String?  // JSON array of school names
+  transferReason       String?
+  transferEffectiveDate DateTime?
+
+  // PROMOTION
+  currentPosition  String?
+  desiredPosition  String?
+  promotionJustification String?
+
+  // TRAINING
+  courseName     String?
+  courseProvider String?
+  courseDates    String?
+  courseCost     Float?
+  courseJustification String?
+
+  // DOCUMENT REQUEST
+  documentType   String?  // EMPLOYMENT_CERTIFICATE | SALARY_SLIP | SERVICE_RECORD | OTHER
+
+  // PROFILE_UPDATE — JSON diff of proposed changes
+  profileChanges String?  // JSON: {field, oldValue, newValue, requiresApproval}[]
+  isSensitive    Boolean  @default(false)  // true = requires admin approval
+
+  // Common workflow
+  notes          String?
+  documentUrl    String?  // uploaded supporting doc
+  status         String   @default("submitted") // submitted | under_review | approved | rejected
+  reviewedById   String?
+  reviewedAt     DateTime?
+  reviewerRemarks String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

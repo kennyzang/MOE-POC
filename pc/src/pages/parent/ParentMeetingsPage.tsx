@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Card, Button, Select, DatePicker, Tag, List, Space, Typography,
-  Spin, Empty, Modal, message, Row, Col,
+  Spin, Empty, Modal, message, Row, Col, Tooltip,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -13,9 +13,17 @@ const { Title, Text } = Typography
 
 interface Teacher {
   teacherId: string
+  teacherUserId: string
   teacherName: string
   teacherEmail: string
   courses: string[]
+}
+
+interface Child {
+  id: string
+  displayName: string
+  gradeLevel: string | null
+  classSection: string | null
 }
 
 interface TimeSlot { startTime: string; endTime: string }
@@ -31,6 +39,15 @@ interface Meeting {
   student: { user: { displayName: string } }
 }
 
+const ALL_SLOTS = [
+  { startTime: '14:00', endTime: '14:30' },
+  { startTime: '14:30', endTime: '15:00' },
+  { startTime: '15:00', endTime: '15:30' },
+  { startTime: '15:30', endTime: '16:00' },
+  { startTime: '16:00', endTime: '16:30' },
+  { startTime: '16:30', endTime: '17:00' },
+]
+
 const STATUS_COLORS: Record<string, string> = { SCHEDULED: 'blue', COMPLETED: 'green', CANCELLED: 'default' }
 
 const ParentMeetingsPage = () => {
@@ -38,6 +55,7 @@ const ParentMeetingsPage = () => {
   const queryClient = useQueryClient()
   const [bookOpen, setBookOpen] = useState(false)
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | undefined>()
+  const [selectedChildId, setSelectedChildId] = useState<string | undefined>()
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [purpose, setPurpose] = useState('')
@@ -58,6 +76,14 @@ const ParentMeetingsPage = () => {
     },
   })
 
+  const { data: children = [] } = useQuery({
+    queryKey: ['parent-children'],
+    queryFn: async () => {
+      const { data } = await api.get('/parent/children')
+      return data.data as Child[]
+    },
+  })
+
   const { data: availableSlots = [], isFetching: slotsLoading } = useQuery({
     queryKey: ['meeting-slots', selectedTeacherId, selectedDate?.format('YYYY-MM-DD')],
     queryFn: async () => {
@@ -69,11 +95,20 @@ const ParentMeetingsPage = () => {
     enabled: !!selectedTeacherId && !!selectedDate,
   })
 
+  const availableSet = new Set(availableSlots.map((s) => s.startTime))
+
+  const closeModal = () => {
+    setBookOpen(false)
+    setSelectedTeacherId(undefined)
+    setSelectedChildId(undefined)
+    setSelectedDate(null)
+    setSelectedSlot(null)
+    setPurpose('')
+  }
+
   const bookMutation = useMutation({
     mutationFn: async () => {
-      const childId = await api.get('/dashboard/stats').then(
-        (r) => (r.data.data.children as Array<{ id: string }>)[0]?.id,
-      )
+      const childId = selectedChildId ?? children[0]?.id
       const { data } = await api.post('/ems/meetings/book', {
         teacherId: selectedTeacherId,
         studentId: childId,
@@ -87,11 +122,7 @@ const ParentMeetingsPage = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['parent-meetings'] })
       message.success(t('parentPortal.meetingBooked', { defaultValue: 'Meeting booked successfully!' }))
-      setBookOpen(false)
-      setSelectedTeacherId(undefined)
-      setSelectedDate(null)
-      setSelectedSlot(null)
-      setPurpose('')
+      closeModal()
     },
     onError: () => message.error(t('parentPortal.meetingBookFailed', { defaultValue: 'Could not book meeting. Please try another slot.' })),
   })
@@ -119,7 +150,6 @@ const ParentMeetingsPage = () => {
         <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
       ) : (
         <>
-          {/* Upcoming */}
           <Card title={<Space><Clock size={15} />{t('parentPortal.upcomingMeetings', { defaultValue: 'Upcoming Meetings' })}</Space>}>
             {upcoming.length === 0 ? (
               <Empty description={t('parentPortal.noMeetings', { defaultValue: 'No upcoming meetings. Book one with your child\'s teacher.' })} />
@@ -145,7 +175,6 @@ const ParentMeetingsPage = () => {
             )}
           </Card>
 
-          {/* Past */}
           {past.length > 0 && (
             <Card title={t('parentPortal.pastMeetings', { defaultValue: 'Past Meetings' })}>
               <List
@@ -169,15 +198,14 @@ const ParentMeetingsPage = () => {
         </>
       )}
 
-      {/* Book Meeting Modal */}
       <Modal
         title={<Space><Users size={16} />{t('parentPortal.bookMeeting', { defaultValue: 'Book a Meeting' })}</Space>}
         open={bookOpen}
-        onCancel={() => setBookOpen(false)}
+        onCancel={closeModal}
         onOk={() => selectedSlot && bookMutation.mutate()}
         okText={t('parentPortal.confirmBooking', { defaultValue: 'Confirm Booking' })}
         okButtonProps={{ disabled: !selectedSlot, loading: bookMutation.isPending }}
-        width={480}
+        width={500}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
@@ -193,6 +221,20 @@ const ParentMeetingsPage = () => {
               }))}
             />
           </div>
+
+          {children.length > 1 && (
+            <div>
+              <Text style={{ fontSize: 12, color: '#86909c' }}>Child</Text>
+              <Select
+                style={{ width: '100%', marginTop: 4 }}
+                placeholder="Select child"
+                value={selectedChildId ?? children[0]?.id}
+                onChange={setSelectedChildId}
+                options={children.map((c) => ({ value: c.id, label: c.displayName }))}
+              />
+            </div>
+          )}
+
           <div>
             <Text style={{ fontSize: 12, color: '#86909c' }}>{t('parentPortal.selectDate', { defaultValue: 'Select Date' })}</Text>
             <DatePicker
@@ -202,31 +244,42 @@ const ParentMeetingsPage = () => {
               onChange={(d) => { setSelectedDate(d); setSelectedSlot(null) }}
             />
           </div>
+
           {selectedTeacherId && selectedDate && (
             <div>
-              <Text style={{ fontSize: 12, color: '#86909c' }}>{t('parentPortal.availableSlots', { defaultValue: 'Available Slots' })}</Text>
+              <Text style={{ fontSize: 12, color: '#86909c' }}>
+                {t('parentPortal.availableSlots', { defaultValue: 'Time Slots' })}
+                <span style={{ marginLeft: 8, fontSize: 11, color: '#aaa' }}>(greyed = unavailable)</span>
+              </Text>
               {slotsLoading ? (
                 <div style={{ textAlign: 'center', padding: 12 }}><Spin size="small" /></div>
-              ) : availableSlots.length === 0 ? (
-                <Text type="secondary" style={{ fontSize: 12 }}>No slots available on this date.</Text>
               ) : (
                 <Row gutter={[8, 8]} style={{ marginTop: 6 }}>
-                  {availableSlots.map((slot) => (
-                    <Col key={`${slot.startTime}-${slot.endTime}`} span={8}>
-                      <Button
-                        size="small"
-                        block
-                        type={selectedSlot?.startTime === slot.startTime ? 'primary' : 'default'}
-                        onClick={() => setSelectedSlot(slot)}
-                      >
-                        {slot.startTime}–{slot.endTime}
-                      </Button>
-                    </Col>
-                  ))}
+                  {ALL_SLOTS.map((slot) => {
+                    const available = availableSet.has(slot.startTime)
+                    const isSelected = selectedSlot?.startTime === slot.startTime
+                    return (
+                      <Col key={slot.startTime} span={8}>
+                        <Tooltip title={!available ? 'This slot is already booked' : undefined}>
+                          <Button
+                            size="small"
+                            block
+                            disabled={!available}
+                            type={isSelected ? 'primary' : 'default'}
+                            style={!available ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+                            onClick={() => available && setSelectedSlot(slot)}
+                          >
+                            {slot.startTime}–{slot.endTime}
+                          </Button>
+                        </Tooltip>
+                      </Col>
+                    )
+                  })}
                 </Row>
               )}
             </div>
           )}
+
           <div>
             <Text style={{ fontSize: 12, color: '#86909c' }}>{t('parentPortal.meetingPurpose', { defaultValue: 'Purpose (optional)' })}</Text>
             <input

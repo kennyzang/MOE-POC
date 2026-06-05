@@ -1,6 +1,8 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { USER_SELECT_NAME, USER_SELECT_CONTACT } from '../lib/querySelects'
+import { validateTransition, COUNSELOR_CASE_TRANSITIONS } from '../lib/transitions'
 
 const router = Router()
 
@@ -34,7 +36,7 @@ router.get(
         include: {
           student: {
             include: {
-              user: { select: { displayName: true } },
+              user: { select: USER_SELECT_NAME },
               riskScores: {
                 orderBy: { computedAt: 'desc' },
                 take: 1,
@@ -95,7 +97,7 @@ router.get(
         include: {
           student: {
             include: {
-              user: { select: { displayName: true } },
+              user: { select: USER_SELECT_NAME },
               riskScores: {
                 orderBy: { computedAt: 'desc' },
                 take: 1,
@@ -224,6 +226,12 @@ router.patch(
 
       const updateData: Record<string, unknown> = { updatedAt: new Date() }
       if (status) {
+        const existing = await prisma.counselorCase.findUnique({ where: { id }, select: { status: true } })
+        if (!existing) { res.status(404).json({ success: false, message: 'Case not found' }); return }
+        const transitionResult = validateTransition(COUNSELOR_CASE_TRANSITIONS, existing.status, status)
+        if (!transitionResult.ok) {
+          res.status(400).json({ success: false, message: transitionResult.reason }); return
+        }
         updateData.status = status
         if (status === 'RESOLVED' || status === 'CLOSED') {
           updateData.resolvedAt = new Date()

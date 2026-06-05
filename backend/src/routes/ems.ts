@@ -4,7 +4,9 @@ import { authenticate, type AuthRequest } from '../middleware/auth'
 import { send, sendMany } from '../services/notificationService'
 import { sendPushToUser } from '../services/pushService'
 import { broadcast } from './events'
+import { hodApprove, LeaveWorkflowError } from '../services/leaveWorkflowService'
 import { getConfigFloat } from '../lib/config'
+import { calculateWorkingDays } from '../lib/leaveCalendar'
 
 const router = Router()
 
@@ -367,7 +369,7 @@ router.post('/leave-applications', authenticate, async (req: AuthRequest, res: R
 
     const start = new Date(startDate)
     const end = new Date(endDate)
-    const daysRequested = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (24 * 3600 * 1000)) + 1)
+    const daysRequested = await calculateWorkingDays(start, end)
 
     // Balance check before creating application
     const teacherForBalance = await prisma.teacher.findUnique({ where: { id: resolvedTeacherId } })
@@ -431,69 +433,16 @@ router.post('/leave-applications/:id/approve', authenticate, async (req: AuthReq
       res.status(400).json({ success: false, message: 'decision must be APPROVE or REJECT' }); return
     }
 
-    const application = await prisma.leaveApplication.findUnique({
-      where: { id },
-      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
-    })
-    if (!application) { res.status(404).json({ success: false, message: 'Leave application not found' }); return }
-
-    const newStatus = decision === 'APPROVE' ? 'HOD_APPROVED' : 'REJECTED'
-
-    const updated = await prisma.leaveApplication.update({
-      where: { id },
-      data: {
-        status: newStatus,
-        hodApproverId: userId,
-        hodApprovedAt: new Date(),
-        hodRemarks: notes,
-      },
-      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
-    })
-
-    // Notify the teacher
-    await send({
-      userId: updated.teacher.user.id,
-      title: decision === 'APPROVE' ? 'Leave Approved' : 'Leave Rejected',
-      message: decision === 'APPROVE'
-        ? `Your ${updated.leaveType} leave from ${updated.startDate.toDateString()} to ${updated.endDate.toDateString()} has been approved.`
-        : `Your ${updated.leaveType} leave application has been rejected. Reason: ${notes ?? 'No reason provided'}`,
-      type: decision === 'APPROVE' ? 'success' : 'warning',
-    })
-
-    // Deduct leave balance on approval
-    if (decision === 'APPROVE') {
-      const teacherRec = await prisma.teacher.findUnique({ where: { id: application.teacherId } })
-      if (teacherRec) {
-        const balanceField = application.leaveType === 'ANNUAL' ? 'annualLeaveBalance' :
-                             application.leaveType === 'MEDICAL' ? 'medicalLeaveBalance' : null
-        if (balanceField) {
-          const current = teacherRec[balanceField as 'annualLeaveBalance' | 'medicalLeaveBalance'] ?? 14
-          await prisma.teacher.update({
-            where: { id: application.teacherId },
-            data: { [balanceField]: Math.max(0, current - application.daysRequested) },
-          })
-        }
-      }
+    const result = await hodApprove(id, decision, userId, notes)
+    res.json({ success: true, data: result })
+  } catch (err) {
+    if (err instanceof LeaveWorkflowError) {
+      const statusCode = { NOT_FOUND: 404, INVALID_STATUS: 400, FORBIDDEN: 403 }[err.code]
+      res.status(statusCode).json({ success: false, message: err.message })
+    } else {
+      console.error('Error approving leave application:', err)
+      res.status(500).json({ success: false, message: 'Internal server error' })
     }
-
-    // If approved, notify principal that substitute is needed
-    if (decision === 'APPROVE') {
-      const principalUsers = await prisma.user.findMany({ where: { role: 'principal' }, select: { id: true } })
-      await sendMany(
-        principalUsers.map(u => u.id),
-        {
-          title: 'Substitute Assignment Needed',
-          message: `${updated.teacher.user.displayName}'s leave (${updated.startDate.toDateString()}–${updated.endDate.toDateString()}) has been approved. Please assign a substitute.`,
-          type: 'info',
-        },
-      )
-      broadcast('dashboard', 'dashboard.staff.changed', {})
-    }
-
-    res.json({ success: true, data: updated })
-  } catch (error) {
-    console.error('Error approving leave application:', error)
-    res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })
 

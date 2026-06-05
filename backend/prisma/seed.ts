@@ -60,80 +60,174 @@ const STUDENTS_PER_YEAR = 576
 async function main() {
   console.log('Seeding MOE SERPS database (EXACT SPEC numbers)...')
 
-  // ─── Named users (all individual creates for variable capture) ────────────
+  // ─── Schools (create first so we can assign schoolId to users) ────────────
+
+  const smhk = await prisma.school.create({
+    data: {
+      name: 'Sekolah Menengah Hj Kamaruddin',
+      code: 'SMHK',
+      authority: 'MOE',
+      schoolType: 'secondary',
+      address: 'Jalan Kota Batu, Bandar Seri Begawan, Brunei',
+      phone: '+673-2234567',
+      principal: 'Hjh Rashidah Binti Mohamad',
+      gradeLevels: JSON.stringify(['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11']),
+      programmes: JSON.stringify(['Academic', 'Science', 'Arts', 'Vocational']),
+      classLetters: JSON.stringify(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O']),
+      establishedYear: 1978,
+    },
+  })
+
+  const srpb = await prisma.school.create({
+    data: {
+      name: 'Sekolah Rendah Pusat Bandar',
+      code: 'SRPB',
+      authority: 'MOE',
+      schoolType: 'primary',
+      address: 'Jalan Sultan, Bandar Seri Begawan, Brunei',
+      phone: '+673-2221234',
+      principal: 'Pg Hajah Noraini Binti Pg Damit',
+      gradeLevels: JSON.stringify(['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6']),
+      programmes: JSON.stringify(['Standard']),
+      classLetters: JSON.stringify(['A', 'B', 'C', 'D', 'E']),
+      establishedYear: 1965,
+    },
+  })
+
+  const smab = await prisma.school.create({
+    data: {
+      name: 'Sekolah Menengah Agama Berakas',
+      code: 'SMAB',
+      authority: 'MORA',
+      schoolType: 'religious_secondary',
+      address: 'Jalan Berakas, Brunei-Muara, Brunei',
+      phone: '+673-2384567',
+      principal: 'Ustaz Hj Mahyuddin Bin Hj Sarawak',
+      gradeLevels: JSON.stringify(['Tingkatan 1', 'Tingkatan 2', 'Tingkatan 3', 'Tingkatan 4', 'Tingkatan 5']),
+      programmes: JSON.stringify(['Academic', 'Religious']),
+      classLetters: JSON.stringify(['Alif', 'Ba', 'Ta', 'Tha']),
+      establishedYear: 1985,
+    },
+  })
+
+  const isb = await prisma.school.create({
+    data: {
+      name: 'International School of Brunei',
+      code: 'ISB',
+      authority: 'PRIVATE',
+      schoolType: 'secondary',
+      address: 'Jalan Tungku Link, Gadong, Brunei',
+      phone: '+673-2421000',
+      principal: 'Ms. Eleanor Whitfield',
+      gradeLevels: JSON.stringify(['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12']),
+      programmes: JSON.stringify(['IB', 'Cambridge', 'National']),
+      classLetters: JSON.stringify(['Alpha', 'Beta', 'Gamma', 'Delta']),
+      establishedYear: 1994,
+    },
+  })
+
+  // ─── System Admin (no school — cross-school access) ───────────────────────
+
+  await prisma.user.create({
+    data: { username: 'sysadmin', password: hash('sysadmin123'), displayName: 'System Administrator', email: 'sysadmin@moe.gov.bn', role: 'admin', systemAdmin: true },
+  })
+
+  // ─── Named users (SMHK school) ────────────────────────────────────────────
 
   const adminUser = await prisma.user.create({
-    data: { username: 'admin', password: hash('admin123'), displayName: 'System Admin', email: 'admin@moe.edu.bn', role: 'admin' },
+    data: { username: 'admin', password: hash('admin123'), displayName: 'SMHK Admin', email: 'admin@smhk.edu.bn', role: 'admin', schoolId: smhk.id },
   })
 
   const principalUser = await prisma.user.create({
-    data: { username: 'principal', password: hash('principal123'), displayName: 'Hjh Rashidah Binti Mohamad', email: 'principal@moe.edu.bn', role: 'principal' },
+    data: { username: 'principal', password: hash('principal123'), displayName: 'Hjh Rashidah Binti Mohamad', email: 'principal@smhk.edu.bn', role: 'principal', schoolId: smhk.id },
   })
 
   const hodUser = await prisma.user.create({
-    data: { username: 'hod01', password: hash('hod123'), displayName: 'Dr. Azman Bin Ishak', email: 'azman@moe.edu.bn', role: 'hod' },
+    data: { username: 'hod01', password: hash('hod123'), displayName: 'Dr. Azman Bin Ishak', email: 'azman@smhk.edu.bn', role: 'hod', schoolId: smhk.id },
   })
 
   await prisma.user.create({
-    data: { username: 'manager', password: hash('Demo@2026'), displayName: 'Hj Kamaruddin', email: 'kamaruddin@moe.edu.bn', role: 'manager' },
+    data: { username: 'manager', password: hash('Demo@2026'), displayName: 'Hj Kamaruddin', email: 'kamaruddin@smhk.edu.bn', role: 'manager', schoolId: smhk.id },
   })
 
   await prisma.user.create({
-    data: { username: 'finance', password: hash('finance123'), displayName: 'Finance Officer', email: 'finance@moe.edu.bn', role: 'finance' },
+    data: { username: 'finance', password: hash('finance123'), displayName: 'Finance Officer', email: 'finance@smhk.edu.bn', role: 'finance', schoolId: smhk.id },
   })
 
   await prisma.user.create({
-    data: { username: 'admission', password: hash('admission123'), displayName: 'Cik Nurul Binti Ali', email: 'admission@moe.edu.bn', role: 'admissions' },
+    data: { username: 'admission', password: hash('admission123'), displayName: 'Cik Nurul Binti Ali', email: 'admission@smhk.edu.bn', role: 'admissions', schoolId: smhk.id },
   })
 
   await prisma.user.create({
-    data: { username: 'admissions', password: hash('Demo@2026'), displayName: 'Admissions Officer', email: 'admissions@moe.edu.bn', role: 'admissions' },
+    data: { username: 'admissions', password: hash('Demo@2026'), displayName: 'Admissions Officer', email: 'admissions@smhk.edu.bn', role: 'admissions', schoolId: smhk.id },
   })
 
   // Teachers
   const drsitiUser = await prisma.user.create({
-    data: { username: 'drsiti', password: hash('Demo@2026'), displayName: 'Dr. Siti Nurhaliza', email: 'siti@moe.edu.bn', role: 'teacher' },
+    data: { username: 'drsiti', password: hash('Demo@2026'), displayName: 'Dr. Siti Nurhaliza', email: 'siti@smhk.edu.bn', role: 'teacher', schoolId: smhk.id },
   })
 
   const faizalUser = await prisma.user.create({
-    data: { username: 'faizal', password: hash('Demo@2026'), displayName: 'Mohd Faizal Bin Aziz', email: 'faizal@moe.edu.bn', role: 'teacher' },
+    data: { username: 'faizal', password: hash('Demo@2026'), displayName: 'Mohd Faizal Bin Aziz', email: 'faizal@smhk.edu.bn', role: 'teacher', schoolId: smhk.id },
   })
 
   // teacher01 = Ms. Aminah (CPD 18h)
   const teacher01User = await prisma.user.create({
-    data: { username: 'teacher01', password: hash('teacher123'), displayName: 'Ms. Aminah Binti Hassan', email: 'aminah@moe.edu.bn', role: 'teacher' },
+    data: { username: 'teacher01', password: hash('teacher123'), displayName: 'Ms. Aminah Binti Hassan', email: 'aminah@smhk.edu.bn', role: 'teacher', schoolId: smhk.id },
   })
 
   // Counselor - Ms. Farah
   const farahUser = await prisma.user.create({
-    data: { username: 'farah', password: hash('Demo@2026'), displayName: 'Ms. Farah Binti Aziz', email: 'farah@moe.edu.bn', role: 'counselor' },
+    data: { username: 'farah', password: hash('Demo@2026'), displayName: 'Ms. Farah Binti Aziz', email: 'farah@smhk.edu.bn', role: 'counselor', schoolId: smhk.id },
   })
 
   // Demo script personas — matches MOE_SERPS_POC_Demo_v3 run book accounts
   const sitiUser = await prisma.user.create({
-    data: { username: 'parent.siti', password: hash('Demo@2026'), displayName: 'Mrs. Siti Binti Mohamed', email: 'siti.mohamed@gmail.com', role: 'parent' },
+    data: { username: 'parent.siti', password: hash('Demo@2026'), displayName: 'Mrs. Siti Binti Mohamed', email: 'siti.mohamed@gmail.com', role: 'parent', schoolId: smhk.id },
   })
 
   const ridwanUser = await prisma.user.create({
-    data: { username: 'teacher.ridwan', password: hash('Demo@2026'), displayName: 'Mr. Ridwan Bin Jamal', email: 'ridwan@moe.edu.bn', role: 'teacher' },
+    data: { username: 'teacher.ridwan', password: hash('Demo@2026'), displayName: 'Mr. Ridwan Bin Jamal', email: 'ridwan@smhk.edu.bn', role: 'teacher', schoolId: smhk.id },
   })
 
-  // Students
+  // Students (SMHK)
   const student001User = await prisma.user.create({
-    data: { username: 'student001', password: hash('student123'), displayName: 'Ahmad Bin Abdullah', email: 'ahmad@student.moe.edu.bn', role: 'student' },
+    data: { username: 'student001', password: hash('student123'), displayName: 'Ahmad Bin Abdullah', email: 'ahmad@student.smhk.edu.bn', role: 'student', schoolId: smhk.id },
   })
 
   const adamUser = await prisma.user.create({
-    data: { username: 'adam', password: hash('Demo@2026'), displayName: 'Adam Bin Haris', email: 'adam@student.moe.edu.bn', role: 'student' },
+    data: { username: 'adam', password: hash('Demo@2026'), displayName: 'Adam Bin Haris', email: 'adam@student.smhk.edu.bn', role: 'student', schoolId: smhk.id },
   })
 
   const nurulUser = await prisma.user.create({
-    data: { username: 'nurul', password: hash('Demo@2026'), displayName: 'Nurul Binti Rahman', email: 'nurul@student.moe.edu.bn', role: 'student' },
+    data: { username: 'nurul', password: hash('Demo@2026'), displayName: 'Nurul Binti Rahman', email: 'nurul@student.smhk.edu.bn', role: 'student', schoolId: smhk.id },
+  })
+
+  // Year 9-12 named student users
+  const fatinUser = await prisma.user.create({
+    data: { username: 'fatin', password: hash('Demo@2026'), displayName: 'Fatin Binti Mohd Noor', email: 'fatin@student.smhk.edu.bn', role: 'student', schoolId: smhk.id },
+  })
+  const nadiaY10User = await prisma.user.create({
+    data: { username: 'nadia_y10', password: hash('Demo@2026'), displayName: 'Nadia Binti Yusof', email: 'nadia.y10@student.smhk.edu.bn', role: 'student', schoolId: smhk.id },
+  })
+  const hanaY11User = await prisma.user.create({
+    data: { username: 'hana_y11', password: hash('Demo@2026'), displayName: 'Hana Binti Ibrahim', email: 'hana.y11@student.smhk.edu.bn', role: 'student', schoolId: smhk.id },
+  })
+  const danialY12User = await prisma.user.create({
+    data: { username: 'danial_y12', password: hash('Demo@2026'), displayName: 'Danial Bin Ahmad', email: 'danial.y12@student.smhk.edu.bn', role: 'student', schoolId: smhk.id },
+  })
+
+  // Year 9-12 specialist teachers
+  const hassanUser = await prisma.user.create({
+    data: { username: 'hassan', password: hash('Demo@2026'), displayName: 'Mr. Hassan Bin Razak', email: 'hassan@smhk.edu.bn', role: 'teacher', schoolId: smhk.id },
+  })
+  const zuraidahUser = await prisma.user.create({
+    data: { username: 'zuraidah', password: hash('Demo@2026'), displayName: 'Ms. Zuraidah Binti Hamid', email: 'zuraidah@smhk.edu.bn', role: 'teacher', schoolId: smhk.id },
   })
 
   // Parents
   const parent01User = await prisma.user.create({
-    data: { username: 'parent01', password: hash('parent123'), displayName: 'Hj Abdullah Bin Mahmud', email: 'abdullah@email.com', role: 'parent' },
+    data: { username: 'parent01', password: hash('parent123'), displayName: 'Hj Abdullah Bin Mahmud', email: 'abdullah@email.com', role: 'parent', schoolId: smhk.id },
   })
 
   const fatimahUser = await prisma.user.create({
@@ -143,79 +237,31 @@ async function main() {
   // ─── Teacher records ──────────────────────────────────────────────────────
 
   const drsiti = await prisma.teacher.create({
-    data: {
-      userId: drsitiUser.id,
-      staffId: 'T2026001',
-      designation: 'Senior Teacher',
-      department: 'Science & Mathematics',
-      qualification: 'PhD in Education',
-      subjects: 'Mathematics,Physics',
-      joinDate: new Date('2020-01-15'),
-      cpdHours: 25,
-      cpdTarget: 20,
-      employmentStatus: 'active',
-    },
+    data: { userId: drsitiUser.id, staffId: 'T2026001', designation: 'Senior Teacher', department: 'Science & Mathematics', qualification: 'PhD in Education', subjects: 'Mathematics,Physics', joinDate: new Date('2020-01-15'), cpdHours: 25, cpdTarget: 20, employmentStatus: 'active', schoolId: smhk.id },
   })
 
   const faizal = await prisma.teacher.create({
-    data: {
-      userId: faizalUser.id,
-      staffId: 'T2026002',
-      designation: 'Teacher',
-      department: 'Languages',
-      qualification: 'Masters in English Literature',
-      subjects: 'English,Bahasa Melayu',
-      joinDate: new Date('2021-06-01'),
-      cpdHours: 12,
-      cpdTarget: 20,
-      employmentStatus: 'onLeave',
-    },
+    data: { userId: faizalUser.id, staffId: 'T2026002', designation: 'Teacher', department: 'Languages', qualification: 'Masters in English Literature', subjects: 'English,Bahasa Melayu', joinDate: new Date('2021-06-01'), cpdHours: 12, cpdTarget: 20, employmentStatus: 'onLeave', schoolId: smhk.id },
   })
 
-  // Ms. Aminah — CPD = 18h (6 + 8 + 4)
   const teacher01 = await prisma.teacher.create({
-    data: {
-      userId: teacher01User.id,
-      staffId: 'T2026003',
-      designation: 'Teacher',
-      department: 'Science & Mathematics',
-      qualification: 'BSc Mathematics, Universiti Brunei Darussalam',
-      subjects: 'Mathematics,Science',
-      joinDate: new Date('2018-08-01'),
-      cpdHours: 18,
-      cpdTarget: 20,
-      employmentStatus: 'active',
-    },
+    data: { userId: teacher01User.id, staffId: 'T2026003', designation: 'Teacher', department: 'Science & Mathematics', qualification: 'BSc Mathematics, Universiti Brunei Darussalam', subjects: 'Mathematics,Science', joinDate: new Date('2018-08-01'), cpdHours: 18, cpdTarget: 20, employmentStatus: 'active', schoolId: smhk.id },
   })
 
-  // Mr. Ridwan — substitute Maths teacher (Year 8), free when Aminah teaches Year 7
   const ridwan = await prisma.teacher.create({
-    data: {
-      userId: ridwanUser.id,
-      staffId: 'T2026004',
-      designation: 'Teacher',
-      department: 'Science & Mathematics',
-      qualification: 'BSc Mathematics, Universiti Teknologi Brunei',
-      subjects: 'Mathematics,Science',
-      joinDate: new Date('2022-01-10'),
-      cpdHours: 14,
-      cpdTarget: 20,
-      employmentStatus: 'active',
-    },
+    data: { userId: ridwanUser.id, staffId: 'T2026004', designation: 'Teacher', department: 'Science & Mathematics', qualification: 'BSc Mathematics, Universiti Teknologi Brunei', subjects: 'Mathematics,Science', joinDate: new Date('2022-01-10'), cpdHours: 14, cpdTarget: 20, employmentStatus: 'active', schoolId: smhk.id },
   })
 
-  // ─── School ───────────────────────────────────────────────────────────────
-
-  await prisma.school.create({
-    data: {
-      name: 'Sekolah Menengah Hj Kamaruddin',
-      code: 'SMHK',
-      type: 'secondary',
-      address: 'Jalan Kota Batu, Bandar Seri Begawan, Brunei',
-      phone: '+673-2234567',
-      principal: 'Hjh Rashidah Binti Mohamad',
-    },
+  const hassan = await prisma.teacher.create({
+    data: { userId: hassanUser.id, staffId: 'T2026005', designation: 'Teacher', department: 'Science & Mathematics', qualification: 'BSc Biology, Universiti Brunei Darussalam', subjects: 'Biology,Chemistry,Science', joinDate: new Date('2019-03-01'), cpdHours: 16, cpdTarget: 20, employmentStatus: 'active', schoolId: smhk.id },
   })
+
+  const zuraidah = await prisma.teacher.create({
+    data: { userId: zuraidahUser.id, staffId: 'T2026006', designation: 'Senior Teacher', department: 'Languages & Humanities', qualification: 'Masters in English Literature, University of Malaya', subjects: 'English,Literature', joinDate: new Date('2017-08-10'), cpdHours: 22, cpdTarget: 20, employmentStatus: 'active', schoolId: smhk.id },
+  })
+
+  // ─── Schools already created at top of main() ─────────────────────────────
+  // smhk, srpb, smab, isb are available above
 
   // ─── Courses ──────────────────────────────────────────────────────────────
 
@@ -246,6 +292,46 @@ async function main() {
 
   const courses = [mathCourse, engCourse, sciCourse, mibCourse, icCourse]
 
+  // ─── Year 8-12 Courses ─────────────────────────────────────────────────────
+
+  // Year 8
+  const math8 = await prisma.course.create({ data: { code: 'MATH801', name: 'Mathematics Year 8', description: 'Algebra, geometry, and number theory', gradeLevel: 'Year 8', creditHours: 4 } })
+  const eng8  = await prisma.course.create({ data: { code: 'ENG801',  name: 'English Language Year 8', description: 'Advanced reading, writing and communication', gradeLevel: 'Year 8', creditHours: 4 } })
+  const sci8  = await prisma.course.create({ data: { code: 'SCI801',  name: 'Science Year 8', description: 'Physics, chemistry and biology foundations', gradeLevel: 'Year 8', creditHours: 3 } })
+  const mib8  = await prisma.course.create({ data: { code: 'MIB801',  name: 'Melayu Islam Beraja Year 8', description: 'National philosophy — advanced civic studies', gradeLevel: 'Year 8', creditHours: 2 } })
+  const ict8  = await prisma.course.create({ data: { code: 'ICT801',  name: 'ICT Year 8', description: 'Programming fundamentals and digital literacy', gradeLevel: 'Year 8', creditHours: 2 } })
+
+  // Year 9
+  const math9 = await prisma.course.create({ data: { code: 'MATH901', name: 'Mathematics Year 9', description: 'Advanced algebra, trigonometry and statistics', gradeLevel: 'Year 9', creditHours: 4 } })
+  const eng9  = await prisma.course.create({ data: { code: 'ENG901',  name: 'English Language Year 9', description: 'Literature, critical writing and oral communication', gradeLevel: 'Year 9', creditHours: 4 } })
+  const sci9  = await prisma.course.create({ data: { code: 'SCI901',  name: 'Science Year 9', description: 'Integrated sciences — motion, matter and energy', gradeLevel: 'Year 9', creditHours: 3 } })
+  const mib9  = await prisma.course.create({ data: { code: 'MIB901',  name: 'Melayu Islam Beraja Year 9', description: 'National philosophy — advanced civic studies', gradeLevel: 'Year 9', creditHours: 2 } })
+  const geog9 = await prisma.course.create({ data: { code: 'GEOG901', name: 'Geography Year 9', description: 'Physical and human geography — ASEAN focus', gradeLevel: 'Year 9', creditHours: 2 } })
+
+  // Year 10
+  const math10    = await prisma.course.create({ data: { code: 'MATH1001',    name: 'Mathematics Year 10', description: 'O-Level Mathematics — calculus, vectors, and proof', gradeLevel: 'Year 10', creditHours: 4 } })
+  const addMath10 = await prisma.course.create({ data: { code: 'AMATH1001',   name: 'Additional Mathematics Year 10', description: 'Advanced mathematics for science stream students', gradeLevel: 'Year 10', creditHours: 3 } })
+  const phy10     = await prisma.course.create({ data: { code: 'PHY1001',     name: 'Physics Year 10', description: 'Mechanics, thermodynamics and electromagnetism', gradeLevel: 'Year 10', creditHours: 3 } })
+  const chem10    = await prisma.course.create({ data: { code: 'CHEM1001',    name: 'Chemistry Year 10', description: 'Atomic structure, bonding and chemical reactions', gradeLevel: 'Year 10', creditHours: 3 } })
+  const bio10     = await prisma.course.create({ data: { code: 'BIO1001',     name: 'Biology Year 10', description: 'Cell biology, genetics and ecology', gradeLevel: 'Year 10', creditHours: 3 } })
+  const eng10     = await prisma.course.create({ data: { code: 'ENG1001',     name: 'English Language & Literature Year 10', description: 'Analytical writing, poetry and prose', gradeLevel: 'Year 10', creditHours: 3 } })
+
+  // Year 11
+  const math11    = await prisma.course.create({ data: { code: 'MATH1101',    name: 'Mathematics Year 11', description: 'O-Level final year — integration, statistics, proof', gradeLevel: 'Year 11', creditHours: 4 } })
+  const addMath11 = await prisma.course.create({ data: { code: 'AMATH1101',   name: 'Additional Mathematics Year 11', description: 'Advanced O-Level — differential equations and matrices', gradeLevel: 'Year 11', creditHours: 3 } })
+  const phy11     = await prisma.course.create({ data: { code: 'PHY1101',     name: 'Physics Year 11', description: 'Advanced mechanics, nuclear physics and waves', gradeLevel: 'Year 11', creditHours: 3 } })
+  const chem11    = await prisma.course.create({ data: { code: 'CHEM1101',    name: 'Chemistry Year 11', description: 'Organic chemistry, equilibrium and electrochemistry', gradeLevel: 'Year 11', creditHours: 3 } })
+  const bio11     = await prisma.course.create({ data: { code: 'BIO1101',     name: 'Biology Year 11', description: 'Human biology, evolution and ecosystems', gradeLevel: 'Year 11', creditHours: 3 } })
+  const eng11     = await prisma.course.create({ data: { code: 'ENG1101',     name: 'English Literature Year 11', description: 'Shakespearean drama, modern poetry and critical analysis', gradeLevel: 'Year 11', creditHours: 3 } })
+
+  // Year 12
+  const math12    = await prisma.course.create({ data: { code: 'MATH1201',    name: 'Mathematics Year 12', description: 'A-Level Mathematics — complex numbers and sequences', gradeLevel: 'Year 12', creditHours: 4 } })
+  const addMath12 = await prisma.course.create({ data: { code: 'AMATH1201',   name: 'Further Mathematics Year 12', description: 'A-Level Further Mathematics — matrices and differential equations', gradeLevel: 'Year 12', creditHours: 3 } })
+  const phy12     = await prisma.course.create({ data: { code: 'PHY1201',     name: 'Physics Year 12', description: 'A-Level Physics — quantum mechanics and particle physics', gradeLevel: 'Year 12', creditHours: 3 } })
+  const chem12    = await prisma.course.create({ data: { code: 'CHEM1201',    name: 'Chemistry Year 12', description: 'A-Level Chemistry — reaction mechanisms and spectroscopy', gradeLevel: 'Year 12', creditHours: 3 } })
+  const bio12     = await prisma.course.create({ data: { code: 'BIO1201',     name: 'Biology Year 12', description: 'A-Level Biology — molecular biology and genetics', gradeLevel: 'Year 12', creditHours: 3 } })
+  const eng12     = await prisma.course.create({ data: { code: 'ENG1201',     name: 'English Language & Literature Year 12', description: 'A-Level — comparative literature and critical essay', gradeLevel: 'Year 12', creditHours: 3 } })
+
   // ─── Course Assignments ───────────────────────────────────────────────────
 
   await prisma.courseAssignment.createMany({
@@ -257,6 +343,44 @@ async function main() {
       { courseId: mibCourse.id,  teacherId: faizal.id,   semester: '2026-S1', schedule: 'Fri 08:00-10:00' },
       { courseId: mathCourse.id, teacherId: teacher01.id, semester: '2026-S1', schedule: 'Mon/Wed 08:00-09:30 (7A)' },
       { courseId: sciCourse.id,  teacherId: teacher01.id, semester: '2026-S1', schedule: 'Tue/Thu 08:00-09:30 (7A)' },
+    ],
+  })
+
+  await prisma.courseAssignment.createMany({
+    data: [
+      // Year 8
+      { courseId: math8.id, teacherId: teacher01.id, semester: '2026-S1', schedule: 'Mon/Wed 08:00-09:30' },
+      { courseId: eng8.id,  teacherId: faizal.id,    semester: '2026-S1', schedule: 'Tue/Thu 08:00-09:30' },
+      { courseId: sci8.id,  teacherId: hassan.id,    semester: '2026-S1', schedule: 'Mon/Wed 10:00-11:30' },
+      { courseId: mib8.id,  teacherId: faizal.id,    semester: '2026-S1', schedule: 'Fri 08:00-10:00' },
+      { courseId: ict8.id,  teacherId: drsiti.id,    semester: '2026-S1', schedule: 'Fri 10:00-12:00' },
+      // Year 9
+      { courseId: math9.id, teacherId: drsiti.id,    semester: '2026-S1', schedule: 'Mon/Wed 08:00-09:30' },
+      { courseId: eng9.id,  teacherId: zuraidah.id,  semester: '2026-S1', schedule: 'Tue/Thu 08:00-09:30' },
+      { courseId: sci9.id,  teacherId: hassan.id,    semester: '2026-S1', schedule: 'Mon/Wed 10:00-11:30' },
+      { courseId: mib9.id,  teacherId: faizal.id,    semester: '2026-S1', schedule: 'Fri 08:00-10:00' },
+      { courseId: geog9.id, teacherId: ridwan.id,    semester: '2026-S1', schedule: 'Fri 10:00-12:00' },
+      // Year 10
+      { courseId: math10.id,    teacherId: teacher01.id, semester: '2026-S1', schedule: 'Mon/Wed 08:00-09:30' },
+      { courseId: addMath10.id, teacherId: drsiti.id,    semester: '2026-S1', schedule: 'Tue/Thu 10:00-11:30' },
+      { courseId: phy10.id,     teacherId: drsiti.id,    semester: '2026-S1', schedule: 'Tue/Thu 08:00-09:30' },
+      { courseId: chem10.id,    teacherId: hassan.id,    semester: '2026-S1', schedule: 'Mon/Wed 10:00-11:30' },
+      { courseId: bio10.id,     teacherId: hassan.id,    semester: '2026-S1', schedule: 'Fri 08:00-10:00' },
+      { courseId: eng10.id,     teacherId: zuraidah.id,  semester: '2026-S1', schedule: 'Fri 10:00-12:00' },
+      // Year 11
+      { courseId: math11.id,    teacherId: teacher01.id, semester: '2026-S1', schedule: 'Mon/Wed 08:00-09:30' },
+      { courseId: addMath11.id, teacherId: drsiti.id,    semester: '2026-S1', schedule: 'Tue/Thu 10:00-11:30' },
+      { courseId: phy11.id,     teacherId: drsiti.id,    semester: '2026-S1', schedule: 'Tue/Thu 08:00-09:30' },
+      { courseId: chem11.id,    teacherId: hassan.id,    semester: '2026-S1', schedule: 'Mon/Wed 10:00-11:30' },
+      { courseId: bio11.id,     teacherId: hassan.id,    semester: '2026-S1', schedule: 'Fri 08:00-10:00' },
+      { courseId: eng11.id,     teacherId: zuraidah.id,  semester: '2026-S1', schedule: 'Fri 10:00-12:00' },
+      // Year 12
+      { courseId: math12.id,    teacherId: drsiti.id,    semester: '2026-S1', schedule: 'Mon/Wed 08:00-09:30' },
+      { courseId: addMath12.id, teacherId: drsiti.id,    semester: '2026-S1', schedule: 'Tue/Thu 10:00-11:30' },
+      { courseId: phy12.id,     teacherId: drsiti.id,    semester: '2026-S1', schedule: 'Tue/Thu 08:00-09:30' },
+      { courseId: chem12.id,    teacherId: hassan.id,    semester: '2026-S1', schedule: 'Mon/Wed 10:00-11:30' },
+      { courseId: bio12.id,     teacherId: hassan.id,    semester: '2026-S1', schedule: 'Fri 08:00-10:00' },
+      { courseId: eng12.id,     teacherId: zuraidah.id,  semester: '2026-S1', schedule: 'Fri 10:00-12:00' },
     ],
   })
 
@@ -417,6 +541,63 @@ async function main() {
     },
   })
 
+  // Year 9-12 named students (one per focal class; bulk counts reduced accordingly)
+  const fatin = await prisma.student.create({
+    data: {
+      userId: fatinUser.id,
+      studentId: 'STU9A00001',
+      dateOfBirth: new Date('2012-05-20'),
+      gender: 'Female',
+      nationality: 'Bruneian',
+      gradeLevel: 'Year 9',
+      className: '9A',
+      enrollmentStatus: 'enrolled',
+      academicStanding: 'GOOD_STANDING',
+    },
+  })
+
+  const nadia = await prisma.student.create({
+    data: {
+      userId: nadiaY10User.id,
+      studentId: 'STU10A00001',
+      dateOfBirth: new Date('2011-02-14'),
+      gender: 'Female',
+      nationality: 'Bruneian',
+      gradeLevel: 'Year 10',
+      className: '10A',
+      enrollmentStatus: 'enrolled',
+      academicStanding: 'GOOD_STANDING',
+    },
+  })
+
+  const hana = await prisma.student.create({
+    data: {
+      userId: hanaY11User.id,
+      studentId: 'STU11A00001',
+      dateOfBirth: new Date('2010-09-08'),
+      gender: 'Female',
+      nationality: 'Bruneian',
+      gradeLevel: 'Year 11',
+      className: '11A',
+      enrollmentStatus: 'enrolled',
+      academicStanding: 'GOOD_STANDING',
+    },
+  })
+
+  const danial = await prisma.student.create({
+    data: {
+      userId: danialY12User.id,
+      studentId: 'STU12A00001',
+      dateOfBirth: new Date('2009-11-30'),
+      gender: 'Male',
+      nationality: 'Bruneian',
+      gradeLevel: 'Year 12',
+      className: '12A',
+      enrollmentStatus: 'enrolled',
+      academicStanding: 'GOOD_STANDING',
+    },
+  })
+
   // Generate years 8-12 (576 each)
   // Year 9C gets 1 less (Hafiz already there) → 575 - (38 or 39 for class C position) + 1 already seeded
   // Simpler: just reduce Year 9C by 1 in bulk
@@ -436,10 +617,15 @@ async function main() {
     for (let ci = 0; ci < CLASS_LETTERS.length; ci++) {
       const letter = CLASS_LETTERS[ci]
       // Skip position for Hafiz in Year 9C (ci=2 → 'C')
-      const isHafizClass = isYear9 && letter === 'C'
-      // Hafiz-class gets 1 less (already seeded Hafiz)
+      // Reduce bulk count for classes that already have a named student
+      const isNamedStudentClass =
+        (isYear9 && letter === 'C') ||                   // Hafiz
+        (isYear9 && letter === 'A') ||                   // Fatin
+        (year === 'Year 10' && letter === 'A') ||        // Nadia
+        (year === 'Year 11' && letter === 'A') ||        // Hana
+        (year === 'Year 12' && letter === 'A')           // Danial
       const baseCount = ci < extras ? basePerClass + 1 : basePerClass
-      const count = isHafizClass ? baseCount - 1 : baseCount
+      const count = isNamedStudentClass ? baseCount - 1 : baseCount
       if (count <= 0) continue
 
       const ids = await bulkCreateStudents(count, year, letter, globalIdx)
@@ -578,17 +764,16 @@ async function main() {
   // Create sessions over past 10 weeks. Last 14 days = days 1-14 ago.
   // Put 2 absences within last 14 days, rest are present.
 
-  const ahmadAttendancePlan = [
-    // [daysAgo, status]
+  const ahmadAttendancePlan: { day: number; status: string; reason?: string }[] = [
     { day: 63, status: 'present' },
-    { day: 56, status: 'present' },
-    { day: 49, status: 'absent' },  // absent (outside 14-day window)
+    { day: 56, status: 'late',    reason: 'Traffic delay' },
+    { day: 49, status: 'excused', reason: 'Medical appointment' },
     { day: 42, status: 'present' },
-    { day: 35, status: 'absent' },  // absent (outside 14-day window)
+    { day: 35, status: 'late',    reason: 'Bus delay' },
     { day: 28, status: 'present' },
     { day: 21, status: 'present' },
-    { day: 10, status: 'absent' },  // ABSENT - within last 14 days (day 10)
-    { day: 6,  status: 'absent' },  // ABSENT - within last 14 days (day 6)
+    { day: 10, status: 'absent',  reason: 'Sick' },         // ABSENT within 14 days
+    { day: 6,  status: 'absent',  reason: 'Unexplained' },  // ABSENT within 14 days
     { day: 3,  status: 'present' },
   ]
 
@@ -603,6 +788,7 @@ async function main() {
         studentId: ahmad.id,
         status: plan.status,
         checkedInAt: plan.status !== 'absent' ? sessionDate : null,
+        absenceReason: plan.reason ?? null,
       },
     })
   }
@@ -964,34 +1150,45 @@ async function main() {
   const compLab = facilities.find(f => f.name === 'Computer Lab')
 
   if (hallA) {
-    await prisma.facilityBooking.create({
-      data: { facilityId: hallA.id, bookedBy: principalUser.id, purpose: 'Year 7 Orientation Assembly', date: new Date('2026-06-02'), startTime: '09:00', endTime: '11:00', status: 'approved' },
+    await prisma.facilityBooking.createMany({
+      data: [
+        // Past booking (9 June = 2 days before demo)
+        { facilityId: hallA.id, bookedBy: principalUser.id, purpose: 'Year 7 Mid-Semester Assembly', date: new Date('2026-06-09'), startTime: '09:00', endTime: '11:00', status: 'approved' },
+        // Today's booking (11 June = demo day)
+        { facilityId: hallA.id, bookedBy: principalUser.id, purpose: 'Staff Briefing — Semester 2 Planning', date: new Date('2026-06-11'), startTime: '14:00', endTime: '16:00', status: 'approved' },
+      ],
     })
   }
   if (sciLab) {
     await prisma.facilityBooking.createMany({
       data: [
         { facilityId: sciLab.id, bookedBy: drsitiUser.id, purpose: 'Chemistry Practical - Year 9', date: new Date('2026-05-27'), startTime: '14:00', endTime: '16:00', status: 'approved' },
-        { facilityId: sciLab.id, bookedBy: teacher01User.id, purpose: 'Science Fair Preparation - Year 7', date: new Date('2026-06-05'), startTime: '13:00', endTime: '15:00', status: 'pending' },
+        // 18 June (Thu) = upcoming working day in Brunei
+        { facilityId: sciLab.id, bookedBy: teacher01User.id, purpose: 'Science Fair Preparation - Year 7', date: new Date('2026-06-18'), startTime: '13:00', endTime: '15:00', status: 'pending' },
       ],
     })
   }
   if (compLab) {
+    // 16 June (Tue) = upcoming working day in Brunei
     await prisma.facilityBooking.create({
-      data: { facilityId: compLab.id, bookedBy: drsitiUser.id, purpose: 'ICT Examination - Year 10', date: new Date('2026-06-03'), startTime: '08:00', endTime: '10:00', status: 'approved' },
+      data: { facilityId: compLab.id, bookedBy: drsitiUser.id, purpose: 'ICT Examination - Year 11', date: new Date('2026-06-16'), startTime: '08:00', endTime: '10:00', status: 'approved' },
     })
   }
 
   // ─── School Calendar Events ────────────────────────────────────────────────
 
   const schoolEvents = [
-    { title: 'Mid-Term Examinations', date: new Date('2026-05-20'), endDate: new Date('2026-05-22'), type: 'exam', description: 'Year 7-11 mid-term examinations' },
-    { title: 'Sports Day', date: new Date('2026-06-05'), type: 'activity', description: 'Annual school sports day — all students participate' },
-    { title: 'School Open Day', date: new Date('2026-06-10'), type: 'event', description: 'Annual school open day for parents and prospective students' },
+    { title: 'Mid-Term Examinations', date: new Date('2026-05-20'), endDate: new Date('2026-05-22'), type: 'exam', description: 'Year 7-12 mid-term examinations' },
+    { title: 'Science Fair', date: new Date('2026-05-28'), type: 'activity', description: 'Students present science projects to judges and parents' },
+    // Sports Day on Thu 4 June — last working day before weekend (Fri-Sat = weekend in Brunei)
+    { title: 'Sports Day', date: new Date('2026-06-04'), type: 'activity', description: 'Annual school sports day — all students participate' },
     { title: 'Hari Raya Aidiladha', date: new Date('2026-06-07'), endDate: new Date('2026-06-08'), type: 'holiday', description: 'Public holiday — school closed' },
-    { title: 'Final Examinations Begin', date: new Date('2026-07-06'), endDate: new Date('2026-07-17'), type: 'exam', description: 'End-of-year final examinations Year 7-11' },
-    { title: 'Science Fair', date: new Date('2026-05-30'), type: 'activity', description: 'Students present science projects to judges and parents' },
-    { title: 'Parent-Teacher Meeting', date: new Date('2026-06-20'), type: 'event', description: 'Semester 1 progress review with parents' },
+    // School Open Day on Wed 10 June — yesterday before demo
+    { title: 'School Open Day', date: new Date('2026-06-10'), type: 'event', description: 'Annual school open day for parents and prospective students' },
+    { title: 'Year 9-10 Mock Examinations', date: new Date('2026-06-22'), endDate: new Date('2026-06-24'), type: 'exam', description: 'Mid-year mock examinations for Year 9 and Year 10 students' },
+    // Parent-Teacher Meeting on Mon 22 June — working day (Sun-Thu week in Brunei)
+    { title: 'Parent-Teacher Meeting', date: new Date('2026-06-29'), type: 'event', description: 'Semester 1 progress review with parents' },
+    { title: 'Final Examinations Begin', date: new Date('2026-07-06'), endDate: new Date('2026-07-17'), type: 'exam', description: 'End-of-year final examinations Year 7-12' },
     { title: 'School Holiday (Semester Break)', date: new Date('2026-07-20'), endDate: new Date('2026-08-02'), type: 'holiday', description: 'Mid-year school holiday' },
   ]
   for (const ev of schoolEvents) {
@@ -1068,7 +1265,7 @@ async function main() {
       // All other classes have capacity 40 to reflect existing legacy distribution (~38-39 per class)
       const isDemoClass = (yearLabel === 'Year 7' && letter === 'A')
       await prisma.classRoster.upsert({
-        where: { className_academicYear: { className: `${gradeNum}${letter}`, academicYear: '2025/2026' } },
+        where: { className_academicYear_schoolId: { className: `${gradeNum}${letter}`, academicYear: '2025/2026', schoolId: smhk.id } },
         create: {
           gradeLevel: yearLabel,
           className: `${gradeNum}${letter}`,
@@ -1076,6 +1273,7 @@ async function main() {
           capacity: isDemoClass ? 35 : 40,
           programme: PROGRAMMES[letter as keyof typeof PROGRAMMES],
           formTeacherId: isDemoClass ? teacher01.id : undefined,
+          schoolId: smhk.id,
         },
         update: {},
       })
@@ -1117,32 +1315,20 @@ async function main() {
     },
   })
 
-  // ─── Hafiz Probation-Trigger Grade ────────────────────────────────────────
-
-  // Find a math course for Hafiz's grade (Year 9)
-  const hafizMathCourse = await prisma.course.findFirst({ where: { gradeLevel: 'Year 9' } })
-    ?? await prisma.course.findFirst({ where: { code: 'MATH701' } })
-  if (hafizMathCourse) {
-    const hafizItem = await prisma.gradeItem.create({
-      data: {
-        courseId: hafizMathCourse.id,
-        name: 'End of Year Mathematics Exam',
-        type: 'exam',
-        maxScore: 100,
-        weight: 0.5,
-        dueDate: daysAgo(20),
-      },
-    })
-    const hafizEnrollment = await prisma.enrollment.findFirst({ where: { studentId: hafiz.id, courseId: hafizMathCourse.id } })
-    if (hafizEnrollment) {
-      await prisma.grade.upsert({
-        where: { studentId_gradeItemId: { studentId: hafiz.id, gradeItemId: hafizItem.id } },
-        create: { studentId: hafiz.id, gradeItemId: hafizItem.id, score: 42, letterGrade: 'F', gradedAt: daysAgo(14) },
-        update: { score: 42, letterGrade: 'F' },
-      })
-    }
-    await prisma.student.update({ where: { id: hafiz.id }, data: { academicStanding: 'PROBATION' } })
-  }
+  // ─── Hafiz Probation marker ────────────────────────────────────────────────
+  // Enrollment, grade items, and grades for Hafiz are seeded in the Year 9-12 demo block.
+  // This section only records the academic standing history trigger.
+  await prisma.academicStandingHistory.create({
+    data: {
+      studentId: hafiz.id,
+      previousStanding: 'GOOD_STANDING',
+      newStanding: 'PROBATION',
+      trigger: 'GRADE_UPDATE',
+      gradeAvg: 52.0,
+      thresholdUsed: 50,
+      createdAt: daysAgo(10),
+    },
+  })
 
   // ─── Approval Inbox pre-seeded items (for HOD demo) ───────────────────────
 
@@ -1318,6 +1504,334 @@ async function main() {
 
   console.log('  CPD Workshops seeded.')
 
+  // ─── Year 9-12 Demo Data ──────────────────────────────────────────────────
+  console.log('Creating Year 9-12 named student data...')
+
+  const lg = (score: number, max: number) => {
+    const p = (score / max) * 100
+    return p >= 90 ? 'A' : p >= 80 ? 'B' : p >= 70 ? 'C' : p >= 60 ? 'D' : 'F'
+  }
+
+  // ── Parent records for Year 9-12 ────────────────────────────────────────
+
+  const fatinParentUser = await prisma.user.create({
+    data: { username: 'parent.fatin', password: hash('Demo@2026'), displayName: 'Hjh Norzalina Binti Idris', email: 'norzalina@parent.moe.edu.bn', role: 'parent' },
+  })
+  const fatinParent = await prisma.parent.create({
+    data: { userId: fatinParentUser.id, phone: '+673 8234 5678', occupation: 'Civil Servant', relationship: 'mother' },
+  })
+  await prisma.parentStudent.create({ data: { parentId: fatinParent.id, studentId: fatin.id } })
+
+  const nadiaParentUser = await prisma.user.create({
+    data: { username: 'parent.nadia', password: hash('Demo@2026'), displayName: 'Dr. Yusof Bin Hazmi', email: 'yusof@parent.moe.edu.bn', role: 'parent' },
+  })
+  const nadiaParent = await prisma.parent.create({
+    data: { userId: nadiaParentUser.id, phone: '+673 8345 6789', occupation: 'Medical Officer', relationship: 'father' },
+  })
+  await prisma.parentStudent.create({ data: { parentId: nadiaParent.id, studentId: nadia.id } })
+
+  const hanaParentUser = await prisma.user.create({
+    data: { username: 'parent.hana', password: hash('Demo@2026'), displayName: 'Hjh Roslina Binti Salleh', email: 'roslina@parent.moe.edu.bn', role: 'parent' },
+  })
+  const hanaParent = await prisma.parent.create({
+    data: { userId: hanaParentUser.id, phone: '+673 8456 7890', occupation: 'Business Owner', relationship: 'mother' },
+  })
+  await prisma.parentStudent.create({ data: { parentId: hanaParent.id, studentId: hana.id } })
+
+  const danialParentUser = await prisma.user.create({
+    data: { username: 'parent.danial', password: hash('Demo@2026'), displayName: 'Hj Ahmad Bin Hamid', email: 'ahmadhamid@parent.moe.edu.bn', role: 'parent' },
+  })
+  const danialParent = await prisma.parent.create({
+    data: { userId: danialParentUser.id, phone: '+673 8567 8901', occupation: 'Senior Civil Servant', relationship: 'father' },
+  })
+  await prisma.parentStudent.create({ data: { parentId: danialParent.id, studentId: danial.id } })
+
+  // ── Enrollments ──────────────────────────────────────────────────────────
+
+  for (const c of [math9, eng9, sci9, mib9, geog9]) {
+    await prisma.enrollment.create({ data: { studentId: hafiz.id, courseId: c.id, semester: '2026-S1' } })
+    await prisma.enrollment.create({ data: { studentId: fatin.id, courseId: c.id, semester: '2026-S1' } })
+  }
+  for (const c of [math10, addMath10, phy10, chem10, bio10, eng10]) {
+    await prisma.enrollment.create({ data: { studentId: nadia.id, courseId: c.id, semester: '2026-S1' } })
+  }
+  for (const c of [math11, addMath11, phy11, chem11, bio11, eng11]) {
+    await prisma.enrollment.create({ data: { studentId: hana.id, courseId: c.id, semester: '2026-S1' } })
+  }
+  for (const c of [math12, addMath12, phy12, chem12, bio12, eng12]) {
+    await prisma.enrollment.create({ data: { studentId: danial.id, courseId: c.id, semester: '2026-S1' } })
+  }
+
+  // ── Grade Items helper ────────────────────────────────────────────────────
+
+  async function makeGradeItems(courseId: string, hasMock: boolean) {
+    const base = [
+      { name: 'Quiz 1',       type: 'quiz',       maxScore: 20,  weight: 0.1,  dueDate: weeksAgo(10) },
+      { name: 'Assignment 1', type: 'assignment',  maxScore: 50,  weight: 0.15, dueDate: weeksAgo(8) },
+      { name: 'Midterm Exam', type: 'exam',        maxScore: 100, weight: 0.3,  dueDate: weeksAgo(6) },
+      { name: 'Assignment 2', type: 'assignment',  maxScore: 50,  weight: 0.15, dueDate: weeksAgo(3) },
+      { name: 'Final Exam',   type: 'exam',        maxScore: 100, weight: hasMock ? 0.2 : 0.4, dueDate: weeksAgo(1) },
+    ]
+    if (hasMock) base.push({ name: 'Mock Exam', type: 'exam', maxScore: 100, weight: 0.2, dueDate: weeksAgo(2) })
+    const out: { id: string; maxScore: number }[] = []
+    for (const item of base) {
+      const gi = await prisma.gradeItem.create({ data: { courseId, ...item } })
+      out.push({ id: gi.id, maxScore: gi.maxScore })
+    }
+    return out
+  }
+
+  // Year 9 items
+  const gi9Math = await makeGradeItems(math9.id, false)
+  const gi9Eng  = await makeGradeItems(eng9.id,  false)
+  const gi9Sci  = await makeGradeItems(sci9.id,  false)
+  const gi9Mib  = await makeGradeItems(mib9.id,  false)
+  const gi9Geo  = await makeGradeItems(geog9.id, false)
+
+  // Year 10 items
+  const gi10Math    = await makeGradeItems(math10.id,    false)
+  const gi10AddMath = await makeGradeItems(addMath10.id, false)
+  const gi10Phy     = await makeGradeItems(phy10.id,     false)
+  const gi10Chem    = await makeGradeItems(chem10.id,    false)
+  const gi10Bio     = await makeGradeItems(bio10.id,     false)
+  const gi10Eng     = await makeGradeItems(eng10.id,     false)
+
+  // Year 11 items (with mock exam)
+  const gi11Math    = await makeGradeItems(math11.id,    true)
+  const gi11AddMath = await makeGradeItems(addMath11.id, true)
+  const gi11Phy     = await makeGradeItems(phy11.id,     true)
+  const gi11Chem    = await makeGradeItems(chem11.id,    true)
+  const gi11Bio     = await makeGradeItems(bio11.id,     true)
+  const gi11Eng     = await makeGradeItems(eng11.id,     true)
+
+  // Year 12 items (with mock exam)
+  const gi12Math    = await makeGradeItems(math12.id,    true)
+  const gi12AddMath = await makeGradeItems(addMath12.id, true)
+  const gi12Phy     = await makeGradeItems(phy12.id,     true)
+  const gi12Chem    = await makeGradeItems(chem12.id,    true)
+  const gi12Bio     = await makeGradeItems(bio12.id,     true)
+  const gi12Eng     = await makeGradeItems(eng12.id,     true)
+
+  // ── Grade helper ──────────────────────────────────────────────────────────
+
+  async function seedGrades(studentId: string, sets: Array<{ items: { id: string; maxScore: number }[]; scores: number[] }>) {
+    for (const { items, scores } of sets) {
+      for (let i = 0; i < items.length; i++) {
+        const { id: gradeItemId, maxScore } = items[i]
+        const score = Math.min(scores[i] ?? scores[scores.length - 1], maxScore)
+        await prisma.grade.create({
+          data: { studentId, gradeItemId, score, letterGrade: lg(score, maxScore), gradedAt: daysAgo(7 - i) },
+        })
+      }
+    }
+  }
+
+  // ── HAFIZ — failing across all Year 9 subjects ───────────────────────────
+  await seedGrades(hafiz.id, [
+    { items: gi9Math, scores: [6, 17, 42, 18, 42] },    // Math: F (~42%)
+    { items: gi9Eng,  scores: [11, 27, 55, 25, 55] },   // Eng: D (~55%)
+    { items: gi9Sci,  scores: [10, 26, 52, 24, 52] },   // Sci: D (~52%)
+    { items: gi9Mib,  scores: [12, 31, 62, 29, 63] },   // MIB: D/C (~62%)
+    { items: gi9Geo,  scores: [10, 25, 50, 23, 50] },   // Geog: D (~50%)
+  ])
+  await prisma.student.update({ where: { id: hafiz.id }, data: { academicStanding: 'PROBATION' } })
+
+  // ── FATIN — solid B-student, Year 9A ─────────────────────────────────────
+  await seedGrades(fatin.id, [
+    { items: gi9Math, scores: [16, 42, 82, 40, 85] },   // Math: B
+    { items: gi9Eng,  scores: [17, 44, 88, 42, 88] },   // Eng: B
+    { items: gi9Sci,  scores: [15, 40, 80, 39, 82] },   // Sci: B
+    { items: gi9Mib,  scores: [18, 45, 90, 43, 91] },   // MIB: A
+    { items: gi9Geo,  scores: [14, 38, 78, 37, 79] },   // Geog: C
+  ])
+  await prisma.riskScore.create({
+    data: { studentId: fatin.id, score: 0.18, band: 'LOW_RISK', absences14d: 0, gradeAvg: 84.8, gradeTrend: 1.2, computedAt: daysAgo(1) },
+  })
+
+  // ── NADIA — top student, Year 10A science stream ─────────────────────────
+  await seedGrades(nadia.id, [
+    { items: gi10Math,    scores: [19, 48, 95, 47, 96] },
+    { items: gi10AddMath, scores: [20, 49, 98, 48, 98] },
+    { items: gi10Phy,     scores: [19, 47, 92, 46, 94] },
+    { items: gi10Chem,    scores: [19, 46, 94, 46, 95] },
+    { items: gi10Bio,     scores: [20, 48, 96, 47, 97] },
+    { items: gi10Eng,     scores: [18, 44, 88, 43, 89] },
+  ])
+  await prisma.riskScore.create({
+    data: { studentId: nadia.id, score: 0.05, band: 'LOW_RISK', absences14d: 0, gradeAvg: 94.3, gradeTrend: 0.5, computedAt: daysAgo(1) },
+  })
+
+  // ── HANA — O-Level year student, Year 11A ────────────────────────────────
+  await seedGrades(hana.id, [
+    { items: gi11Math,    scores: [18, 44, 88, 43, 90, 89] },
+    { items: gi11AddMath, scores: [19, 46, 92, 45, 91, 92] },
+    { items: gi11Phy,     scores: [17, 43, 86, 42, 88, 87] },
+    { items: gi11Chem,    scores: [18, 44, 89, 43, 90, 90] },
+    { items: gi11Bio,     scores: [19, 46, 92, 45, 93, 92] },
+    { items: gi11Eng,     scores: [16, 41, 83, 40, 85, 84] },
+  ])
+  await prisma.riskScore.create({
+    data: { studentId: hana.id, score: 0.08, band: 'LOW_RISK', absences14d: 0, gradeAvg: 89.6, gradeTrend: 1.0, computedAt: daysAgo(1) },
+  })
+
+  // ── DANIAL — top Year 12 student, A-Level final year ─────────────────────
+  await seedGrades(danial.id, [
+    { items: gi12Math,    scores: [20, 48, 96, 47, 97, 97] },
+    { items: gi12AddMath, scores: [19, 47, 94, 46, 96, 95] },
+    { items: gi12Phy,     scores: [19, 48, 95, 47, 96, 95] },
+    { items: gi12Chem,    scores: [20, 48, 96, 47, 97, 96] },
+    { items: gi12Bio,     scores: [20, 49, 98, 48, 98, 98] },
+    { items: gi12Eng,     scores: [18, 44, 88, 43, 89, 89] },
+  ])
+  await prisma.riskScore.create({
+    data: { studentId: danial.id, score: 0.03, band: 'LOW_RISK', absences14d: 0, gradeAvg: 95.4, gradeTrend: 0.3, computedAt: daysAgo(1) },
+  })
+
+  // ── Attendance for Year 9-12 named students ───────────────────────────────
+
+  // Hafiz: poor attendance (~55%), enriched with late/excused/reasons
+  for (const { day, status, reason } of [
+    { day: 60, status: 'absent',  reason: 'Sick' },
+    { day: 55, status: 'present', reason: undefined },
+    { day: 50, status: 'late',    reason: 'Overslept' },
+    { day: 45, status: 'present', reason: undefined },
+    { day: 40, status: 'excused', reason: 'Family emergency' },
+    { day: 30, status: 'absent',  reason: 'Unexplained' },
+    { day: 21, status: 'present', reason: undefined },
+    { day: 14, status: 'late',    reason: 'Medical check-up — arrived at Period 2' },
+    { day: 7,  status: 'absent',  reason: 'Sick' },
+    { day: 3,  status: 'present', reason: undefined },
+  ]) {
+    const d = daysAgo(day)
+    const sess = await prisma.attendanceSession.create({ data: { courseId: math9.id, date: d, topic: 'Mathematics Year 9', status: 'completed' } })
+    await prisma.attendanceRecord.create({ data: { sessionId: sess.id, studentId: hafiz.id, status, checkedInAt: status !== 'absent' ? d : null, absenceReason: reason ?? null } })
+  }
+
+  // Fatin: good attendance (1 absence in 10 sessions)
+  for (const [day, status] of [
+    [60, 'present'], [55, 'present'], [50, 'present'], [45, 'absent'], [40, 'present'],
+    [30, 'present'], [21, 'present'], [14, 'present'], [7, 'present'], [3, 'present'],
+  ] as [number, string][]) {
+    const d = daysAgo(day)
+    const sess = await prisma.attendanceSession.create({ data: { courseId: math9.id, date: d, topic: 'Mathematics Year 9', status: 'completed' } })
+    await prisma.attendanceRecord.create({ data: { sessionId: sess.id, studentId: fatin.id, status, checkedInAt: status !== 'absent' ? d : null } })
+  }
+
+  // Nadia, Hana, Danial: perfect attendance
+  for (const [student, course, topic] of [
+    [nadia,  phy10, 'Physics Year 10'],
+    [hana,   phy11, 'Physics Year 11'],
+    [danial, phy12, 'Physics Year 12'],
+  ] as [typeof nadia, typeof phy10, string][]) {
+    for (let dAgo = 56; dAgo > 0; dAgo -= 7) {
+      const d = daysAgo(dAgo)
+      const sess = await prisma.attendanceSession.create({ data: { courseId: course.id, date: d, topic, status: 'completed' } })
+      await prisma.attendanceRecord.create({ data: { sessionId: sess.id, studentId: student.id, status: 'present', checkedInAt: d } })
+    }
+  }
+
+  // ── Fee Invoices for Year 9-12 ────────────────────────────────────────────
+
+  await prisma.feeInvoice.create({ data: { studentId: hafiz.id, semester: '2026-S1', amount: 350, status: 'overdue', dueDate: daysAgo(30), description: 'Tuition Fee - Semester 1' } })
+  await prisma.feeInvoice.create({ data: { studentId: hafiz.id, semester: '2026-S1', amount: 50, status: 'unpaid', dueDate: new Date('2026-06-30'), description: 'Science Lab Fee' } })
+  await prisma.feeInvoice.create({ data: { studentId: fatin.id, semester: '2026-S1', amount: 350, status: 'paid', dueDate: new Date('2026-06-30'), paidAt: daysAgo(20), description: 'Tuition Fee - Semester 1' } })
+  await prisma.feeInvoice.create({ data: { studentId: nadia.id, semester: '2026-S1', amount: 400, status: 'paid', dueDate: new Date('2026-06-30'), paidAt: daysAgo(15), description: 'Tuition Fee - Semester 1' } })
+  await prisma.feeInvoice.create({ data: { studentId: nadia.id, semester: '2026-S1', amount: 120, status: 'paid', dueDate: new Date('2026-03-31'), paidAt: daysAgo(55), description: 'Science & Lab Fee' } })
+  await prisma.feeInvoice.create({ data: { studentId: hana.id, semester: '2026-S1', amount: 420, status: 'paid', dueDate: new Date('2026-06-30'), paidAt: daysAgo(10), description: 'Tuition Fee - Semester 1' } })
+  await prisma.feeInvoice.create({ data: { studentId: danial.id, semester: '2026-S1', amount: 450, status: 'paid', dueDate: new Date('2026-06-30'), paidAt: daysAgo(5), description: 'Tuition Fee - Semester 1' } })
+  await prisma.feeInvoice.create({ data: { studentId: danial.id, semester: '2026-S1', amount: 150, status: 'paid', dueDate: new Date('2026-03-31'), paidAt: daysAgo(60), description: 'A-Level Examination Registration Fee' } })
+
+  // ── Timetable Slots for Year 9-12 ────────────────────────────────────────
+
+  const y9aSlots = [
+    { courseId: math9.id, teacherId: drsiti.id,   dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 9A' },
+    { courseId: math9.id, teacherId: drsiti.id,   dayOfWeek: 2, startTime: '08:00', endTime: '09:30', room: 'Classroom 9A' },
+    { courseId: sci9.id,  teacherId: hassan.id,   dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: sci9.id,  teacherId: hassan.id,   dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: eng9.id,  teacherId: zuraidah.id, dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Classroom 9A' },
+    { courseId: eng9.id,  teacherId: zuraidah.id, dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Classroom 9A' },
+    { courseId: mib9.id,  teacherId: faizal.id,   dayOfWeek: 4, startTime: '08:00', endTime: '10:00', room: 'Classroom 9A' },
+    { courseId: geog9.id, teacherId: ridwan.id,   dayOfWeek: 4, startTime: '10:00', endTime: '12:00', room: 'Classroom 9A' },
+  ]
+  for (const slot of y9aSlots) {
+    await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 9', className: '9A', semester: '2026-S1' } })
+  }
+
+  const y10aSlots = [
+    { courseId: math10.id,    teacherId: teacher01.id, dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 10A' },
+    { courseId: math10.id,    teacherId: teacher01.id, dayOfWeek: 2, startTime: '08:00', endTime: '09:30', room: 'Classroom 10A' },
+    { courseId: phy10.id,     teacherId: drsiti.id,    dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: phy10.id,     teacherId: drsiti.id,    dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: chem10.id,    teacherId: hassan.id,    dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
+    { courseId: bio10.id,     teacherId: hassan.id,    dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
+    { courseId: addMath10.id, teacherId: drsiti.id,    dayOfWeek: 1, startTime: '10:00', endTime: '11:30', room: 'Classroom 10A' },
+    { courseId: eng10.id,     teacherId: zuraidah.id,  dayOfWeek: 4, startTime: '08:00', endTime: '10:00', room: 'Classroom 10A' },
+  ]
+  for (const slot of y10aSlots) {
+    await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 10', className: '10A', semester: '2026-S1' } })
+  }
+
+  const y11aSlots = [
+    { courseId: math11.id,    teacherId: teacher01.id, dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 11A' },
+    { courseId: math11.id,    teacherId: teacher01.id, dayOfWeek: 2, startTime: '08:00', endTime: '09:30', room: 'Classroom 11A' },
+    { courseId: phy11.id,     teacherId: drsiti.id,    dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: phy11.id,     teacherId: drsiti.id,    dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: chem11.id,    teacherId: hassan.id,    dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
+    { courseId: bio11.id,     teacherId: hassan.id,    dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
+    { courseId: addMath11.id, teacherId: drsiti.id,    dayOfWeek: 1, startTime: '10:00', endTime: '11:30', room: 'Classroom 11A' },
+    { courseId: eng11.id,     teacherId: zuraidah.id,  dayOfWeek: 4, startTime: '08:00', endTime: '10:00', room: 'Classroom 11A' },
+  ]
+  for (const slot of y11aSlots) {
+    await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 11', className: '11A', semester: '2026-S1' } })
+  }
+
+  const y12aSlots = [
+    { courseId: math12.id,    teacherId: drsiti.id,   dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 12A' },
+    { courseId: math12.id,    teacherId: drsiti.id,   dayOfWeek: 2, startTime: '08:00', endTime: '09:30', room: 'Classroom 12A' },
+    { courseId: phy12.id,     teacherId: drsiti.id,   dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: phy12.id,     teacherId: drsiti.id,   dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: chem12.id,    teacherId: hassan.id,   dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
+    { courseId: bio12.id,     teacherId: hassan.id,   dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
+    { courseId: addMath12.id, teacherId: drsiti.id,   dayOfWeek: 1, startTime: '10:00', endTime: '11:30', room: 'Classroom 12A' },
+    { courseId: eng12.id,     teacherId: zuraidah.id, dayOfWeek: 4, startTime: '08:00', endTime: '10:00', room: 'Classroom 12A' },
+  ]
+  for (const slot of y12aSlots) {
+    await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 12', className: '12A', semester: '2026-S1' } })
+  }
+
+  // ── Notifications for Year 9-12 students ─────────────────────────────────
+
+  await prisma.notification.createMany({
+    data: [
+      { userId: hafizUser.id,     title: 'Academic Probation Notice',     message: 'You have been placed on Academic Probation. Grade average below 50%. Please meet your counselor immediately.', type: 'warning' },
+      { userId: hafizUser.id,     title: 'Attendance Warning',            message: 'Your attendance rate has fallen below 60%. Immediate improvement is required to avoid further action.', type: 'warning' },
+      { userId: fatinUser.id,     title: 'Midterm Results Published',     message: 'Your Year 9 midterm results are available. Mathematics: 82, English: 88. Keep up the great work!', type: 'success' },
+      { userId: nadiaY10User.id,  title: 'Top Student Recognition',       message: 'Congratulations! You achieved the highest Year 10 average this semester — 94.3%. Outstanding work.', type: 'success' },
+      { userId: nadiaY10User.id,  title: 'Physics Lab Practical',         message: 'Year 10 Physics practical examination is on June 15. Please review Chapters 5–8.', type: 'info' },
+      { userId: hanaY11User.id,   title: 'Mock O-Level Results',          message: 'Your Mock O-Level results are available. Average 89.6% — excellent preparation for the national exams.', type: 'success' },
+      { userId: hanaY11User.id,   title: 'O-Level Study Group',           message: 'Revision group with Ms. Zuraidah: tomorrow 2:00 PM, Library. All Year 11 students welcome.', type: 'info' },
+      { userId: danialY12User.id, title: 'Conditional University Offer',  message: 'Congratulations! You have received a conditional offer from Universiti Brunei Darussalam, pending A-Level results.', type: 'success' },
+      { userId: danialY12User.id, title: 'Final Year Project Accepted',   message: 'Your A-Level research project has been accepted for submission. Results will be included in your final grade.', type: 'success' },
+      { userId: fatinParentUser.id, title: 'Midterm Results Available',   message: "Fatin's Year 9 midterm results are now available on the Parent Portal.", type: 'info' },
+      { userId: nadiaParentUser.id, title: 'Top Student Achievement',     message: 'Nadia achieved the highest Year 10 average this semester. Congratulations!', type: 'success' },
+      { userId: danialParentUser.id, title: 'University Conditional Offer', message: 'Danial has received a conditional university offer. Please log in to view details.', type: 'success' },
+    ],
+  })
+
+  // ── Additional school calendar events for Year 9-12 ──────────────────────
+
+  await prisma.schoolEvent.createMany({
+    data: [
+      { title: 'Year 11 O-Level Examinations',  date: new Date('2026-07-06'), endDate: new Date('2026-07-17'), type: 'exam',  description: 'National O-Level examinations for Year 11 students' },
+      { title: 'Year 12 A-Level Examinations',  date: new Date('2026-07-06'), endDate: new Date('2026-07-10'), type: 'exam',  description: 'A-Level final examinations for Year 12 students' },
+      { title: 'Year 12 Graduation Ceremony',   date: new Date('2026-08-16'), type: 'event', description: 'Annual graduation ceremony for Year 12 leavers and parents' },
+      { title: 'A-Level Results Day',           date: new Date('2026-08-20'), type: 'event', description: 'Year 12 A-Level examination results released' },
+      { title: 'O-Level Results Day',           date: new Date('2026-08-25'), type: 'event', description: 'Year 11 O-Level national examination results released' },
+    ],
+  })
+
+  console.log('  Year 9-12 demo data seeded.')
+
   // ─── Final summary ────────────────────────────────────────────────────────
 
   console.log('\n✓ Seed completed successfully!')
@@ -1371,6 +1885,1725 @@ async function main() {
   console.log(`  Aminah CPD hours:         ${aminahTeacher?.cpdHours}  [TARGET: 18]`)
   console.log(`  Hafiz className:          ${hafizCheck?.className}  [TARGET: 9C]`)
   console.log(`  Hafiz gradeLevel:         ${hafizCheck?.gradeLevel}  [TARGET: Year 9]`)
+
+  // ─── Backfill schoolId for all SMHK data ─────────────────────────────────
+  console.log('\nBackfilling SMHK schoolId for bulk-created entities...')
+  await prisma.student.updateMany({ where: { schoolId: null }, data: { schoolId: smhk.id } })
+  await prisma.course.updateMany({ where: { schoolId: null }, data: { schoolId: smhk.id } })
+  await prisma.classRoster.updateMany({ where: { schoolId: null }, data: { schoolId: smhk.id } })
+  console.log('Backfill done.')
+
+  // ─── SRPB — MOE Primary School ────────────────────────────────────────────
+  console.log('\nSeeding SRPB (MOE Primary)...')
+
+  const srpbAdminUser = await prisma.user.create({
+    data: { username: 'admin.srpb', password: hash('Demo@2026'), displayName: 'SRPB Admin', email: 'admin@srpb.edu.bn', role: 'admin', schoolId: srpb.id },
+  })
+  const srpbPrincipalUser = await prisma.user.create({
+    data: { username: 'principal.srpb', password: hash('Demo@2026'), displayName: 'Pg Hajah Noraini Binti Pg Damit', email: 'principal@srpb.edu.bn', role: 'principal', schoolId: srpb.id },
+  })
+  const srpbTeacher1User = await prisma.user.create({
+    data: { username: 'teacher.srpb1', password: hash('Demo@2026'), displayName: 'Cikgu Aisyah Binti Salleh', email: 'aisyah@srpb.edu.bn', role: 'teacher', schoolId: srpb.id },
+  })
+  const srpbTeacher2User = await prisma.user.create({
+    data: { username: 'teacher.srpb2', password: hash('Demo@2026'), displayName: 'Cikgu Zulkifli Bin Omar', email: 'zulkifli@srpb.edu.bn', role: 'teacher', schoolId: srpb.id },
+  })
+  const srpbParentUser = await prisma.user.create({
+    data: { username: 'parent.srpb', password: hash('Demo@2026'), displayName: 'Hjh Roslinda Binti Ahmad', email: 'roslinda@gmail.com', role: 'parent', schoolId: srpb.id },
+  })
+
+  await prisma.teacher.create({
+    data: { userId: srpbTeacher1User.id, staffId: 'TS2026001', designation: 'Teacher', department: 'Primary Education', qualification: 'Bachelor of Education', subjects: 'Mathematics,Science', joinDate: new Date('2019-01-10'), cpdHours: 12, employmentStatus: 'active', schoolId: srpb.id },
+  })
+  const srpbTeacher2 = await prisma.teacher.create({
+    data: { userId: srpbTeacher2User.id, staffId: 'TS2026002', designation: 'Teacher', department: 'Languages', qualification: 'Bachelor of Education (BM)', subjects: 'Bahasa Melayu,English', joinDate: new Date('2021-07-15'), cpdHours: 8, employmentStatus: 'active', schoolId: srpb.id },
+  })
+
+  // SRPB Courses (Year 1-6)
+  await prisma.course.createMany({
+    data: [
+      { code: 'MATH101', name: 'Mathematics Year 1', gradeLevel: 'Year 1', creditHours: 4, schoolId: srpb.id },
+      { code: 'BM101', name: 'Bahasa Melayu Year 1', gradeLevel: 'Year 1', creditHours: 4, schoolId: srpb.id },
+      { code: 'MATH601', name: 'Mathematics Year 6', gradeLevel: 'Year 6', creditHours: 4, schoolId: srpb.id },
+      { code: 'BM601', name: 'Bahasa Melayu Year 6', gradeLevel: 'Year 6', creditHours: 4, schoolId: srpb.id },
+      { code: 'SCI601', name: 'Science Year 6', gradeLevel: 'Year 6', creditHours: 3, schoolId: srpb.id },
+    ],
+  })
+
+  // SRPB Year 6 class (students eligible for primary→secondary transition)
+  const srpbYear6Students: string[] = []
+  for (let i = 0; i < 15; i++) {
+    const { name, gender } = generateName(1000 + i)
+    const srpbStudentUser = await prisma.user.create({
+      data: { username: `srpb.y6.${i}`, password: hash('Demo@2026'), displayName: name, role: 'student', schoolId: srpb.id },
+    })
+    const srpbStudent = await prisma.student.create({
+      data: {
+        userId: srpbStudentUser.id,
+        studentId: `SRPB6-${String(i + 1).padStart(3, '0')}`,
+        gradeLevel: 'Year 6',
+        className: '6A',
+        gender,
+        enrollmentStatus: 'enrolled',
+        schoolId: srpb.id,
+      },
+    })
+    srpbYear6Students.push(srpbStudent.id)
+  }
+
+  // SRPB Year 1 class
+  for (let i = 0; i < 10; i++) {
+    const { name, gender } = generateName(1100 + i)
+    const u = await prisma.user.create({
+      data: { username: `srpb.y1.${i}`, password: hash('Demo@2026'), displayName: name, role: 'student', schoolId: srpb.id },
+    })
+    await prisma.student.create({
+      data: { userId: u.id, studentId: `SRPB1-${String(i + 1).padStart(3, '0')}`, gradeLevel: 'Year 1', className: '1A', gender, enrollmentStatus: 'enrolled', schoolId: srpb.id },
+    })
+  }
+
+  // SRPB Class Rosters
+  await prisma.classRoster.createMany({
+    data: [
+      { gradeLevel: 'Year 6', className: '6A', academicYear: '2025/2026', capacity: 30, programme: 'Standard', formTeacherId: srpbTeacher2.id, schoolId: srpb.id },
+      { gradeLevel: 'Year 1', className: '1A', academicYear: '2025/2026', capacity: 30, programme: 'Standard', schoolId: srpb.id },
+    ],
+  })
+
+  // Parent link
+  const srpbParent = await prisma.parent.create({ data: { userId: srpbParentUser.id } })
+  if (srpbYear6Students[0]) {
+    await prisma.parentStudent.create({ data: { parentId: srpbParent.id, studentId: srpbYear6Students[0] } })
+  }
+
+  // ─── SMAB — MORA Secondary School ────────────────────────────────────────
+  console.log('Seeding SMAB (MORA Secondary)...')
+
+  await prisma.user.create({
+    data: { username: 'admin.smab', password: hash('Demo@2026'), displayName: 'SMAB Admin', email: 'admin@smab.edu.bn', role: 'admin', schoolId: smab.id },
+  })
+  await prisma.user.create({
+    data: { username: 'principal.smab', password: hash('Demo@2026'), displayName: 'Ustaz Hj Mahyuddin Bin Hj Sarawak', email: 'principal@smab.edu.bn', role: 'principal', schoolId: smab.id },
+  })
+  const smabTeacher1User = await prisma.user.create({
+    data: { username: 'teacher.smab1', password: hash('Demo@2026'), displayName: 'Ustaz Hafizuddin Bin Daud', email: 'hafizuddin@smab.edu.bn', role: 'teacher', schoolId: smab.id },
+  })
+  await prisma.teacher.create({
+    data: { userId: smabTeacher1User.id, staffId: 'TM2026001', designation: 'Teacher', department: 'Islamic Studies', qualification: 'BA Islamic Studies (UBD)', subjects: 'Quran,Fiqh,Tawhid', joinDate: new Date('2018-08-01'), cpdHours: 15, employmentStatus: 'active', schoolId: smab.id },
+  })
+
+  await prisma.course.createMany({
+    data: [
+      { code: 'QURAN301', name: 'Quran Tingkatan 3', gradeLevel: 'Tingkatan 3', creditHours: 3, schoolId: smab.id },
+      { code: 'FIQH301', name: 'Fiqh Tingkatan 3', gradeLevel: 'Tingkatan 3', creditHours: 3, schoolId: smab.id },
+      { code: 'MATH301', name: 'Mathematics Tingkatan 3', gradeLevel: 'Tingkatan 3', creditHours: 4, schoolId: smab.id },
+      { code: 'BM301', name: 'Bahasa Melayu Tingkatan 3', gradeLevel: 'Tingkatan 3', creditHours: 4, schoolId: smab.id },
+      { code: 'QURAN101', name: 'Quran Tingkatan 1', gradeLevel: 'Tingkatan 1', creditHours: 3, schoolId: smab.id },
+    ],
+  })
+
+  for (let i = 0; i < 12; i++) {
+    const { name, gender } = generateName(2000 + i)
+    const u = await prisma.user.create({
+      data: { username: `smab.t3.${i}`, password: hash('Demo@2026'), displayName: name, role: 'student', schoolId: smab.id },
+    })
+    await prisma.student.create({
+      data: { userId: u.id, studentId: `SMAB3-${String(i + 1).padStart(3, '0')}`, gradeLevel: 'Tingkatan 3', className: 'Alif', gender, enrollmentStatus: 'enrolled', schoolId: smab.id },
+    })
+  }
+
+  await prisma.classRoster.createMany({
+    data: [
+      { gradeLevel: 'Tingkatan 3', className: 'Alif-T3', academicYear: '2025/2026', capacity: 25, programme: 'Religious', schoolId: smab.id },
+      { gradeLevel: 'Tingkatan 1', className: 'Alif-T1', academicYear: '2025/2026', capacity: 25, programme: 'Religious', schoolId: smab.id },
+    ],
+  })
+
+  // ─── ISB — Private International School ──────────────────────────────────
+  console.log('Seeding ISB (Private International)...')
+
+  await prisma.user.create({
+    data: { username: 'admin.isb', password: hash('Demo@2026'), displayName: 'ISB Admin', email: 'admin@isb.edu.bn', role: 'admin', schoolId: isb.id },
+  })
+  await prisma.user.create({
+    data: { username: 'principal.isb', password: hash('Demo@2026'), displayName: 'Ms. Eleanor Whitfield', email: 'principal@isb.edu.bn', role: 'principal', schoolId: isb.id },
+  })
+  const isbTeacher1User = await prisma.user.create({
+    data: { username: 'teacher.isb1', password: hash('Demo@2026'), displayName: 'Mr. James Thornton', email: 'james@isb.edu.bn', role: 'teacher', schoolId: isb.id },
+  })
+  await prisma.teacher.create({
+    data: { userId: isbTeacher1User.id, staffId: 'TI2026001', designation: 'Subject Teacher', department: 'Mathematics', qualification: 'BSc Mathematics, University of Nottingham', subjects: 'Mathematics,Further Mathematics', joinDate: new Date('2020-08-01'), cpdHours: 18, employmentStatus: 'active', schoolId: isb.id },
+  })
+
+  await prisma.course.createMany({
+    data: [
+      { code: 'IB-MATH11', name: 'IB Mathematics Grade 11', gradeLevel: 'Grade 11', creditHours: 4, schoolId: isb.id },
+      { code: 'IB-ENG11', name: 'IB English Grade 11', gradeLevel: 'Grade 11', creditHours: 4, schoolId: isb.id },
+      { code: 'IB-SCI11', name: 'IB Science Grade 11', gradeLevel: 'Grade 11', creditHours: 3, schoolId: isb.id },
+    ],
+  })
+
+  for (let i = 0; i < 10; i++) {
+    const { name, gender } = generateName(3000 + i)
+    const u = await prisma.user.create({
+      data: { username: `isb.g11.${i}`, password: hash('Demo@2026'), displayName: name, role: 'student', schoolId: isb.id },
+    })
+    await prisma.student.create({
+      data: { userId: u.id, studentId: `ISB11-${String(i + 1).padStart(3, '0')}`, gradeLevel: 'Grade 11', className: 'Alpha', gender, enrollmentStatus: 'enrolled', schoolId: isb.id },
+    })
+  }
+
+  await prisma.classRoster.create({
+    data: { gradeLevel: 'Grade 11', className: 'Alpha', academicYear: '2025/2026', capacity: 20, programme: 'IB', schoolId: isb.id },
+  })
+
+  // ─── Transition Records (Primary → Secondary) ─────────────────────────────
+  console.log('Seeding transition records...')
+
+  // Plan: Year 6 SRPB students → SMHK Year 7 (2026/2027 academic year)
+  const transitionStudents = srpbYear6Students.slice(0, 5)
+  for (const studentId of transitionStudents) {
+    await prisma.studentTransition.create({
+      data: {
+        studentId,
+        fromSchoolId: srpb.id,
+        toSchoolId: smhk.id,
+        fromGradeLevel: 'Year 6',
+        toGradeLevel: 'Year 7',
+        fromClassName: '6A',
+        transitionType: 'PRIMARY_TO_SECONDARY',
+        academicYear: '2026/2027',
+        effectiveDate: new Date('2026-07-01'),
+        status: 'planned',
+        notes: 'Eligible for secondary school enrollment at SMHK Year 7',
+      },
+    })
+  }
+
+  // 2 students with approved transition
+  if (srpbYear6Students[5] && srpbYear6Students[6]) {
+    for (const studentId of [srpbYear6Students[5], srpbYear6Students[6]]) {
+      await prisma.studentTransition.create({
+        data: {
+          studentId,
+          fromSchoolId: srpb.id,
+          toSchoolId: smhk.id,
+          fromGradeLevel: 'Year 6',
+          toGradeLevel: 'Year 7',
+          fromClassName: '6A',
+          transitionType: 'PRIMARY_TO_SECONDARY',
+          academicYear: '2026/2027',
+          effectiveDate: new Date('2026-07-01'),
+          status: 'approved',
+          notes: 'Approved — secondary school placement confirmed',
+        },
+      })
+    }
+  }
+
+  // Grade promotion within SMHK (Year 10 → Year 11 — planned for next year)
+  const smhkYear10Students = await prisma.student.findMany({
+    where: { schoolId: smhk.id, gradeLevel: 'Year 10', enrollmentStatus: 'enrolled' },
+    take: 5,
+  })
+  for (const s of smhkYear10Students) {
+    await prisma.studentTransition.create({
+      data: {
+        studentId: s.id,
+        fromSchoolId: smhk.id,
+        toSchoolId: smhk.id,
+        fromGradeLevel: 'Year 10',
+        toGradeLevel: 'Year 11',
+        fromClassName: s.className ?? undefined,
+        transitionType: 'GRADE_PROMOTION',
+        academicYear: '2026/2027',
+        effectiveDate: new Date('2026-07-01'),
+        status: 'planned',
+      },
+    })
+  }
+
+  console.log(`  Transitions created: ${5 + 2 + smhkYear10Students.length}`)
+
+  // ─── Non-Teaching Staff (SMHK) ───────────────────────────────────────────
+  console.log('Seeding non-teaching staff...')
+
+  const ntSecretaryUser = await prisma.user.create({
+    data: { username: 'staff.secretary', password: hash('Demo@2026'), displayName: 'Cik Rosnah Binti Hamid', email: 'rosnah@smhk.edu.bn', role: 'admin', schoolId: smhk.id },
+  })
+  await prisma.teacher.create({
+    data: { userId: ntSecretaryUser.id, staffId: 'NT2026001', designation: 'School Secretary', department: 'Administration', qualification: 'Diploma in Business Administration', subjects: '', joinDate: new Date('2015-03-01'), cpdHours: 0, cpdTarget: 0, employmentStatus: 'active', staffType: 'ADMINISTRATIVE', schoolId: smhk.id },
+  })
+
+  const ntLibrarianUser = await prisma.user.create({
+    data: { username: 'staff.librarian', password: hash('Demo@2026'), displayName: 'Cik Hidayah Binti Rosli', email: 'hidayah@smhk.edu.bn', role: 'admin', schoolId: smhk.id },
+  })
+  await prisma.teacher.create({
+    data: { userId: ntLibrarianUser.id, staffId: 'NT2026002', designation: 'Librarian', department: 'Library', qualification: 'Diploma in Library Science', subjects: '', joinDate: new Date('2018-08-01'), cpdHours: 0, cpdTarget: 0, employmentStatus: 'active', staffType: 'SUPPORT', schoolId: smhk.id },
+  })
+
+  const ntSecurityUser = await prisma.user.create({
+    data: { username: 'staff.security', password: hash('Demo@2026'), displayName: 'Awang Matnor Bin Salleh', email: 'matnor@smhk.edu.bn', role: 'admin', schoolId: smhk.id },
+  })
+  await prisma.teacher.create({
+    data: { userId: ntSecurityUser.id, staffId: 'NT2026003', designation: 'Security Guard', department: 'Security', qualification: 'Certificate in Security Management', subjects: '', joinDate: new Date('2020-01-15'), cpdHours: 0, cpdTarget: 0, employmentStatus: 'active', staffType: 'SECURITY', schoolId: smhk.id },
+  })
+
+  const ntDriverUser = await prisma.user.create({
+    data: { username: 'staff.driver', password: hash('Demo@2026'), displayName: 'Awang Saiful Bin Awang Damit', email: 'saiful@smhk.edu.bn', role: 'admin', schoolId: smhk.id },
+  })
+  await prisma.teacher.create({
+    data: { userId: ntDriverUser.id, staffId: 'NT2026004', designation: 'School Driver', department: 'Operations', qualification: 'Class 3 Driving License', subjects: '', joinDate: new Date('2022-06-01'), cpdHours: 0, cpdTarget: 0, employmentStatus: 'active', staffType: 'SUPPORT', schoolId: smhk.id },
+  })
+
+  // ─── Integration Logs (SIM-IL) ───────────────────────────────────────────
+  console.log('Seeding integration logs...')
+
+  const integrationSystems = [
+    { system: 'BRUNEI_ID', endpoint: '/api/brunei-id/verify-citizen', payloadSize: 1240 },
+    { system: 'EGNC',      endpoint: '/api/egnc/sync-staff-records',  payloadSize: 8450 },
+    { system: 'NIH',       endpoint: '/api/nih/push-attendance-stats', payloadSize: 22800 },
+    { system: 'SSM',       endpoint: '/api/ssm/sync-leave-balances',   payloadSize: 4120 },
+    { system: 'KOHA',      endpoint: '/api/koha/z3950/sync-catalogue', payloadSize: 31500 },
+  ]
+
+  for (const sys of integrationSystems) {
+    for (let i = 0; i < 5; i++) {
+      const minsAgo = (i + 1) * 18 + Math.floor(Math.random() * 10)
+      const createdAt = new Date(Date.now() - minsAgo * 60 * 1000)
+      await prisma.integrationLog.create({
+        data: {
+          system: sys.system,
+          endpoint: sys.endpoint,
+          payloadSize: sys.payloadSize + Math.floor(Math.random() * 1000 - 500),
+          status: i === 2 ? 'error' : 'success',
+          triggeredBy: 'system',
+          createdAt,
+        },
+      })
+    }
+  }
+
+  // ─── Exam Management (PSR 2026 at SRPB) ─────────────────────────────────
+  console.log('Seeding exam data...')
+
+  const psrExam = await prisma.exam.create({
+    data: {
+      schoolId: srpb.id,
+      examType: 'PSR',
+      year: 2026,
+      examDate: new Date('2026-09-15T08:00:00Z'),
+      venue: 'SRPB Main Hall',
+      status: 'upcoming',
+    },
+  })
+
+  const psrSubjects = ['ENG', 'MAL', 'MATH', 'SCI']
+  const psrSubjectNames: Record<string, string> = { ENG: 'English', MAL: 'Bahasa Melayu', MATH: 'Mathematics', SCI: 'Science' }
+  let seatCounter = 1
+
+  for (const studentId of srpbYear6Students) {
+    for (const subjectCode of psrSubjects) {
+      const seatNum = `A${String(seatCounter).padStart(3, '0')}`
+      await prisma.examCandidate.create({
+        data: {
+          examId: psrExam.id,
+          studentId,
+          subjectCode,
+          seatNumber: seatNum,
+          status: 'registered',
+        },
+      })
+      seatCounter++
+    }
+  }
+
+  console.log(`  PSR exam seeded: ${srpbYear6Students.length} candidates × ${psrSubjects.length} subjects = ${srpbYear6Students.length * psrSubjects.length} rows`)
+
+  // ─── SEN / Special Education ─────────────────────────────────────────────
+  console.log('Seeding SEN data...')
+
+  // SEN Student 1: Ahmad (DYSLEXIA, Level 2)
+  const senAhmad = await prisma.senStudent.create({
+    data: {
+      studentId: ahmad.id,
+      diagnosisType: 'DYSLEXIA',
+      supportLevel: 'LEVEL_2',
+      notes: 'Ahmad demonstrates difficulty with reading and written tasks. Benefits from extended time and text-to-speech support.',
+    },
+  })
+
+  await prisma.iepGoal.createMany({
+    data: [
+      {
+        senStudentId: senAhmad.id,
+        subject: 'English',
+        description: 'Improve reading fluency from 45 wpm to 80 wpm using decodable text strategies within 3 months',
+        targetDate: new Date('2026-08-31'),
+        status: 'active',
+      },
+      {
+        senStudentId: senAhmad.id,
+        subject: 'Mathematics',
+        description: 'Independently solve 2-step word problems with 80% accuracy using graphic organizers',
+        targetDate: new Date('2026-07-31'),
+        status: 'active',
+      },
+      {
+        senStudentId: senAhmad.id,
+        subject: 'General',
+        description: 'Use text-to-speech assistive technology independently during all written assessments',
+        targetDate: new Date('2026-06-30'),
+        status: 'achieved',
+      },
+    ],
+  })
+
+  await prisma.iepSessionLog.createMany({
+    data: [
+      {
+        senStudentId: senAhmad.id,
+        date: daysAgo(28),
+        durationMins: 45,
+        conductedBy: farahUser.id,
+        notes: 'Initial assessment session. Ahmad engaged well. Identified phonological awareness gaps.',
+      },
+      {
+        senStudentId: senAhmad.id,
+        date: daysAgo(21),
+        durationMins: 45,
+        conductedBy: farahUser.id,
+        notes: 'Introduced Orton-Gillingham reading strategies. Ahmad completed 2 decodable texts with prompting.',
+      },
+      {
+        senStudentId: senAhmad.id,
+        date: daysAgo(14),
+        durationMins: 45,
+        conductedBy: farahUser.id,
+        notes: 'Reading fluency check: 52 wpm (up from 45 wpm). Ahmad is responding positively to multisensory techniques.',
+      },
+      {
+        senStudentId: senAhmad.id,
+        date: daysAgo(7),
+        durationMins: 30,
+        conductedBy: farahUser.id,
+        notes: 'Reviewed text-to-speech tool setup on school iPad. Ahmad used it independently for the first time. Goal 3 marked achieved.',
+      },
+    ],
+  })
+
+  // SEN Student 2: Hafiz (AUTISM, Level 3)
+  const senHafiz = await prisma.senStudent.create({
+    data: {
+      studentId: hafiz.id,
+      diagnosisType: 'AUTISM',
+      supportLevel: 'LEVEL_3',
+      notes: 'Hafiz requires a structured and predictable learning environment. Strong in mathematics; challenges with social communication and transitions between activities.',
+    },
+  })
+
+  await prisma.iepGoal.createMany({
+    data: [
+      {
+        senStudentId: senHafiz.id,
+        subject: 'Social Skills',
+        description: 'Initiate a greeting with at least 3 different peers per day in structured settings with visual prompt card',
+        targetDate: new Date('2026-09-30'),
+        status: 'active',
+      },
+      {
+        senStudentId: senHafiz.id,
+        subject: 'Self-Regulation',
+        description: 'Use the calming corner independently when identifying emotional escalation, without adult prompting, 4 out of 5 times',
+        targetDate: new Date('2026-08-31'),
+        status: 'active',
+      },
+    ],
+  })
+
+  await prisma.iepSessionLog.createMany({
+    data: [
+      {
+        senStudentId: senHafiz.id,
+        date: daysAgo(14),
+        durationMins: 60,
+        conductedBy: farahUser.id,
+        notes: 'Introduced visual schedule board. Hafiz responded well to the predictable structure. Minor transition difficulty at the 30-minute mark.',
+      },
+      {
+        senStudentId: senHafiz.id,
+        date: daysAgo(7),
+        durationMins: 60,
+        conductedBy: farahUser.id,
+        notes: 'Practiced greeting script using social story cards. Hafiz greeted 2 peers independently. Continuing to build consistency.',
+      },
+    ],
+  })
+
+  // ─── Library ─────────────────────────────────────────────────────────────
+  console.log('Seeding library data...')
+
+  const libraryBooksData = [
+    { title: 'The Alchemist', author: 'Paulo Coelho', category: 'Fiction', totalCopies: 3, availableCopies: 2, isbn: '978-0062315007', kohaId: 'KOHA-0001' },
+    { title: 'A Brief History of Time', author: 'Stephen Hawking', category: 'Science', totalCopies: 2, availableCopies: 2, isbn: '978-0553380163', kohaId: 'KOHA-0002' },
+    { title: 'Brunei History and Culture', author: 'Dato D.S. Ranjit Singh', category: 'History', totalCopies: 4, availableCopies: 4, isbn: '978-9991705699', kohaId: 'KOHA-0003' },
+    { title: 'Mathematics for O-Level', author: 'Chan Boon Tat', category: 'Textbook', totalCopies: 10, availableCopies: 9, isbn: '978-9814253024', kohaId: 'KOHA-0004' },
+    { title: 'English Grammar in Use', author: 'Raymond Murphy', category: 'Reference', totalCopies: 5, availableCopies: 5, isbn: '978-1107539334', kohaId: 'KOHA-0005' },
+    { title: 'Totto-chan: The Little Girl at the Window', author: 'Tetsuko Kuroyanagi', category: 'Fiction', totalCopies: 2, availableCopies: 2, isbn: '978-4062019019', kohaId: 'KOHA-0006' },
+    { title: 'The Diary of a Young Girl', author: 'Anne Frank', category: 'Biography', totalCopies: 2, availableCopies: 1, isbn: '978-0553577129', kohaId: 'KOHA-0007' },
+    { title: 'Biology for Cambridge IGCSE', author: 'D.G. Mackean', category: 'Textbook', totalCopies: 8, availableCopies: 8, isbn: '978-1444176360', kohaId: 'KOHA-0008' },
+    { title: 'Chemistry: A Molecular Approach', author: 'Nivaldo Tro', category: 'Textbook', totalCopies: 6, availableCopies: 6, isbn: '978-0134112831', kohaId: 'KOHA-0009' },
+    { title: 'Malay Language and Literature', author: 'Abdullah Hassan', category: 'Textbook', totalCopies: 8, availableCopies: 8, isbn: '978-9835000000', kohaId: 'KOHA-0010' },
+    { title: 'National Geographic: Planet Earth', author: 'David Attenborough', category: 'Science', totalCopies: 2, availableCopies: 2, isbn: '978-1426200069', kohaId: 'KOHA-0011' },
+    { title: 'The Art of War', author: 'Sun Tzu', category: 'Philosophy', totalCopies: 3, availableCopies: 3, isbn: '978-1590302255', kohaId: 'KOHA-0012' },
+    { title: 'Sherlock Holmes: Complete Stories', author: 'Arthur Conan Doyle', category: 'Fiction', totalCopies: 2, availableCopies: 2, isbn: '978-0785833918', kohaId: 'KOHA-0013' },
+    { title: 'Physics for Scientists and Engineers', author: 'Serway & Jewett', category: 'Textbook', totalCopies: 6, availableCopies: 6, isbn: '978-1133947271', kohaId: 'KOHA-0014' },
+    { title: 'Introduction to Algorithms', author: 'Cormen et al.', category: 'Textbook', totalCopies: 3, availableCopies: 3, isbn: '978-0262033848', kohaId: 'KOHA-0015' },
+    { title: 'Sapiens: A Brief History of Humankind', author: 'Yuval Noah Harari', category: 'History', totalCopies: 3, availableCopies: 2, isbn: '978-0062316097', kohaId: 'KOHA-0016' },
+    { title: 'Rich Dad Poor Dad', author: 'Robert Kiyosaki', category: 'Non-Fiction', totalCopies: 2, availableCopies: 2, isbn: '978-1612680194', kohaId: 'KOHA-0017' },
+    { title: 'Thinking, Fast and Slow', author: 'Daniel Kahneman', category: 'Non-Fiction', totalCopies: 2, availableCopies: 2, isbn: '978-0374533557', kohaId: 'KOHA-0018' },
+    { title: 'The Old Man and the Sea', author: 'Ernest Hemingway', category: 'Fiction', totalCopies: 3, availableCopies: 3, isbn: '978-0684801223', kohaId: 'KOHA-0019' },
+    { title: 'Geografi untuk SPM', author: 'Mohd Fadzil Hassan', category: 'Textbook', totalCopies: 5, availableCopies: 5, isbn: '978-9830082264', kohaId: 'KOHA-0020' },
+  ]
+
+  const createdBooks: { id: string; availableCopies: number }[] = []
+  for (const b of libraryBooksData) {
+    const book = await prisma.libraryBook.create({ data: { ...b, schoolId: smhk.id } })
+    createdBooks.push({ id: book.id, availableCopies: b.availableCopies })
+  }
+
+  // 5 loans: 3 active (future due), 2 overdue (past due, not yet returned)
+  const loanData = [
+    { bookIdx: 0, studentId: ahmad.id,  borrowedDaysAgo: 5,  dueDaysFromNow: 9  }, // active
+    { bookIdx: 3, studentId: adam.id,   borrowedDaysAgo: 8,  dueDaysFromNow: 6  }, // active
+    { bookIdx: 6, studentId: nurul.id,  borrowedDaysAgo: 20, dueDaysFromNow: -6 }, // overdue (6 days past due)
+    { bookIdx: 9, studentId: hafiz.id,  borrowedDaysAgo: 25, dueDaysFromNow: -11 }, // overdue (11 days past due)
+    { bookIdx: 15, studentId: fatin.id, borrowedDaysAgo: 3,  dueDaysFromNow: 11 }, // active
+  ]
+
+  for (const loan of loanData) {
+    const dueDate = new Date()
+    dueDate.setDate(dueDate.getDate() + loan.dueDaysFromNow)
+    dueDate.setHours(23, 59, 0, 0)
+
+    const overdueDays = loan.dueDaysFromNow < 0 ? Math.abs(loan.dueDaysFromNow) : 0
+    const fineAmount = overdueDays > 0 ? parseFloat((overdueDays * 0.10).toFixed(2)) : 0
+
+    await prisma.libraryLoan.create({
+      data: {
+        bookId: createdBooks[loan.bookIdx].id,
+        studentId: loan.studentId,
+        borrowedAt: daysAgo(loan.borrowedDaysAgo),
+        dueDate,
+        returnedAt: null,
+        fineAmount,
+      },
+    })
+    // Decrement availableCopies for the book used (already reflected in seed data above)
+  }
+
+  // 3 holds on books with limited availability
+  await prisma.libraryHold.createMany({
+    data: [
+      { bookId: createdBooks[6].id,  studentId: adam.id,  status: 'waiting' },  // Diary of a Young Girl (1 available, but Ahmad has a loan — so this is a preemptive hold)
+      { bookId: createdBooks[15].id, studentId: ahmad.id, status: 'ready' },     // Sapiens — notified ready
+      { bookId: createdBooks[0].id,  studentId: hafiz.id, status: 'waiting' },   // The Alchemist (waiting)
+    ],
+  })
+
+  // ─── Inventory / Assets ───────────────────────────────────────────────────
+  console.log('Seeding inventory data...')
+
+  const catFurniture = await prisma.assetCategory.create({
+    data: { name: 'Furniture', description: 'Chairs, tables, shelving, cabinets', schoolId: smhk.id },
+  })
+  const catIT = await prisma.assetCategory.create({
+    data: { name: 'IT Equipment', description: 'Computers, projectors, printers, tablets', schoolId: smhk.id },
+  })
+  const catSports = await prisma.assetCategory.create({
+    data: { name: 'Sports Equipment', description: 'Balls, nets, athletic equipment', schoolId: smhk.id },
+  })
+
+  const assetsData = [
+    // Furniture (5)
+    { assetTag: 'FUR-2023-0001', name: 'Student Desk (Set of 10)', categoryId: catFurniture.id, location: 'Classroom 7A', condition: 'Good', purchaseDate: new Date('2023-01-15'), value: 1200.0 },
+    { assetTag: 'FUR-2023-0002', name: 'Teacher Desk', categoryId: catFurniture.id, location: 'Classroom 7A', condition: 'Good', purchaseDate: new Date('2023-01-15'), value: 380.0 },
+    { assetTag: 'FUR-2021-0003', name: 'Whiteboard (3m×1.2m)', categoryId: catFurniture.id, location: 'Classroom 8B', condition: 'Fair', purchaseDate: new Date('2021-08-01'), value: 450.0 },
+    { assetTag: 'FUR-2019-0004', name: 'Library Bookshelf (6-tier)', categoryId: catFurniture.id, location: 'Library', condition: 'Fair', purchaseDate: new Date('2019-03-10'), value: 320.0 },
+    { assetTag: 'FUR-2018-0005', name: 'Principal Office Chair', categoryId: catFurniture.id, location: 'Principal Office', condition: 'Poor', purchaseDate: new Date('2018-06-01'), value: 250.0 },
+    // IT Equipment (6)
+    { assetTag: 'IT-2024-0001', name: 'Dell Optiplex Desktop PC', categoryId: catIT.id, location: 'ICT Lab', condition: 'Good', purchaseDate: new Date('2024-02-01'), value: 1800.0 },
+    { assetTag: 'IT-2024-0002', name: 'Dell Optiplex Desktop PC', categoryId: catIT.id, location: 'ICT Lab', condition: 'Good', purchaseDate: new Date('2024-02-01'), value: 1800.0 },
+    { assetTag: 'IT-2022-0003', name: 'Epson Projector EB-X49', categoryId: catIT.id, location: 'Classroom 9A', condition: 'Good', purchaseDate: new Date('2022-08-15'), value: 950.0 },
+    { assetTag: 'IT-2022-0004', name: 'Epson Projector EB-X49', categoryId: catIT.id, location: 'Classroom 10B', condition: 'Fair', purchaseDate: new Date('2022-08-15'), value: 950.0 },
+    { assetTag: 'IT-2020-0005', name: 'Canon Printer MF445dw', categoryId: catIT.id, location: 'Admin Office', condition: 'Good', purchaseDate: new Date('2020-11-01'), value: 620.0 },
+    { assetTag: 'IT-2019-0006', name: 'Samsung Smart TV 55"', categoryId: catIT.id, location: 'Staff Room', condition: 'Good', purchaseDate: new Date('2019-07-20'), value: 1100.0 },
+    // Sports Equipment (4)
+    { assetTag: 'SPT-2023-0001', name: 'Football (Size 5) ×10', categoryId: catSports.id, location: 'Sports Storeroom', condition: 'Good', purchaseDate: new Date('2023-09-01'), value: 300.0 },
+    { assetTag: 'SPT-2023-0002', name: 'Badminton Racket Set ×20', categoryId: catSports.id, location: 'Sports Storeroom', condition: 'Good', purchaseDate: new Date('2023-09-01'), value: 480.0 },
+    { assetTag: 'SPT-2021-0003', name: 'Basketball Hoop (portable)', categoryId: catSports.id, location: 'Gymnasium', condition: 'Fair', purchaseDate: new Date('2021-04-15'), value: 350.0 },
+    { assetTag: 'SPT-2017-0004', name: 'High Jump Mat', categoryId: catSports.id, location: 'Sports Field', condition: 'Poor', purchaseDate: new Date('2017-01-10'), value: 600.0 },
+  ]
+
+  const createdAssets: { id: string }[] = []
+  for (const a of assetsData) {
+    const asset = await prisma.asset.create({ data: { ...a, schoolId: smhk.id } })
+    createdAssets.push({ id: asset.id })
+  }
+
+  // 4 maintenance log entries
+  await prisma.assetMaintenanceLog.createMany({
+    data: [
+      {
+        assetId: createdAssets[4].id, // Principal Office Chair
+        date: daysAgo(90),
+        type: 'Repair',
+        cost: 45.0,
+        conductedBy: 'Awang Saiful (Driver)',
+        notes: 'Replaced gas lift cylinder. Chair still showing wear on armrests.',
+      },
+      {
+        assetId: createdAssets[5].id, // Dell PC #1
+        date: daysAgo(30),
+        type: 'Service',
+        cost: 0,
+        conductedBy: 'ICT Department',
+        notes: 'Annual OS update and disk cleanup. RAM upgraded from 8GB to 16GB.',
+      },
+      {
+        assetId: createdAssets[8].id, // Projector #2
+        date: daysAgo(14),
+        type: 'Repair',
+        cost: 120.0,
+        conductedBy: 'Epson Service Centre',
+        notes: 'Lamp replacement. Projector now operational. Previous lamp ran 3,200 hours.',
+      },
+      {
+        assetId: createdAssets[14].id, // High Jump Mat
+        date: daysAgo(7),
+        type: 'Inspection',
+        cost: 0,
+        conductedBy: 'PE Department',
+        notes: 'Annual safety inspection. Mat shows significant foam degradation. Recommend replacement in next budget cycle.',
+      },
+    ],
+  })
+
+  // ─── Brunei 2026 Public Holidays ──────────────────────────────────────────
+  console.log('Seeding Brunei 2026 public holidays...')
+
+  await prisma.publicHoliday.deleteMany({})
+  await prisma.publicHoliday.createMany({
+    data: [
+      { date: new Date('2026-01-01'), name: "New Year's Day" },
+      { date: new Date('2026-01-22'), name: 'Chinese New Year' },
+      { date: new Date('2026-02-23'), name: 'National Day' },
+      { date: new Date('2026-03-20'), name: 'Nuzul Al-Quran' },
+      { date: new Date('2026-03-30'), name: 'Hari Raya Aidilfitri (Day 1)' },
+      { date: new Date('2026-03-31'), name: 'Hari Raya Aidilfitri (Day 2)' },
+      { date: new Date('2026-04-01'), name: 'Hari Raya Aidilfitri (Day 3)' },
+      { date: new Date('2026-05-31'), name: 'Royal Brunei Armed Forces Day' },
+      { date: new Date('2026-06-07'), name: 'Hari Raya Aidiladha' },
+      { date: new Date('2026-06-15'), name: "Sultan's Birthday" },
+      { date: new Date('2026-06-27'), name: 'Awal Muharram (Islamic New Year)' },
+      { date: new Date('2026-09-05'), name: "Prophet Muhammad's Birthday (Maulidur Rasul)" },
+      { date: new Date('2026-12-25'), name: 'Christmas Day' },
+    ],
+  })
+
+  // ─── Module 5: Financial Aid, Hostel, Bus Records ────────────────────────
+  console.log('Seeding Module 5 student support records...')
+
+  const enrolledStudents = await prisma.student.findMany({
+    where: { enrollmentStatus: 'enrolled' },
+    orderBy: { studentId: 'asc' },
+    take: 30,
+    select: { id: true },
+  })
+
+  if (enrolledStudents.length > 0) {
+    // Financial Aid — 8 students
+    await prisma.financialAid.deleteMany({})
+    const aidRecords = [
+      { aidType: 'SCHOLARSHIP', amount: 1200.0, notes: 'MOE Academic Excellence Scholarship 2026' },
+      { aidType: 'BURSARY', amount: 600.0, notes: 'Ministry Hardship Bursary' },
+      { aidType: 'MEAL_SUBSIDY', amount: 240.0, notes: 'Subsidised canteen meals — Term 1 & 2' },
+      { aidType: 'BOOK_ALLOWANCE', amount: 150.0, notes: 'Textbook allowance 2025/2026' },
+      { aidType: 'SCHOLARSHIP', amount: 1200.0, notes: 'School Council Scholarship' },
+      { aidType: 'BURSARY', amount: 800.0, notes: 'Single-parent household bursary' },
+      { aidType: 'MEAL_SUBSIDY', amount: 240.0, notes: 'Subsidised canteen meals' },
+      { aidType: 'BOOK_ALLOWANCE', amount: 150.0, notes: 'Textbook allowance' },
+    ]
+    for (let i = 0; i < Math.min(aidRecords.length, enrolledStudents.length); i++) {
+      await prisma.financialAid.create({
+        data: {
+          studentId: enrolledStudents[i].id,
+          ...aidRecords[i],
+          startDate: new Date('2026-01-01'),
+          endDate: new Date('2026-12-31'),
+          approvedDate: new Date('2025-12-15'),
+          eligibilityStatus: 'active',
+        },
+      })
+    }
+
+    // Hostel Records — 5 students
+    await prisma.hostelRecord.deleteMany({})
+    const hostelData = [
+      { hostelName: 'Asrama Negara A', roomNumber: 'A101', emergencyContact: '+673 811 0001' },
+      { hostelName: 'Asrama Negara A', roomNumber: 'A102', emergencyContact: '+673 811 0002' },
+      { hostelName: 'Asrama Negara B', roomNumber: 'B201', emergencyContact: '+673 822 0001' },
+      { hostelName: 'Asrama Negara B', roomNumber: 'B202', emergencyContact: '+673 822 0002' },
+      { hostelName: 'Asrama Utama',    roomNumber: 'U305', emergencyContact: '+673 855 0001' },
+    ]
+    const hostelStudents = enrolledStudents.slice(10, 15)
+    for (let i = 0; i < Math.min(hostelData.length, hostelStudents.length); i++) {
+      await prisma.hostelRecord.upsert({
+        where: { studentId: hostelStudents[i].id },
+        update: { ...hostelData[i], checkInDate: new Date('2026-01-06'), semester: '2026-S1', status: 'active' },
+        create: { studentId: hostelStudents[i].id, ...hostelData[i], checkInDate: new Date('2026-01-06'), semester: '2026-S1' },
+      })
+    }
+
+    // Bus Records — 8 students
+    await prisma.busRecord.deleteMany({})
+    const busData = [
+      { busRoute: 'Route 1 — Bandar to Berakas', busNumber: 'BUS-001', provider: 'MOE Transport', pickupPoint: 'Jalan Gadong', dropoffPoint: 'School Main Gate' },
+      { busRoute: 'Route 1 — Bandar to Berakas', busNumber: 'BUS-001', provider: 'MOE Transport', pickupPoint: 'Kiulap Roundabout', dropoffPoint: 'School Main Gate' },
+      { busRoute: 'Route 2 — Tutong Highway', busNumber: 'BUS-002', provider: 'MOE Transport', pickupPoint: 'Mulaut Junction', dropoffPoint: 'School Side Gate' },
+      { busRoute: 'Route 2 — Tutong Highway', busNumber: 'BUS-002', provider: 'MOE Transport', pickupPoint: 'Kg Lamunin', dropoffPoint: 'School Side Gate' },
+      { busRoute: 'Route 3 — Seria / KB', busNumber: 'BUS-003', provider: 'JPBD Charter', pickupPoint: 'Seria Town', dropoffPoint: 'School Main Gate' },
+      { busRoute: 'Route 3 — Seria / KB', busNumber: 'BUS-003', provider: 'JPBD Charter', pickupPoint: 'Kuala Belait', dropoffPoint: 'School Main Gate' },
+      { busRoute: 'Route 4 — Kuala Belait', busNumber: 'BUS-004', provider: 'MOE Transport', pickupPoint: 'Jln Bunga Raya', dropoffPoint: 'School Main Gate' },
+      { busRoute: 'Route 4 — Kuala Belait', busNumber: 'BUS-004', provider: 'MOE Transport', pickupPoint: 'Sg Liang', dropoffPoint: 'School Main Gate' },
+    ]
+    const busStudents = enrolledStudents.slice(15, 23)
+    for (let i = 0; i < Math.min(busData.length, busStudents.length); i++) {
+      await prisma.busRecord.upsert({
+        where: { studentId: busStudents[i].id },
+        update: { ...busData[i], semester: '2026-S1', status: 'active' },
+        create: { studentId: busStudents[i].id, ...busData[i], semester: '2026-S1' },
+      })
+    }
+  }
+
+  // ─── Module 8: Parent-Teacher Communication — Consent Forms ──────────────
+  console.log('Seeding Module 8 consent forms...')
+
+  // Get admin user and a school for seeding
+  const adminForComms = await prisma.user.findFirst({ where: { role: 'admin' }, select: { id: true, schoolId: true } })
+  if (adminForComms) {
+    // Delete old consent forms
+    await prisma.consentFormRecipient.deleteMany({})
+    await prisma.consentForm.deleteMany({})
+
+    const seedForms = [
+      {
+        title: 'Field Trip to Brunei Museum — Year 8 Permission Slip',
+        description: 'We are pleased to invite Year 8 students to a guided educational visit to the Brunei Museum on 20 June 2026. The trip will run from 8:00 AM to 1:00 PM. Students will be accompanied by three teachers. A packed lunch will be required. Please acknowledge this form to confirm your child\'s participation and to grant permission for the visit. Medical supervision will be available on-site.',
+        type: 'FIELD_TRIP',
+        status: 'ACTIVE',
+        dueDate: new Date('2026-06-15'),
+        targetGradeLevel: 'Year 8',
+        schoolId: adminForComms.schoolId,
+        createdById: adminForComms.id,
+      },
+      {
+        title: 'School Photography & Media Release 2026',
+        description: 'Throughout the 2025/2026 academic year, the school may take photographs and videos of students during school activities, events, and daily school life. These images may be used in the school newsletter, official website, social media, and MOE publications. Please acknowledge this form to grant permission for your child\'s image to be used for these purposes. You may opt out at any time by contacting the school admin.',
+        type: 'PHOTO_RELEASE',
+        status: 'ACTIVE',
+        dueDate: new Date('2026-06-30'),
+        targetGradeLevel: null,
+        schoolId: adminForComms.schoolId,
+        createdById: adminForComms.id,
+      },
+      {
+        title: 'Updated Student Code of Conduct 2026 — Parent Acknowledgment',
+        description: 'The school has updated the Student Code of Conduct for the 2025/2026 academic year. Key updates include revised guidelines on mobile phone use, updated attendance policies, and new expectations for online learning conduct. Please read the attached document carefully and acknowledge this form to confirm that you have reviewed the updated Code of Conduct with your child.',
+        type: 'POLICY_ACKNOWLEDGMENT',
+        status: 'CLOSED',
+        dueDate: new Date('2026-02-28'),
+        targetGradeLevel: null,
+        schoolId: adminForComms.schoolId,
+        createdById: adminForComms.id,
+      },
+      {
+        title: 'Inter-School Sports Day — Year 10 & 11 Participation Consent',
+        description: 'Year 10 and Year 11 students are invited to participate in the annual Inter-School Sports Day on 5 July 2026. Events include track and field, team sports, and relays. Students who wish to participate must have this form acknowledged by their parent or guardian. Medical screening will be conducted prior to the event. Transport to and from the venue (Hassanal Bolkiah National Stadium) will be provided by the school.',
+        type: 'FIELD_TRIP',
+        status: 'DRAFT',
+        dueDate: new Date('2026-06-28'),
+        targetGradeLevel: 'Year 10',
+        schoolId: adminForComms.schoolId,
+        createdById: adminForComms.id,
+      },
+    ]
+
+    const createdForms: Array<{ id: string; targetGradeLevel: string | null; status: string }> = []
+    for (const f of seedForms) {
+      const form = await prisma.consentForm.create({ data: f })
+      createdForms.push(form)
+    }
+
+    // Assign active forms to parents of matching students
+    const activeForms = createdForms.filter((f) => f.status === 'ACTIVE')
+    for (const form of activeForms) {
+      const whereClause: { enrollmentStatus: string; schoolId?: string; gradeLevel?: string } = {
+        enrollmentStatus: 'enrolled',
+      }
+      if (adminForComms.schoolId) whereClause.schoolId = adminForComms.schoolId
+      if (form.targetGradeLevel) whereClause.gradeLevel = form.targetGradeLevel
+
+      const students = await prisma.student.findMany({ where: whereClause, select: { id: true }, take: 20 })
+      const studentIds = students.map((s) => s.id)
+      if (studentIds.length === 0) continue
+
+      const parentLinks = await prisma.parentStudent.findMany({
+        where: { studentId: { in: studentIds } },
+        select: { parentId: true, studentId: true },
+      })
+
+      const parentIds = [...new Set(parentLinks.map((l) => l.parentId))]
+      const parents = await prisma.parent.findMany({
+        where: { id: { in: parentIds } },
+        select: { id: true, userId: true },
+      })
+      const parentUserMap = new Map(parents.map((p) => [p.id, p.userId]))
+
+      for (const link of parentLinks) {
+        const parentUserId = parentUserMap.get(link.parentId)
+        if (!parentUserId) continue
+        await prisma.consentFormRecipient.upsert({
+          where: {
+            formId_parentUserId_studentId: {
+              formId: form.id,
+              parentUserId,
+              studentId: link.studentId,
+            },
+          },
+          create: {
+            formId: form.id,
+            parentUserId,
+            studentId: link.studentId,
+            // Simulate that some parents have already acknowledged
+            acknowledgedAt: Math.random() > 0.5 ? new Date('2026-06-01') : null,
+            acknowledgmentNote: Math.random() > 0.7 ? 'Confirmed, thank you.' : null,
+          },
+          update: {},
+        })
+      }
+    }
+  }
+
+  // ─── Module 9: Stock Items (for NF-06 Low Stock Alert) ──────────────────────
+  console.log('Seeding Module 9 stock items...')
+
+  await prisma.stockItem.deleteMany({})
+  const stockData = [
+    // Below minimum (will trigger NF-06)
+    { name: 'A4 White Paper (Ream)', category: 'STATIONERY', unit: 'reams', quantity: 3, minQuantity: 10 },
+    { name: 'Blue Ballpoint Pens', category: 'STATIONERY', unit: 'boxes', quantity: 2, minQuantity: 5 },
+    { name: 'Whiteboard Markers (Pack)', category: 'STATIONERY', unit: 'packs', quantity: 1, minQuantity: 8 },
+    { name: 'Hand Sanitizer 500ml', category: 'MEDICAL', unit: 'bottles', quantity: 4, minQuantity: 10 },
+    { name: 'First Aid Bandages (Box)', category: 'MEDICAL', unit: 'boxes', quantity: 1, minQuantity: 5 },
+    // Above minimum (no alert)
+    { name: 'Stapler Staples (Box)', category: 'STATIONERY', unit: 'boxes', quantity: 20, minQuantity: 5 },
+    { name: 'Toner Cartridge (Black)', category: 'STATIONERY', unit: 'pcs', quantity: 8, minQuantity: 3 },
+    { name: 'Multipurpose Cleaning Spray', category: 'CLEANING', unit: 'bottles', quantity: 15, minQuantity: 8 },
+    { name: 'Rubbish Bags (Large, Roll)', category: 'CLEANING', unit: 'rolls', quantity: 12, minQuantity: 5 },
+    { name: 'Football (Size 5)', category: 'SPORTS', unit: 'pcs', quantity: 6, minQuantity: 4 },
+    { name: 'Badminton Shuttlecocks (Tube)', category: 'SPORTS', unit: 'tubes', quantity: 3, minQuantity: 2 },
+    { name: 'Chalk (White, Box)', category: 'STATIONERY', unit: 'boxes', quantity: 25, minQuantity: 10 },
+  ]
+
+  const adminUserForStock = await prisma.user.findFirst({ where: { role: 'admin' }, select: { schoolId: true } })
+  for (const item of stockData) {
+    await prisma.stockItem.create({
+      data: { ...item, schoolId: adminUserForStock?.schoolId ?? null },
+    })
+  }
+
+  // ─── DATA ENRICHMENT: Diverse Scenarios ──────────────────────────────────
+  console.log('\nSeeding enrichment data — diverse scenarios...')
+
+  // Helper functions for staff attendance
+  function staffDay(daysBack: number): Date {
+    const d = new Date()
+    d.setDate(d.getDate() - daysBack)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+  function staffTime(daysBack: number, hhmm: string): Date {
+    const parts = hhmm.split(':')
+    const h = parseInt(parts[0]!, 10)
+    const m = parseInt(parts[1]!, 10)
+    const d = new Date()
+    d.setDate(d.getDate() - daysBack)
+    d.setHours(h, m, 0, 0)
+    return d
+  }
+
+  // ── 1. Teacher dateOfBirth (required for retirement planning) ────────────
+  await prisma.teacher.update({ where: { id: drsiti.id },   data: { dateOfBirth: new Date('1975-04-12') } }) // age 51 — near early retirement
+  await prisma.teacher.update({ where: { id: faizal.id },   data: { dateOfBirth: new Date('1989-06-01') } }) // age 37
+  await prisma.teacher.update({ where: { id: teacher01.id },data: { dateOfBirth: new Date('1988-08-01') } }) // age 38
+  await prisma.teacher.update({ where: { id: ridwan.id },   data: { dateOfBirth: new Date('1992-01-10') } }) // age 34
+  await prisma.teacher.update({ where: { id: hassan.id },   data: { dateOfBirth: new Date('1978-09-01') } }) // age 47 — watching
+  await prisma.teacher.update({ where: { id: zuraidah.id }, data: { dateOfBirth: new Date('1985-03-10') } }) // age 41
+
+  // ── 2. Leave Applications — 6 diverse scenarios ────────────────────────
+  // A: Dr. Siti — PRINCIPAL_APPROVED annual leave (completed 13-15 days ago)
+  await prisma.leaveApplication.create({
+    data: {
+      teacherId: drsiti.id,
+      leaveType: 'ANNUAL',
+      startDate: daysAgo(15),
+      endDate: daysAgo(13),
+      daysRequested: 3,
+      reason: 'Family holiday — Hari Raya Aidilfitri extension',
+      status: 'PRINCIPAL_APPROVED',
+      hodApproverId: hodUser.id,
+      hodApprovedAt: daysAgo(20),
+      hodRemarks: 'Approved. Substitute arranged for classes.',
+      principalApproverId: principalUser.id,
+      principalApprovedAt: daysAgo(19),
+      principalRemarks: 'Approved.',
+    },
+  })
+
+  // B: Faizal — HOD_APPROVED medical leave (currently on leave)
+  await prisma.leaveApplication.create({
+    data: {
+      teacherId: faizal.id,
+      leaveType: 'MEDICAL',
+      startDate: daysAgo(2),
+      endDate: new Date(Date.now() + 3 * 86400000),
+      daysRequested: 5,
+      reason: 'Hospitalisation — respiratory infection',
+      documentUrl: '/uploads/leave/faizal_mc_2026.pdf',
+      status: 'HOD_APPROVED',
+      hodApproverId: hodUser.id,
+      hodApprovedAt: daysAgo(3),
+      hodRemarks: 'Approved. Wishing a speedy recovery. Ridwan to cover Year 7 English.',
+    },
+  })
+
+  // C: Ms. Aminah — PENDING annual leave (submitted today)
+  await prisma.leaveApplication.create({
+    data: {
+      teacherId: teacher01.id,
+      leaveType: 'ANNUAL',
+      startDate: new Date(Date.now() + 7 * 86400000),
+      endDate: new Date(Date.now() + 9 * 86400000),
+      daysRequested: 3,
+      reason: 'Personal trip — family commitments in Kuala Lumpur',
+      status: 'PENDING',
+    },
+  })
+
+  // D: Mr. Hassan — REJECTED compassionate leave
+  await prisma.leaveApplication.create({
+    data: {
+      teacherId: hassan.id,
+      leaveType: 'COMPASSIONATE',
+      startDate: daysAgo(5),
+      endDate: daysAgo(3),
+      daysRequested: 3,
+      reason: 'Extended bereavement — cousin\'s passing',
+      status: 'REJECTED',
+      hodApproverId: hodUser.id,
+      hodApprovedAt: daysAgo(8),
+      hodRemarks: 'Policy allows 3 days for immediate family only.',
+      principalApproverId: principalUser.id,
+      principalApprovedAt: daysAgo(7),
+      principalRemarks: 'Rejected per MOE leave policy. Annual leave may be used as an alternative.',
+    },
+  })
+
+  // E: Mr. Ridwan — CANCELLED annual leave (HOD approved, then teacher cancelled)
+  await prisma.leaveApplication.create({
+    data: {
+      teacherId: ridwan.id,
+      leaveType: 'ANNUAL',
+      startDate: new Date(Date.now() + 14 * 86400000),
+      endDate: new Date(Date.now() + 16 * 86400000),
+      daysRequested: 3,
+      reason: 'Personal travel',
+      status: 'CANCELLED',
+      hodApproverId: hodUser.id,
+      hodApprovedAt: daysAgo(2),
+      cancellationReason: 'Travel plans changed — cancelling leave request',
+      cancelledAt: daysAgo(1),
+      cancelledBy: ridwanUser.id,
+    },
+  })
+
+  // F: Ms. Zuraidah — HOD_APPROVED, awaiting Principal sign-off
+  await prisma.leaveApplication.create({
+    data: {
+      teacherId: zuraidah.id,
+      leaveType: 'ANNUAL',
+      startDate: new Date(Date.now() + 21 * 86400000),
+      endDate: new Date(Date.now() + 24 * 86400000),
+      daysRequested: 4,
+      reason: 'Family holiday to Sabah — pre-booked trip',
+      status: 'HOD_APPROVED',
+      hodApproverId: hodUser.id,
+      hodApprovedAt: daysAgo(1),
+      hodRemarks: 'Approved. Year 11 O-Level revision may need rescheduling.',
+    },
+  })
+
+  // ── 3. Staff Attendance Config (SMHK) ─────────────────────────────────────
+  await prisma.staffAttendanceConfig.upsert({
+    where: { schoolId: smhk.id },
+    create: { schoolId: smhk.id, startTime: '07:30', cutoffTime: '09:00', absenceAlertDays: 3, frequentAbsenceDays: 3, frequentLatenessCount: 5 },
+    update: {},
+  })
+
+  // ── 4. Staff Attendance Records (past 28 days, varied scenarios) ──────────
+
+  type StaffRec = { day: number; status: string; inTime: string | null; outTime: string | null; late: number; notes?: string; auto?: boolean }
+
+  // Dr. Siti — solid, 2 days on approved leave, 1 late
+  const drsitiRecs: StaffRec[] = [
+    { day: 28, status: 'PRESENT', inTime: '07:28', outTime: '16:30', late: 0 },
+    { day: 27, status: 'PRESENT', inTime: '07:30', outTime: '16:15', late: 0 },
+    { day: 26, status: 'LATE',    inTime: '08:15', outTime: '16:30', late: 45 },
+    { day: 25, status: 'PRESENT', inTime: '07:25', outTime: '17:00', late: 0 },
+    { day: 22, status: 'PRESENT', inTime: '07:30', outTime: '16:45', late: 0 },
+    { day: 21, status: 'PRESENT', inTime: '07:28', outTime: '16:30', late: 0 },
+    { day: 20, status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 15, status: 'ABSENT',  inTime: null,    outTime: null,    late: 0 }, // on approved leave
+    { day: 14, status: 'ABSENT',  inTime: null,    outTime: null,    late: 0 }, // on approved leave
+    { day: 13, status: 'PRESENT', inTime: '07:35', outTime: '16:30', late: 5 },
+    { day: 7,  status: 'PRESENT', inTime: '07:30', outTime: '16:30', late: 0 },
+    { day: 1,  status: 'PRESENT', inTime: '07:29', outTime: '16:30', late: 0 },
+  ]
+  for (const r of drsitiRecs) {
+    try {
+      await prisma.staffAttendanceRecord.create({ data: { teacherId: drsiti.id, date: staffDay(r.day), checkInAt: r.inTime ? staffTime(r.day, r.inTime) : null, checkOutAt: r.outTime ? staffTime(r.day, r.outTime) : null, status: r.status, lateMinutes: r.late, locationLabel: r.inTime ? 'School Gate' : null, locationLat: r.inTime ? 4.9406 : null, locationLng: r.inTime ? 114.9480 : null, notes: r.notes ?? null } })
+    } catch (_) { /* skip duplicate */ }
+  }
+
+  // Ms. Aminah (teacher01) — good, 2 late incidents
+  const aminahRecs: StaffRec[] = [
+    { day: 28, status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 27, status: 'LATE',    inTime: '08:05', outTime: '16:00', late: 35 },
+    { day: 22, status: 'PRESENT', inTime: '07:28', outTime: '16:00', late: 0 },
+    { day: 21, status: 'PRESENT', inTime: '07:30', outTime: '15:45', late: 0 },
+    { day: 20, status: 'PRESENT', inTime: '07:32', outTime: '16:00', late: 2 },
+    { day: 19, status: 'PRESENT', inTime: '07:30', outTime: '16:15', late: 0 },
+    { day: 15, status: 'LATE',    inTime: '08:20', outTime: '16:00', late: 50, notes: 'Car breakdown — notified school at 07:45' },
+    { day: 14, status: 'PRESENT', inTime: '07:28', outTime: '16:00', late: 0 },
+    { day: 7,  status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 1,  status: 'PRESENT', inTime: '07:29', outTime: '16:00', late: 0 },
+  ]
+  for (const r of aminahRecs) {
+    try {
+      await prisma.staffAttendanceRecord.create({ data: { teacherId: teacher01.id, date: staffDay(r.day), checkInAt: r.inTime ? staffTime(r.day, r.inTime) : null, checkOutAt: r.outTime ? staffTime(r.day, r.outTime) : null, status: r.status, lateMinutes: r.late, notes: r.notes ?? null } })
+    } catch (_) { /* skip */ }
+  }
+
+  // Mr. Ridwan — frequent lateness (≥6 in 30d → anomaly flag)
+  const ridwanRecs: StaffRec[] = [
+    { day: 28, status: 'LATE',    inTime: '08:10', outTime: '16:00', late: 40, notes: 'No reason given' },
+    { day: 27, status: 'LATE',    inTime: '08:25', outTime: '16:00', late: 55, notes: 'No reason given' },
+    { day: 22, status: 'LATE',    inTime: '08:05', outTime: '16:00', late: 35 },
+    { day: 21, status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 20, status: 'LATE',    inTime: '08:30', outTime: '16:00', late: 60, notes: 'No reason given' },
+    { day: 19, status: 'LATE',    inTime: '08:15', outTime: '16:00', late: 45 },
+    { day: 15, status: 'LATE',    inTime: '08:20', outTime: '16:00', late: 50, notes: 'No reason given' },
+    { day: 14, status: 'PRESENT', inTime: '07:32', outTime: '16:00', late: 2 },
+    { day: 7,  status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 1,  status: 'LATE',    inTime: '08:45', outTime: '16:00', late: 75, notes: 'No reason given' },
+  ]
+  for (const r of ridwanRecs) {
+    try {
+      await prisma.staffAttendanceRecord.create({ data: { teacherId: ridwan.id, date: staffDay(r.day), checkInAt: r.inTime ? staffTime(r.day, r.inTime) : null, checkOutAt: r.outTime ? staffTime(r.day, r.outTime) : null, status: r.status, lateMinutes: r.late, notes: r.notes ?? null } })
+    } catch (_) { /* skip */ }
+  }
+
+  // Mr. Hassan — 3 consecutive absences (days 22-20, no leave → anomaly flag)
+  const hassanRecs: StaffRec[] = [
+    { day: 28, status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 27, status: 'PRESENT', inTime: '07:28', outTime: '16:15', late: 0 },
+    { day: 22, status: 'ABSENT',  inTime: null,    outTime: null,    late: 0, notes: 'No check-in. No leave applied.', auto: false },
+    { day: 21, status: 'ABSENT',  inTime: null,    outTime: null,    late: 0, notes: 'Consecutive absence — day 2', auto: true },
+    { day: 20, status: 'ABSENT',  inTime: null,    outTime: null,    late: 0, notes: 'Consecutive absence — day 3. Auto-flagged to HOD.', auto: true },
+    { day: 19, status: 'PRESENT', inTime: '07:35', outTime: '16:00', late: 5 },
+    { day: 15, status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 14, status: 'PRESENT', inTime: '07:28', outTime: '16:00', late: 0 },
+    { day: 7,  status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 1,  status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+  ]
+  for (const r of hassanRecs) {
+    try {
+      await prisma.staffAttendanceRecord.create({ data: { teacherId: hassan.id, date: staffDay(r.day), checkInAt: r.inTime ? staffTime(r.day, r.inTime) : null, checkOutAt: r.outTime ? staffTime(r.day, r.outTime) : null, status: r.status, lateMinutes: r.late, notes: r.notes ?? null, autoMarked: r.auto ?? false } })
+    } catch (_) { /* skip */ }
+  }
+
+  // Ms. Zuraidah — exemplary attendance
+  const zuraidahDays = [28, 27, 22, 21, 20, 19, 15, 14, 7, 1]
+  for (const day of zuraidahDays) {
+    try {
+      await prisma.staffAttendanceRecord.create({ data: { teacherId: zuraidah.id, date: staffDay(day), checkInAt: staffTime(day, '07:25'), checkOutAt: staffTime(day, '16:30'), status: 'PRESENT', lateMinutes: 0 } })
+    } catch (_) { /* skip */ }
+  }
+
+  // Faizal — present until medical leave started (days 2-1 = absent on leave)
+  const faizalStaffRecs: StaffRec[] = [
+    { day: 28, status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 22, status: 'PRESENT', inTime: '07:32', outTime: '16:00', late: 2 },
+    { day: 21, status: 'LATE',    inTime: '08:05', outTime: '16:00', late: 35 },
+    { day: 20, status: 'PRESENT', inTime: '07:30', outTime: '16:00', late: 0 },
+    { day: 2,  status: 'ABSENT',  inTime: null,    outTime: null,    late: 0, notes: 'Approved medical leave' },
+    { day: 1,  status: 'ABSENT',  inTime: null,    outTime: null,    late: 0, notes: 'Approved medical leave' },
+  ]
+  for (const r of faizalStaffRecs) {
+    try {
+      await prisma.staffAttendanceRecord.create({ data: { teacherId: faizal.id, date: staffDay(r.day), checkInAt: r.inTime ? staffTime(r.day, r.inTime) : null, checkOutAt: r.outTime ? staffTime(r.day, r.outTime) : null, status: r.status, lateMinutes: r.late, notes: r.notes ?? null } })
+    } catch (_) { /* skip */ }
+  }
+
+  // ── 5. Retirement Application (Dr. Siti — voluntary early at 51) ──────────
+  try {
+    await prisma.retirementApplication.create({
+      data: {
+        teacherId: drsiti.id,
+        retirementType: 'VOLUNTARY_EARLY',
+        requestedDate: new Date('2027-04-12'),
+        reason: 'Planning to transition to academic research and part-time consulting after 12 years of service. Eligible under voluntary early retirement scheme (age 50+).',
+        status: 'UNDER_REVIEW',
+        submittedAt: daysAgo(14),
+        reviewedById: principalUser.id,
+        reviewedAt: daysAgo(7),
+        reviewRemarks: 'Application acknowledged. Forwarded to MOE HR for assessment. Estimated processing: 30 working days.',
+      },
+    })
+  } catch (_) { /* skip if exists */ }
+
+  console.log('  ✓ Teachers, leave, attendance config, attendance records, retirement — done')
+
+  // ── 6. CPD Enrollments ────────────────────────────────────────────────────
+  const allWorkshops = await prisma.cpdWorkshop.findMany({ orderBy: { startDate: 'asc' } })
+  // Indices: 0=Digital Pedagogy Math, 1=Inquiry-Based Science, 2=Classroom Management,
+  //          3=Assessment for Learning, 4=Inclusive Education, 5=ICT Integration
+  const cpdEnrData = [
+    { teacherId: drsiti.id,    wIdx: 0 }, { teacherId: drsiti.id,    wIdx: 1 },
+    { teacherId: teacher01.id, wIdx: 2 }, { teacherId: teacher01.id, wIdx: 3 },
+    { teacherId: hassan.id,    wIdx: 1 }, { teacherId: hassan.id,    wIdx: 4 },
+    { teacherId: ridwan.id,    wIdx: 5 },
+    { teacherId: zuraidah.id,  wIdx: 3 }, { teacherId: zuraidah.id,  wIdx: 2 },
+  ]
+  for (const e of cpdEnrData) {
+    const w = allWorkshops[e.wIdx]
+    if (!w) continue
+    try {
+      await prisma.cpdEnrollment.create({ data: { workshopId: w.id, teacherId: e.teacherId, status: 'ENROLLED' } })
+    } catch (_) { /* skip duplicate */ }
+  }
+
+  // ── 7. Surveys ────────────────────────────────────────────────────────────
+
+  // Survey 1: ACTIVE — Well-Being, anonymous, 7 responses
+  const sv1 = await prisma.survey.create({
+    data: { title: 'Staff Well-Being Check-In — Semester 1, 2026', description: 'An anonymous survey on staff well-being and workload. Your responses shape our support structures.', category: 'WELL_BEING', isAnonymous: true, status: 'ACTIVE', createdById: adminUser.id, startDate: daysAgo(21), endDate: new Date(Date.now() + 7 * 86400000) },
+  })
+  const sv1q1 = await prisma.surveyQuestion.create({ data: { surveyId: sv1.id, order: 1, text: 'How would you rate your overall workload this semester?', type: 'RATING', required: true } })
+  const sv1q2 = await prisma.surveyQuestion.create({ data: { surveyId: sv1.id, order: 2, text: 'How satisfied are you with school management support?', type: 'RATING', required: true } })
+  const sv1q3 = await prisma.surveyQuestion.create({ data: { surveyId: sv1.id, order: 3, text: 'Is your work-life balance manageable?', type: 'YES_NO', required: true } })
+  const sv1q4 = await prisma.surveyQuestion.create({ data: { surveyId: sv1.id, order: 4, text: 'What one area do you need more support in?', type: 'TEXT', required: false } })
+
+  const sv1Resps = [
+    { q1: '4', q2: '3', q3: 'yes', q4: 'More CPD opportunities in digital teaching tools' },
+    { q1: '2', q2: '3', q3: 'no',  q4: 'Admin tasks are taking too much teaching time' },
+    { q1: '5', q2: '5', q3: 'yes', q4: 'Everything is great, thank you for asking' },
+    { q1: '3', q2: '4', q3: 'yes', q4: 'Better substitute coordination during leave periods' },
+    { q1: '4', q2: '4', q3: 'yes', q4: 'Reduced meeting frequency to allow more lesson prep time' },
+    { q1: '3', q2: '3', q3: 'no',  q4: 'Student behavioural challenges increasing — need counselor support' },
+    { q1: '5', q2: '4', q3: 'yes', q4: '' },
+  ]
+  for (const resp of sv1Resps) {
+    const sr = await prisma.surveyResponse.create({ data: { surveyId: sv1.id, responderId: null } })
+    const answers = [
+      { responseId: sr.id, questionId: sv1q1.id, value: resp.q1 },
+      { responseId: sr.id, questionId: sv1q2.id, value: resp.q2 },
+      { responseId: sr.id, questionId: sv1q3.id, value: resp.q3 },
+    ]
+    if (resp.q4) answers.push({ responseId: sr.id, questionId: sv1q4.id, value: resp.q4 })
+    await prisma.surveyAnswer.createMany({ data: answers })
+  }
+
+  // Survey 2: CLOSED — Professional Development, named responses
+  const sv2 = await prisma.survey.create({
+    data: { title: 'CPD Training Effectiveness — 2025 Annual Review', description: 'Evaluate CPD workshops attended in 2025 to shape the 2026 training calendar.', category: 'PROFESSIONAL_DEVELOPMENT', isAnonymous: false, status: 'CLOSED', createdById: adminUser.id, startDate: daysAgo(60), endDate: daysAgo(30) },
+  })
+  const sv2q1 = await prisma.surveyQuestion.create({ data: { surveyId: sv2.id, order: 1, text: 'Rate the overall quality of CPD workshops attended in 2025.', type: 'RATING', required: true } })
+  const sv2q2 = await prisma.surveyQuestion.create({ data: { surveyId: sv2.id, order: 2, text: 'Which type of CPD was most valuable?', type: 'MULTIPLE_CHOICE', options: JSON.stringify(['Classroom pedagogy', 'Subject content deepening', 'Digital tools', 'Leadership & management', 'Student well-being']), required: true } })
+  const sv2q3 = await prisma.surveyQuestion.create({ data: { surveyId: sv2.id, order: 3, text: 'Were CPD sessions relevant to your classroom needs?', type: 'YES_NO', required: true } })
+
+  const sv2Resps = [
+    { uid: drsitiUser.id,    q1: '5', q2: 'Digital tools',            q3: 'yes' },
+    { uid: teacher01User.id, q1: '4', q2: 'Classroom pedagogy',        q3: 'yes' },
+    { uid: hassanUser.id,    q1: '4', q2: 'Subject content deepening', q3: 'yes' },
+    { uid: zuraidahUser.id,  q1: '3', q2: 'Student well-being',        q3: 'no'  },
+    { uid: ridwanUser.id,    q1: '4', q2: 'Classroom pedagogy',        q3: 'yes' },
+  ]
+  for (const resp of sv2Resps) {
+    try {
+      const sr = await prisma.surveyResponse.create({ data: { surveyId: sv2.id, responderId: resp.uid } })
+      await prisma.surveyAnswer.createMany({ data: [
+        { responseId: sr.id, questionId: sv2q1.id, value: resp.q1 },
+        { responseId: sr.id, questionId: sv2q2.id, value: resp.q2 },
+        { responseId: sr.id, questionId: sv2q3.id, value: resp.q3 },
+      ]})
+    } catch (_) { /* skip */ }
+  }
+
+  // Survey 3: DRAFT — School Management, no responses yet
+  await prisma.survey.create({
+    data: { title: 'Term 2 Staff Feedback — School Improvement', description: 'Gathering input on facilities, administration, and learning support for Term 2 2026.', category: 'SCHOOL_MANAGEMENT', isAnonymous: true, status: 'DRAFT', createdById: principalUser.id },
+  })
+
+  console.log('  ✓ CPD enrollments, surveys with responses — done')
+
+  // ── 8. Self-Service Requests ───────────────────────────────────────────────
+
+  // Faizal: Transfer request (under review)
+  await prisma.selfServiceRequest.create({
+    data: { teacherId: faizal.id, type: 'TRANSFER', preferredSchools: JSON.stringify(['Sekolah Menengah Sayyidina Ali', 'Maktab Duli PB']), transferReason: 'Requesting transfer closer to residence in Gadong to reduce daily commute.', transferEffectiveDate: new Date('2026-08-01'), status: 'under_review', reviewedById: adminUser.id, reviewedAt: daysAgo(2), reviewerRemarks: 'Forwarded to District Education Office for placement review.' },
+  })
+  // Ridwan: Training request (approved)
+  await prisma.selfServiceRequest.create({
+    data: { teacherId: ridwan.id, type: 'TRAINING', courseName: 'Advanced Data Analytics for Educators', courseProvider: 'Universiti Teknologi Brunei', courseDates: '2026-07-15 to 2026-07-17', courseCost: 250.0, courseJustification: 'Will improve ability to identify at-risk students earlier using data patterns.', status: 'approved', reviewedById: adminUser.id, reviewedAt: daysAgo(5), reviewerRemarks: 'Approved. School covers course fee. Submit invoice after completion.' },
+  })
+  // Aminah: Document request (submitted)
+  await prisma.selfServiceRequest.create({
+    data: { teacherId: teacher01.id, type: 'DOCUMENT', documentType: 'EMPLOYMENT_CERTIFICATE', notes: 'Required for bank home loan application. Needs current designation, department, and length of service.', status: 'submitted' },
+  })
+  // Zuraidah: Promotion application (submitted)
+  await prisma.selfServiceRequest.create({
+    data: { teacherId: zuraidah.id, type: 'PROMOTION', currentPosition: 'Senior Teacher', desiredPosition: 'Head of Department — Languages & Humanities', promotionJustification: 'I have served as Senior Teacher for 4 years, led two cross-department curriculum reviews, and exceeded CPD targets for 3 consecutive years.', status: 'submitted' },
+  })
+  // Hassan: Profile update (approved)
+  await prisma.selfServiceRequest.create({
+    data: { teacherId: hassan.id, type: 'PROFILE_UPDATE', profileChanges: JSON.stringify([{ field: 'phone', oldValue: '+673 8112233', newValue: '+673 8998877', requiresApproval: false }, { field: 'emergencyContact', oldValue: 'Rashid (+673 8223344)', newValue: 'Fatimah (+673 8445566)', requiresApproval: false }]), isSensitive: false, status: 'approved', reviewedById: adminUser.id, reviewedAt: daysAgo(3), reviewerRemarks: 'Profile updated. Changes applied immediately.' },
+  })
+
+  console.log('  ✓ Self-service requests — done')
+
+  // ── 9. Parent-Teacher Meetings ────────────────────────────────────────────
+  await prisma.parentTeacherMeeting.create({
+    data: { teacherId: ridwan.id, parentUserId: parent01User.id, studentId: ahmad.id, meetingDate: daysAgo(10), startTime: '14:00', endTime: '14:30', purpose: 'Academic progress review — Ahmad\'s declining Mathematics grades and attendance', status: 'COMPLETED', notes: 'Parent acknowledged concern. Agreed on daily homework check and weekly call. Parent to consult GP regarding academic stress.' },
+  })
+  await prisma.parentTeacherMeeting.create({
+    data: { teacherId: teacher01.id, parentUserId: sitiUser.id, studentId: ahmad.id, meetingDate: new Date(Date.now() + 86400000), startTime: '15:00', endTime: '15:30', purpose: 'Follow-up on IEP goals — review Ahmad\'s dyslexia reading progress', status: 'SCHEDULED' },
+  })
+  await prisma.parentTeacherMeeting.create({
+    data: { teacherId: zuraidah.id, parentUserId: fatimahUser.id, studentId: nurul.id, meetingDate: daysAgo(21), startTime: '14:30', endTime: '15:00', purpose: 'Mid-semester English performance review', status: 'COMPLETED', notes: 'Nurul performing well (midterm 92%). Parent requested reading enrichment list. Provided 3 recommended titles.' },
+  })
+  await prisma.parentTeacherMeeting.create({
+    data: { teacherId: drsiti.id, parentUserId: nadiaParentUser.id, studentId: nadia.id, meetingDate: daysAgo(14), startTime: '14:00', endTime: '14:45', purpose: 'Year 10 Physics enrichment and O-Level pathway planning', status: 'COMPLETED', notes: 'Nadia is top Year 10 student. Discussed Physics Olympiad entry and scholarship planning. Recommended A-Level Further Maths pathway.' },
+  })
+
+  // ── 10. Message Threads & Direct Messages ─────────────────────────────────
+
+  const thread1 = await prisma.messageThread.create({ data: { subject: 'Ahmad\'s Mathematics attendance and grades', parentUserId: parent01User.id, teacherUserId: ridwanUser.id, studentId: ahmad.id } })
+  await prisma.directMessage.create({ data: { threadId: thread1.id, senderId: parent01User.id, content: 'Assalamualaikum Mr. Ridwan. I am concerned about Ahmad\'s Week 4 Math score dropping to 65. Can we discuss how to help him improve?', createdAt: daysAgo(12), readAt: daysAgo(11) } })
+  await prisma.directMessage.create({ data: { threadId: thread1.id, senderId: ridwanUser.id, content: 'Wa\'alaikumsalam. Ahmad is struggling with the algebra unit. I suggest daily 20-minute revision. I can provide additional worksheets. Can we schedule a call?', createdAt: daysAgo(11), readAt: daysAgo(11) } })
+  await prisma.directMessage.create({ data: { threadId: thread1.id, senderId: parent01User.id, content: 'Yes please. Tomorrow after 5 PM would work. I will ensure Ahmad does his daily revision.', createdAt: daysAgo(10), readAt: daysAgo(10) } })
+  await prisma.directMessage.create({ data: { threadId: thread1.id, senderId: ridwanUser.id, content: 'Perfect. I will call at 5:30 PM and bring some practice questions to work through together.', createdAt: daysAgo(10), readAt: daysAgo(10) } })
+
+  const thread2 = await prisma.messageThread.create({ data: { subject: 'Ahmad\'s IEP progress — dyslexia support', parentUserId: sitiUser.id, teacherUserId: teacher01User.id, studentId: ahmad.id } })
+  await prisma.directMessage.create({ data: { threadId: thread2.id, senderId: sitiUser.id, content: 'Good afternoon Ms. Aminah. We wanted to check on Ahmad\'s reading progress since the IEP session last week. He seems more confident at home.', createdAt: daysAgo(5), readAt: daysAgo(5) } })
+  await prisma.directMessage.create({ data: { threadId: thread2.id, senderId: teacher01User.id, content: 'Good afternoon Mrs. Siti. Ahmad used the text-to-speech tool independently during last Friday\'s assessment — a big milestone. His confidence is definitely growing!', createdAt: daysAgo(4), readAt: daysAgo(4) } })
+  await prisma.directMessage.create({ data: { threadId: thread2.id, senderId: sitiUser.id, content: 'That is wonderful news! Thank you for the continued support. We look forward to the meeting tomorrow.', createdAt: daysAgo(3) } })
+
+  const thread3 = await prisma.messageThread.create({ data: { subject: 'Nurul\'s English enrichment reading list', parentUserId: fatimahUser.id, teacherUserId: zuraidahUser.id, studentId: nurul.id } })
+  await prisma.directMessage.create({ data: { threadId: thread3.id, senderId: zuraidahUser.id, content: 'Dear Mrs. Fatimah, following our meeting, I recommend: 1) "To Kill a Mockingbird", 2) "Animal Farm", 3) "The Kite Runner". These will prepare Nurul well for Year 8 Literature.', createdAt: daysAgo(20), readAt: daysAgo(20) } })
+  await prisma.directMessage.create({ data: { threadId: thread3.id, senderId: fatimahUser.id, content: 'Thank you Ms. Zuraidah! We will borrow them from the library. Nurul is very excited to start reading.', createdAt: daysAgo(19), readAt: daysAgo(19) } })
+
+  console.log('  ✓ Meetings, messages — done')
+
+  // ── 11. Announcements ─────────────────────────────────────────────────────
+  await prisma.announcement.createMany({
+    data: [
+      { title: 'Final Examination Schedule 2026 — Year 7 to Year 12', content: 'Final examinations run from 6–17 July 2026. Revised class schedules will be distributed by class teachers this Friday. All students must refer to the timetable on the school notice board.', authorId: principalUser.id, targetAudience: 'all', priority: 'high', isPinned: true, publishedAt: daysAgo(5), expiresAt: new Date('2026-07-18') },
+      { title: 'Sports Day 2026 — Thank You to All Participants', content: 'Thank you to all students, teachers and parents who made Sports Day 2026 a tremendous success! A special congratulations to Year 10 for winning the overall house trophy. Results will be posted on the school notice board this week.', authorId: adminUser.id, targetAudience: 'all', priority: 'normal', publishedAt: daysAgo(7) },
+      { title: 'CPD Hours Submission Deadline — 30 June 2026', content: 'All teaching staff must submit CPD completion records via the Self-Service Portal by 30 June 2026. Annual target: 20 hours. Staff who have not met their target should register for upcoming workshops immediately.', authorId: adminUser.id, targetAudience: 'teachers', priority: 'high', publishedAt: daysAgo(3), expiresAt: new Date('2026-06-30') },
+      { title: 'Year 7 Online Registration Open for 2026/2027 Intake', content: 'Parents may now submit applications for Year 7 entry via the online registration portal at /register. Closing date: 31 July 2026. Priority placement for siblings of current students.', authorId: adminUser.id, targetAudience: 'parents', priority: 'normal', publishedAt: daysAgo(10), expiresAt: new Date('2026-07-31') },
+      { title: 'Semester 1 Report Cards Now Available on Parent Portal', content: 'Mid-year report cards are available on the Parent Portal. Log in to view your child\'s academic progress, attendance, and teacher comments. Contact your child\'s class teacher with any questions.', authorId: adminUser.id, targetAudience: 'parents', priority: 'normal', publishedAt: daysAgo(7) },
+    ],
+  })
+
+  // ── 12. Awards & Posting History ──────────────────────────────────────────
+  await prisma.award.createMany({
+    data: [
+      { teacherId: drsiti.id,    title: 'Best Science Teacher Award 2025',          category: 'EXCELLENCE',  description: 'Awarded by MOE for outstanding Year 12 Physics results. 92% of students achieved A or A*.', awardedDate: new Date('2025-08-20'), awardedBy: 'Ministry of Education Brunei', badgeColor: 'gold' },
+      { teacherId: zuraidah.id,  title: 'Excellence in English Language Teaching',   category: 'EXCELLENCE',  description: 'Recognised by British Council for innovative use of literature in O-Level preparation.', awardedDate: new Date('2025-06-15'), awardedBy: 'British Council Brunei', badgeColor: 'gold' },
+      { teacherId: teacher01.id, title: 'SEN Champion Award 2026',                  category: 'COMMUNITY',   description: 'Outstanding dedication to students with special educational needs.', awardedDate: new Date('2026-02-14'), awardedBy: 'SMHK School Leadership', badgeColor: 'blue' },
+      { teacherId: hassan.id,    title: 'Innovation in Science Education',           category: 'INNOVATION',  description: 'Introduced hands-on chemistry experiments for Year 10 that improved class average by 12%.', awardedDate: new Date('2025-11-01'), awardedBy: 'SMHK School Leadership', badgeColor: 'silver' },
+    ],
+  })
+
+  await prisma.postingRecord.createMany({
+    data: [
+      { teacherId: drsiti.id,   schoolName: 'Sekolah Menengah Rimba B',                      position: 'Teacher',        department: 'Science',               startDate: new Date('2015-08-01'), endDate: new Date('2019-12-31'), isCurrent: false, notes: 'Initial posting after PhD completion.' },
+      { teacherId: drsiti.id,   schoolName: 'Sekolah Menengah Hj Kamaruddin (SMHK)',          position: 'Senior Teacher', department: 'Science & Mathematics',  startDate: new Date('2020-01-15'), isCurrent: true },
+      { teacherId: zuraidah.id, schoolName: 'Sekolah Menengah Dato Seri Laila Jasa',          position: 'Teacher',        department: 'English & Languages',   startDate: new Date('2013-08-01'), endDate: new Date('2017-07-31'), isCurrent: false },
+      { teacherId: zuraidah.id, schoolName: 'Sekolah Menengah Hj Kamaruddin (SMHK)',          position: 'Senior Teacher', department: 'Languages & Humanities', startDate: new Date('2017-08-10'), isCurrent: true },
+      { teacherId: hassan.id,   schoolName: 'Sekolah Menengah Belait',                        position: 'Teacher',        department: 'Science',               startDate: new Date('2016-01-01'), endDate: new Date('2018-12-31'), isCurrent: false },
+      { teacherId: hassan.id,   schoolName: 'Sekolah Menengah Hj Kamaruddin (SMHK)',          position: 'Teacher',        department: 'Science & Mathematics', startDate: new Date('2019-03-01'), isCurrent: true },
+      { teacherId: ridwan.id,   schoolName: 'Sekolah Menengah Hj Kamaruddin (SMHK)',          position: 'Teacher',        department: 'Science & Mathematics', startDate: new Date('2022-01-10'), isCurrent: true },
+      { teacherId: teacher01.id, schoolName: 'Sekolah Menengah Hj Kamaruddin (SMHK)',         position: 'Teacher',        department: 'Science & Mathematics', startDate: new Date('2018-08-01'), isCurrent: true },
+    ],
+  })
+
+  console.log('  ✓ Announcements, awards, posting records — done')
+
+  // ── 13. Notification Trigger Logs ─────────────────────────────────────────
+  const triggerTypes = ['STUDENT_ABSENCE', 'GRADE_DROP', 'FEE_OVERDUE', 'CPD_DEADLINE', 'EXAM_REGISTRATION', 'LOW_STOCK', 'MAINTENANCE_DUE'] as const
+  const triggerSummaries: Record<string, string> = {
+    STUDENT_ABSENCE:   '3 students flagged for consecutive absences; parents and class teachers notified',
+    GRADE_DROP:        '2 students with ≥20% grade drop vs previous period; counselor follow-up triggered',
+    FEE_OVERDUE:       '5 invoices at 30-day threshold; 2 at 60-day warning; 1 at 90-day admin flag',
+    CPD_DEADLINE:      '4 teachers notified of upcoming CPD workshop starting within 3 days',
+    EXAM_REGISTRATION: '3 Year 11 students not yet registered for O-Level; admin notified',
+    LOW_STOCK:         '5 stock items below minimum threshold; requisition reminder sent to admin',
+    MAINTENANCE_DUE:   '2 assets with no maintenance in 6+ months; maintenance team notified',
+  }
+  let trigOffset = 1
+  for (const tType of triggerTypes) {
+    await prisma.notificationTriggerLog.create({ data: { triggerType: tType, ranAt: daysAgo(trigOffset), notificationsSent: 3 + (trigOffset % 5), affectedCount: 1 + (trigOffset % 4), status: 'success', summary: triggerSummaries[tType] } })
+    await prisma.notificationTriggerLog.create({ data: { triggerType: tType, ranAt: daysAgo(trigOffset + 7), notificationsSent: 2 + (trigOffset % 4), affectedCount: 1 + (trigOffset % 3), status: trigOffset === 4 ? 'partial' : 'success', summary: `Previous run — ${triggerSummaries[tType] ?? ''}` } })
+    trigOffset++
+  }
+
+  // ── 14. MONITOR-band Risk Scores (5 students without existing scores) ──────
+  const existingRiskIds = (await prisma.riskScore.findMany({ select: { studentId: true } })).map(r => r.studentId)
+  const monitorCandidates = await prisma.student.findMany({
+    where: { schoolId: smhk.id, enrollmentStatus: 'enrolled', id: { notIn: existingRiskIds } },
+    select: { id: true },
+    take: 5,
+  })
+  const monitorScores  = [0.55, 0.48, 0.62, 0.45, 0.58]
+  const monitorAbs     = [8, 6, 10, 5, 9]
+  const monitorAvgs    = [65.2, 68.4, 62.8, 70.1, 63.5]
+  for (let i = 0; i < monitorCandidates.length; i++) {
+    const mc = monitorCandidates[i]
+    if (!mc) continue
+    await prisma.riskScore.create({ data: { studentId: mc.id, score: monitorScores[i]!, band: 'MONITOR', absences14d: monitorAbs[i]!, gradeAvg: monitorAvgs[i]!, gradeTrend: -2.0, computedAt: daysAgo(1) } })
+  }
+
+  // ── 15. Behavior Records ──────────────────────────────────────────────────
+  await prisma.behaviorRecord.createMany({
+    data: [
+      { studentId: ahmad.id,  recordedById: teacher01User.id, type: 'demerit', category: 'attendance',   points: -2, description: 'Unexplained absence on 2026-05-28. No parent note received.', severity: 'minor',    parentNotified: true,  date: daysAgo(6) },
+      { studentId: ahmad.id,  recordedById: teacher01User.id, type: 'merit',   category: 'academic',     points: 3,  description: 'Submitted extra Mathematics practice problems independently. Shows effort to improve despite challenges.', date: daysAgo(3) },
+      { studentId: hafiz.id,  recordedById: ridwanUser.id,    type: 'demerit', category: 'conduct',      points: -3, description: 'Disrupted Geography class by refusing to participate in group activity. Counselor informed.', actionTaken: 'Spoken to individually after class. Counselor follow-up scheduled.', severity: 'moderate', parentNotified: true,  date: daysAgo(9) },
+      { studentId: nadia.id,  recordedById: drsitiUser.id,    type: 'merit',   category: 'achievement',  points: 5,  description: 'Highest score in Year 10 Physics practical exam — 98/100. Exceptional lab technique and data analysis.', date: daysAgo(12) },
+      { studentId: danial.id, recordedById: zuraidahUser.id,  type: 'merit',   category: 'achievement',  points: 5,  description: 'Led Year 12 English debate team to Inter-School Regional Finals. Excellent leadership and academic preparation.', date: daysAgo(18) },
+      { studentId: fatin.id,  recordedById: drsitiUser.id,    type: 'merit',   category: 'academic',     points: 4,  description: 'Volunteered to present Year 9 Science project to visiting MOE inspectors. Articulate and well-prepared.', date: daysAgo(25) },
+    ],
+  })
+
+  // ── 16. CCA Activities & Enrollments ─────────────────────────────────────
+  const sciClub    = await prisma.ccaActivity.create({ data: { name: 'Science & Robotics Club',    category: 'academic', description: 'Hands-on experiments, robotics programming and inter-school competitions.', schedule: 'Every Thursday 14:30–16:30', venue: 'Science Lab 1', teacherInChargeId: hassanUser.id, capacity: 25, status: 'active' } })
+  const debateSoc  = await prisma.ccaActivity.create({ data: { name: 'English Debate Society',     category: 'academic', description: 'Public speaking, argumentation and inter-school debate competitions.',        schedule: 'Every Wednesday 14:30–16:00', venue: 'Library',       teacherInChargeId: zuraidahUser.id, capacity: 20, status: 'active' } })
+  const football   = await prisma.ccaActivity.create({ data: { name: 'School Football Team',       category: 'sports',   description: 'Competitive school football — MSSD league.',                               schedule: 'Mon & Fri 15:30–17:00',       venue: 'Sports Field',  capacity: 22, status: 'active' } })
+  const mathOlymp  = await prisma.ccaActivity.create({ data: { name: 'Mathematics Olympiad Group', category: 'academic', description: 'Competition problem-solving — SEAMEO Math Olympiad preparation.',           schedule: 'Every Tuesday 14:30–16:00',   venue: 'Classroom 9A', teacherInChargeId: drsitiUser.id, capacity: 15, status: 'active' } })
+
+  const ccaEnrolments = [
+    { ccaId: sciClub.id,   studentId: hafiz.id  },
+    { ccaId: sciClub.id,   studentId: nadia.id  },
+    { ccaId: debateSoc.id, studentId: nurul.id  },
+    { ccaId: debateSoc.id, studentId: danial.id },
+    { ccaId: football.id,  studentId: ahmad.id  },
+    { ccaId: football.id,  studentId: adam.id   },
+    { ccaId: mathOlymp.id, studentId: nadia.id  },
+    { ccaId: mathOlymp.id, studentId: hana.id   },
+    { ccaId: mathOlymp.id, studentId: danial.id },
+    { ccaId: debateSoc.id, studentId: fatin.id  },
+  ]
+  for (const e of ccaEnrolments) {
+    try { await prisma.ccaEnrollment.create({ data: { ccaId: e.ccaId, studentId: e.studentId, status: 'active' } }) } catch (_) { /* skip */ }
+  }
+
+  // ── 17. Timetable Conflict Slots (intentional conflicts for demo) ──────────
+  // Conflict A: Teacher conflict — Dr. Siti double-booked Mon 08:00 (Year 9A Math + Year 10B Physics same time)
+  try {
+    await prisma.timetableSlot.create({ data: { courseId: phy10.id, teacherId: drsiti.id, dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1', gradeLevel: 'Year 10', className: '10B', semester: '2026-S1' } })
+  } catch (_) { /* skip */ }
+
+  // Conflict B: Room conflict — Science Lab 1 booked twice Tue 08:00 (Dr. Siti 10A + Hassan 9B)
+  try {
+    await prisma.timetableSlot.create({ data: { courseId: sci9.id, teacherId: hassan.id, dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1', gradeLevel: 'Year 9', className: '9B', semester: '2026-S1' } })
+  } catch (_) { /* skip */ }
+
+  // Conflict C: Class conflict — 11A has two teachers scheduled Mon 08:00 (teacher01 Math + Hassan Bio)
+  try {
+    await prisma.timetableSlot.create({ data: { courseId: bio11.id, teacherId: hassan.id, dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 11B', gradeLevel: 'Year 11', className: '11A', semester: '2026-S1' } })
+  } catch (_) { /* skip */ }
+
+  console.log('  ✓ Trigger logs, risk scores, behavior records, CCA, timetable conflicts — done')
+  console.log('\n=== ENRICHMENT SUMMARY ===')
+  console.log('  Teacher dateOfBirth:     6 teachers updated')
+  console.log('  Leave Applications:      6 scenarios (approved/HOD-approved/pending/rejected/cancelled/awaiting-principal)')
+  console.log('  Staff Attendance Config: SMHK school config')
+  console.log('  Staff Attendance Records: 6 teachers × varied days (anomaly scenarios included)')
+  console.log('  Retirement Application:  1 voluntary early (Dr. Siti, UNDER_REVIEW)')
+  console.log('  CPD Enrollments:         9 teacher–workshop links')
+  console.log('  Surveys:                 3 (ACTIVE+7 responses, CLOSED+5 responses, DRAFT)')
+  console.log('  Self-Service Requests:   5 (transfer/training/document/promotion/profile)')
+  console.log('  Parent-Teacher Meetings: 4 (2 completed, 1 scheduled, 1 tomorrow)')
+  console.log('  Message Threads:         3 threads, 9 messages')
+  console.log('  Announcements:           5 (all/teachers/parents targeted)')
+  console.log('  Awards:                  4 teacher recognition records')
+  console.log('  Posting Records:         8 career history entries')
+  console.log('  Trigger Logs:            14 (7 types × 2 runs)')
+  console.log('  MONITOR Risk Scores:     up to 5 new students')
+  console.log('  Behavior Records:        6 (merit/demerit mix)')
+  console.log('  CCA Activities:          4 clubs, 10 enrollments')
+  console.log('  Timetable Conflicts:     3 intentional conflict slots')
+
+  console.log('All new modules seeded successfully.')
+
+  // ─── Private Education Oversight (DPE) ─────────────────────────────────
+  console.log('\nSeeding Private Education oversight (DPE)...')
+
+  // DPE officer account
+  const dpeOfficer = await prisma.user.create({
+    data: {
+      username: 'dpeofficer',
+      password: hash('Demo@2026'),
+      displayName: 'Pg Hjh Salmah Binti Pg Tahir',
+      email: 'salmah.tahir@moe.gov.bn',
+      role: 'priv_ed_officer',
+      systemAdmin: false,
+    },
+  })
+
+  // 4 private schools telling a varied story
+  const privSchools = [
+    {
+      code: 'SPB',
+      name: 'Sekolah Pintar Brunei',
+      principal: 'Dr. Hartini Binti Yusof',
+      address: 'Jalan Berakas BC2115, Brunei-Muara',
+      phone: '+673-2331122',
+      gradeLevels: ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Year 7', 'Year 8', 'Year 9'],
+      schoolType: 'combined',
+      establishedYear: 2008,
+      profile: {
+        registrationNo: 'DPE/2024/0142',
+        ownerOrganisation: 'Brunei Smart Education Sdn Bhd',
+        ownerContactName: 'Hj Mahmud Bin Ahmad',
+        ownerContactPhone: '+673-8801122',
+        ownerContactEmail: 'admin@spb.edu.bn',
+        district: 'Brunei-Muara',
+        curriculumModel: 'National',
+        studentCapacity: 720,
+        feeRangeBnd: 'BND 3,200–5,800/yr',
+        notes: 'Strong national curriculum delivery. Clean compliance history.',
+      },
+      // ACTIVE license, recent EXCELLENT inspection
+      license: {
+        licenseNumber: 'DPE-LIC-2024-0142',
+        issuedDate: new Date('2024-01-15'),
+        expiryDate: new Date('2028-01-14'),
+        status: 'ACTIVE' as const,
+        authorisedLevels: ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Year 7', 'Year 8', 'Year 9'],
+        conditions: 'Subject to annual financial audit submission.',
+      },
+      inspection: {
+        inspectionDate: new Date('2026-02-18'),
+        inspectionType: 'ROUTINE',
+        rating: 'EXCELLENT',
+        findings: [],
+        resolved: true,
+        notes: 'No deficiencies noted. Exemplary teacher CPD record.',
+      },
+    },
+    {
+      code: 'PPAH',
+      name: 'Pusat Pendidikan Al-Hidayah',
+      principal: 'Ustaz Hj Ramli Bin Abdullah',
+      address: 'Kampong Kilanas, Brunei-Muara',
+      phone: '+673-2655788',
+      gradeLevels: ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6'],
+      schoolType: 'religious_primary',
+      establishedYear: 1996,
+      profile: {
+        registrationNo: 'DPE/2020/0058',
+        ownerOrganisation: 'Yayasan Al-Hidayah',
+        ownerContactName: 'Hj Razali Bin Salleh',
+        ownerContactPhone: '+673-8812345',
+        ownerContactEmail: 'office@alhidayah.edu.bn',
+        district: 'Brunei-Muara',
+        curriculumModel: 'Mixed',
+        studentCapacity: 380,
+        feeRangeBnd: 'BND 1,800–2,400/yr',
+        notes: 'License renewal pending. Awaiting follow-up inspection report.',
+      },
+      // EXPIRING_SOON license (45 days out) + open follow-up
+      license: {
+        licenseNumber: 'DPE-LIC-2020-0058-R2',
+        issuedDate: new Date('2021-08-01'),
+        expiryDate: (() => { const d = new Date(); d.setDate(d.getDate() + 45); return d })(),
+        status: 'ACTIVE' as const,
+        authorisedLevels: ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6'],
+        conditions: 'Two of six teaching staff are pending MOE approval (Reg. clause 4.2).',
+      },
+      inspection: {
+        inspectionDate: new Date('2026-04-10'),
+        inspectionType: 'RENEWAL',
+        rating: 'NEEDS_IMPROVEMENT',
+        findings: [
+          { category: 'Staffing', severity: 'major', observation: '2 unapproved teachers remain in classroom posts.', recommendation: 'Submit MOE approval applications by license renewal date.' },
+          { category: 'Facilities', severity: 'minor', observation: 'Library acquisition log incomplete for Q4 2025.', recommendation: 'Complete and submit acquisition records.' },
+        ],
+        followUpDueDate: (() => { const d = new Date(); d.setDate(d.getDate() - 10); return d })(), // overdue by 10 days
+        resolved: false,
+        notes: 'Follow-up overdue. Escalate to Director if not resolved within 14 days.',
+      },
+    },
+    {
+      code: 'ILA',
+      name: 'International Learning Academy',
+      principal: 'Ms. Eleanor Whitfield',
+      address: 'Jalan Tungku Link, Gadong, Brunei-Muara',
+      phone: '+673-2421999',
+      gradeLevels: ['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11'],
+      schoolType: 'secondary',
+      establishedYear: 2012,
+      profile: {
+        registrationNo: 'DPE/2022/0091',
+        ownerOrganisation: 'International Learning Sdn Bhd',
+        ownerContactName: 'Mr. James Tan',
+        ownerContactPhone: '+673-8898888',
+        ownerContactEmail: 'principal@ila.edu.bn',
+        district: 'Brunei-Muara',
+        curriculumModel: 'Cambridge',
+        studentCapacity: 540,
+        feeRangeBnd: 'BND 9,500–14,000/yr',
+        notes: 'Cambridge IGCSE provider. SATISFACTORY rating with 2 open findings.',
+      },
+      // ACTIVE license, SATISFACTORY recent inspection with open findings
+      license: {
+        licenseNumber: 'DPE-LIC-2022-0091',
+        issuedDate: new Date('2022-09-01'),
+        expiryDate: new Date('2027-08-31'),
+        status: 'ACTIVE' as const,
+        authorisedLevels: ['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11'],
+        conditions: null,
+      },
+      inspection: {
+        inspectionDate: new Date('2026-05-05'),
+        inspectionType: 'ROUTINE',
+        rating: 'SATISFACTORY',
+        findings: [
+          { category: 'Health & Safety', severity: 'moderate', observation: 'Fire evacuation drill records missing for Term 2 2025/26.', recommendation: 'Conduct drill and submit records within 30 days.' },
+          { category: 'Curriculum', severity: 'minor', observation: 'Bahasa Melayu instructional hours below minimum for non-IGCSE students.', recommendation: 'Adjust timetable for next academic year.' },
+        ],
+        followUpDueDate: (() => { const d = new Date(); d.setDate(d.getDate() + 25); return d })(),
+        resolved: false,
+        notes: 'Two open findings. School has acknowledged.',
+      },
+    },
+    {
+      code: 'TCA',
+      name: 'Tutorial Centre Anggerek',
+      principal: 'En. Hairul Bin Tarmizi',
+      address: 'Lambak Kanan, Berakas, Brunei-Muara',
+      phone: '+673-2778899',
+      gradeLevels: ['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11'],
+      schoolType: 'secondary',
+      establishedYear: 2015,
+      profile: {
+        registrationNo: 'DPE/2019/0033',
+        ownerOrganisation: 'Anggerek Education Centre',
+        ownerContactName: 'En. Hairul Bin Tarmizi',
+        ownerContactPhone: '+673-8845566',
+        ownerContactEmail: 'hairul@tca.edu.bn',
+        district: 'Brunei-Muara',
+        curriculumModel: 'National',
+        studentCapacity: 180,
+        feeRangeBnd: 'BND 2,800–3,600/yr',
+        notes: 'License SUSPENDED 30 days ago — multiple compliance failures. Urgent action required.',
+      },
+      // EXPIRED & SUSPENDED — drives the red KPI
+      license: {
+        licenseNumber: 'DPE-LIC-2019-0033',
+        issuedDate: new Date('2020-01-10'),
+        expiryDate: (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d })(),
+        status: 'SUSPENDED' as const,
+        authorisedLevels: ['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11'],
+        conditions: 'SUSPENDED — failure to meet teacher qualification requirements; financial audit not submitted.',
+      },
+      inspection: {
+        inspectionDate: new Date('2026-03-20'),
+        inspectionType: 'COMPLAINT',
+        rating: 'UNSATISFACTORY',
+        findings: [
+          { category: 'Staffing', severity: 'major', observation: '4 of 9 teaching staff lack MOE-recognised qualifications.', recommendation: 'Cease teaching deployment until qualifications regularised.' },
+          { category: 'Compliance', severity: 'major', observation: 'No annual financial audit submitted for 2024/25.', recommendation: 'Submit audited financials within 30 days.' },
+          { category: 'Health & Safety', severity: 'major', observation: 'Fire safety equipment inspection certificate expired.', recommendation: 'Recertify within 14 days.' },
+        ],
+        followUpDueDate: (() => { const d = new Date(); d.setDate(d.getDate() - 20); return d })(),
+        resolved: false,
+        notes: 'Multiple critical findings led to license suspension on a later date.',
+      },
+    },
+  ]
+
+  const createdPrivSchools: { id: string; code: string; name: string }[] = []
+
+  for (const ps of privSchools) {
+    const school = await prisma.school.create({
+      data: {
+        name: ps.name,
+        code: ps.code,
+        authority: 'PRIVATE',
+        schoolType: ps.schoolType,
+        address: ps.address,
+        phone: ps.phone,
+        principal: ps.principal,
+        gradeLevels: JSON.stringify(ps.gradeLevels),
+        programmes: JSON.stringify(['Standard']),
+        classLetters: JSON.stringify(['A', 'B', 'C', 'D']),
+        establishedYear: ps.establishedYear,
+      },
+    })
+    createdPrivSchools.push({ id: school.id, code: school.code, name: school.name })
+
+    await prisma.privateSchoolProfile.create({
+      data: {
+        schoolId: school.id,
+        registrationNo: ps.profile.registrationNo,
+        ownerOrganisation: ps.profile.ownerOrganisation,
+        ownerContactName: ps.profile.ownerContactName ?? null,
+        ownerContactPhone: ps.profile.ownerContactPhone ?? null,
+        ownerContactEmail: ps.profile.ownerContactEmail ?? null,
+        district: ps.profile.district,
+        curriculumModel: ps.profile.curriculumModel,
+        studentCapacity: ps.profile.studentCapacity,
+        feeRangeBnd: ps.profile.feeRangeBnd ?? null,
+        notes: ps.profile.notes ?? null,
+      },
+    })
+
+    const license = await prisma.schoolLicense.create({
+      data: {
+        schoolId: school.id,
+        licenseNumber: ps.license.licenseNumber,
+        issuedDate: ps.license.issuedDate,
+        expiryDate: ps.license.expiryDate,
+        status: ps.license.status,
+        authorisedLevels: JSON.stringify(ps.license.authorisedLevels),
+        conditions: ps.license.conditions ?? null,
+        issuedByUserId: dpeOfficer.id,
+      },
+    })
+
+    // Renewal history for PPAH
+    if (ps.code === 'PPAH') {
+      await prisma.licenseRenewal.create({
+        data: {
+          licenseId: license.id,
+          previousExpiry: new Date('2020-08-01'),
+          newExpiry: new Date('2021-08-01'),
+          renewedByUserId: dpeOfficer.id,
+          notes: 'First renewal, all conditions met.',
+        },
+      })
+      await prisma.licenseRenewal.create({
+        data: {
+          licenseId: license.id,
+          previousExpiry: new Date('2021-08-01'),
+          newExpiry: ps.license.expiryDate,
+          renewedByUserId: dpeOfficer.id,
+          notes: 'Second renewal — staff qualification conditions attached.',
+        },
+      })
+    }
+
+    await prisma.schoolInspection.create({
+      data: {
+        schoolId: school.id,
+        inspectionDate: ps.inspection.inspectionDate,
+        inspectorUserId: dpeOfficer.id,
+        inspectionType: ps.inspection.inspectionType,
+        rating: ps.inspection.rating,
+        findings: JSON.stringify(ps.inspection.findings),
+        followUpDueDate: ('followUpDueDate' in ps.inspection ? ps.inspection.followUpDueDate : null) ?? null,
+        resolved: ps.inspection.resolved,
+        resolvedAt: ps.inspection.resolved ? ps.inspection.inspectionDate : null,
+        notes: ps.inspection.notes,
+      },
+    })
+
+    // Audit trail for the seeded license issuance
+    await prisma.auditEvent.create({
+      data: {
+        actorUserId: dpeOfficer.id,
+        action: 'PRIV_ED_LICENSE_ISSUED',
+        entityType: 'SchoolLicense',
+        entityId: license.id,
+        details: JSON.stringify({ schoolId: school.id, licenseNumber: ps.license.licenseNumber, seeded: true }),
+      },
+    })
+  }
+
+  // One compliance circular targeting all private schools
+  const circular = await prisma.complianceCircular.create({
+    data: {
+      circularNumber: 'DPE/CIR/2026/03',
+      title: 'Annual Financial Audit Submission — 2025/26',
+      bodyMarkdown:
+        '## Annual Financial Audit Submission\n\n' +
+        'All private education institutions are required to submit their audited financial statements for the academic year 2025/26 no later than **30 November 2026**.\n\n' +
+        'Submissions must include:\n' +
+        '- Independently audited income statement\n' +
+        '- Balance sheet as at 31 August 2026\n' +
+        '- Statement of compliance with fee structures lodged with DPE\n\n' +
+        'Late submissions may trigger a compliance inspection under Regulation 8.4.',
+      effectiveDate: new Date(),
+      acknowledgementDueDate: (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d })(),
+      targetScope: 'ALL_PRIVATE',
+      issuedByUserId: dpeOfficer.id,
+      targets: {
+        create: createdPrivSchools.map((s) => ({ schoolId: s.id })),
+      },
+    },
+  })
+
+  // SPB has acknowledged; others have not
+  const spb = createdPrivSchools.find((s) => s.code === 'SPB')
+  if (spb) {
+    await prisma.circularTarget.updateMany({
+      where: { circularId: circular.id, schoolId: spb.id },
+      data: {
+        acknowledgedAt: new Date(),
+        acknowledgedByUserId: dpeOfficer.id,
+        acknowledgedNotes: 'Acknowledged via DPE portal. Audit firm engaged.',
+      },
+    })
+  }
+
+  await prisma.auditEvent.create({
+    data: {
+      actorUserId: dpeOfficer.id,
+      action: 'PRIV_ED_CIRCULAR_ISSUED',
+      entityType: 'ComplianceCircular',
+      entityId: circular.id,
+      details: JSON.stringify({ circularNumber: 'DPE/CIR/2026/03', targetCount: createdPrivSchools.length, seeded: true }),
+    },
+  })
+
+  console.log(`  ✓ ${createdPrivSchools.length} private schools seeded with licenses, inspections, 1 circular`)
+  console.log(`  ✓ DPE officer account: dpeofficer / Demo@2026`)
 }
 
 main()

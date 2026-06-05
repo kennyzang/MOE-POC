@@ -2,6 +2,8 @@ import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, type AuthRequest } from '../middleware/auth'
 import { send } from '../services/notificationService'
+import { USER_SELECT_NAME, USER_SELECT_BASIC } from '../lib/querySelects'
+import { validateTransition, RETIREMENT_TRANSITIONS } from '../lib/transitions'
 
 const router = Router()
 
@@ -128,7 +130,7 @@ router.get('/my-status', authenticate, async (req: AuthRequest, res: Response) =
     const teacher = await prisma.teacher.findUnique({
       where: { userId },
       include: {
-        user: { select: { displayName: true } },
+        user: { select: USER_SELECT_NAME },
         retirementApplication: true,
       },
     })
@@ -167,7 +169,7 @@ router.get('/upcoming', authenticate, async (req: AuthRequest, res: Response) =>
         ],
       },
       include: {
-        user: { select: { displayName: true } },
+        user: { select: USER_SELECT_NAME },
         retirementApplication: { select: { status: true } },
       },
     })
@@ -241,7 +243,7 @@ router.post('/apply', authenticate, async (req: AuthRequest, res: Response) => {
     const teacher = await prisma.teacher.findUnique({
       where: { userId },
       include: {
-        user: { select: { displayName: true } },
+        user: { select: USER_SELECT_NAME },
         retirementApplication: { select: { status: true } },
       },
     })
@@ -317,9 +319,14 @@ router.patch('/applications/:id', authenticate, async (req: AuthRequest, res: Re
 
     const existing = await prisma.retirementApplication.findUnique({
       where: { id },
-      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
+      include: { teacher: { include: { user: { select: USER_SELECT_BASIC } } } },
     })
     if (!existing) { res.status(404).json({ success: false, message: 'Application not found' }); return }
+
+    const transitionResult = validateTransition(RETIREMENT_TRANSITIONS, existing.status, status)
+    if (!transitionResult.ok) {
+      res.status(400).json({ success: false, message: transitionResult.reason }); return
+    }
 
     const updated = await prisma.retirementApplication.update({
       where: { id },
@@ -361,7 +368,7 @@ router.post('/run-alerts', authenticate, async (req: AuthRequest, res: Response)
         OR: [{ dateOfBirth: { not: null } }, { joinDate: { not: null } }],
       },
       include: {
-        user: { select: { id: true, displayName: true } },
+        user: { select: USER_SELECT_BASIC },
         retirementApplication: { select: { status: true } },
       },
     })
