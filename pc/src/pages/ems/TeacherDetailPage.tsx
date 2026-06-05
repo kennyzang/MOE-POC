@@ -6,12 +6,124 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import {
   User, BookOpen, Award, BarChart2, Calendar, GraduationCap,
-  ArrowLeft, CheckCircle, Clock, AlertTriangle,
+  ArrowLeft, CheckCircle, Clock, AlertTriangle, Briefcase, Star,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import dayjs from 'dayjs'
 import api from '@/lib/api'
+import SyncBadge from '@/components/SyncBadge'
 
 const { Title, Text } = Typography
+
+// ─── Types for new tabs ──────────────────────────────────────────
+
+interface AwardItem {
+  id: string
+  title: string
+  category: string
+  description: string | null
+  awardedDate: string
+  awardedBy: string | null
+  badgeColor: string
+}
+
+interface PostingItem {
+  id: string
+  schoolName: string
+  position: string
+  department: string | null
+  startDate: string
+  endDate: string | null
+  isCurrent: boolean
+  notes: string | null
+}
+
+const BADGE_COLORS_MAP: Record<string, string> = {
+  gold: '#faad14', silver: '#8c8c8c', bronze: '#d46b08',
+  blue: '#1677ff', green: '#52c41a', purple: '#722ed1',
+}
+const CATEGORY_COLORS_MAP: Record<string, string> = {
+  EXCELLENCE: '#faad14', SERVICE: '#1677ff', INNOVATION: '#52c41a',
+  LEADERSHIP: '#722ed1', COMMUNITY: '#13c2c2', OTHER: '#8c8c8c',
+}
+
+// ─── Awards tab ───────────────────────────────────────────────────
+
+function AwardsTab({ awards }: { awards: AwardItem[] }) {
+  if (awards.length === 0) {
+    return <Empty description="No awards recorded yet" style={{ padding: 32 }} />
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {awards.map(a => (
+        <Card key={a.id} size="small" bordered={false} style={{ background: '#fafafa', borderRadius: 10 }}>
+          <Space align="start" size={12}>
+            <div style={{
+              width: 40, height: 40, borderRadius: '50%',
+              background: BADGE_COLORS_MAP[a.badgeColor] ?? '#8c8c8c',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <Star size={18} style={{ color: '#fff' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Space size={8} wrap>
+                <Text strong style={{ fontSize: 14 }}>{a.title}</Text>
+                <Tag color={CATEGORY_COLORS_MAP[a.category] ?? 'default'} style={{ fontSize: 11 }}>{a.category}</Tag>
+              </Space>
+              <div style={{ marginTop: 2 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {dayjs(a.awardedDate).format('D MMM YYYY')}
+                  {a.awardedBy ? ` · ${a.awardedBy}` : ''}
+                </Text>
+              </div>
+              {a.description && (
+                <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>{a.description}</Text>
+              )}
+            </div>
+          </Space>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+// ─── Career History tab ───────────────────────────────────────────
+
+function CareerHistoryTab({ postings }: { postings: PostingItem[] }) {
+  if (postings.length === 0) {
+    return <Empty description="No posting history recorded yet" style={{ padding: 32 }} />
+  }
+  return (
+    <Timeline
+      items={postings.map(p => ({
+        color: p.isCurrent ? 'green' : 'blue',
+        dot: <Briefcase size={14} style={{ color: p.isCurrent ? '#52c41a' : '#1677ff' }} />,
+        children: (
+          <div style={{ paddingBottom: 8 }}>
+            <Space size={8} wrap>
+              <Text strong>{p.schoolName}</Text>
+              {p.isCurrent && <Tag color="success">Current</Tag>}
+            </Space>
+            <div>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                {p.position}
+                {p.department ? ` · ${p.department}` : ''}
+              </Text>
+            </div>
+            <div>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {dayjs(p.startDate).format('MMM YYYY')} — {p.endDate ? dayjs(p.endDate).format('MMM YYYY') : 'Present'}
+              </Text>
+            </div>
+            {p.notes && (
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>{p.notes}</Text>
+            )}
+          </div>
+        ),
+      }))}
+    />
+  )
+}
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -444,6 +556,24 @@ export default function TeacherDetailPage() {
     enabled: !!id,
   })
 
+  const { data: teacherAwards = [] } = useQuery<AwardItem[]>({
+    queryKey: ['teacher-awards', id],
+    queryFn: async () => {
+      const res = await api.get(`/awards/teacher/${id}`)
+      return res.data.data as AwardItem[]
+    },
+    enabled: !!id,
+  })
+
+  const { data: postingHistory = [] } = useQuery<PostingItem[]>({
+    queryKey: ['teacher-postings', id],
+    queryFn: async () => {
+      const res = await api.get(`/postings/teacher/${id}`)
+      return res.data.data as PostingItem[]
+    },
+    enabled: !!id,
+  })
+
   if (isLoading) {
     return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
   }
@@ -454,22 +584,27 @@ export default function TeacherDetailPage() {
   const certifications = teacher.certifications ?? []
   const cpdPct = Math.min(100, Math.round(((teacher.cpdHours ?? 0) / (teacher.cpdTarget ?? 20)) * 100))
 
+  const isTeaching = !teacher.staffType || teacher.staffType === 'TEACHING'
+
   const tabItems = [
     {
       key: 'overview',
       label: <Space size={4}><User size={14} />Overview</Space>,
       children: <OverviewTab teacher={teacher} />,
     },
-    {
-      key: 'courses',
-      label: <Space size={4}><BookOpen size={14} />Courses ({teacher.courseAssignments?.length ?? 0})</Space>,
-      children: <CoursesTab teacher={teacher} />,
-    },
-    {
-      key: 'performance',
-      label: <Space size={4}><BarChart2 size={14} />Performance ({evaluations.length})</Space>,
-      children: <PerformanceTab evaluations={evaluations} />,
-    },
+    // Teaching-only tabs
+    ...(isTeaching ? [
+      {
+        key: 'courses',
+        label: <Space size={4}><BookOpen size={14} />Courses ({teacher.courseAssignments?.length ?? 0})</Space>,
+        children: <CoursesTab teacher={teacher} />,
+      },
+      {
+        key: 'performance',
+        label: <Space size={4}><BarChart2 size={14} />Performance ({evaluations.length})</Space>,
+        children: <PerformanceTab evaluations={evaluations} />,
+      },
+    ] : []),
     {
       key: 'certifications',
       label: (
@@ -483,17 +618,19 @@ export default function TeacherDetailPage() {
       ),
       children: <CertificationsTab certifications={certifications} />,
     },
-    {
-      key: 'cpd',
-      label: (
-        <Space size={4}>
-          <GraduationCap size={14} />
-          CPD
-          {cpdPct >= 100 ? <CheckCircle size={14} color="#52c41a" /> : <Clock size={14} color="#fa8c16" />}
-        </Space>
-      ),
-      children: <CpdTab teacher={teacher} cpdEnrollments={cpdEnrollments} />,
-    },
+    ...(isTeaching ? [
+      {
+        key: 'cpd',
+        label: (
+          <Space size={4}>
+            <GraduationCap size={14} />
+            CPD
+            {cpdPct >= 100 ? <CheckCircle size={14} color="#52c41a" /> : <Clock size={14} color="#fa8c16" />}
+          </Space>
+        ),
+        children: <CpdTab teacher={teacher} cpdEnrollments={cpdEnrollments} />,
+      },
+    ] : []),
     {
       key: 'leave',
       label: (
@@ -506,6 +643,22 @@ export default function TeacherDetailPage() {
         </Space>
       ),
       children: <LeaveTab leaves={leaves} />,
+    },
+    {
+      key: 'awards',
+      label: (
+        <Space size={4}>
+          <Star size={14} />
+          Awards
+          {teacherAwards.length > 0 && <Badge count={teacherAwards.length} size="small" style={{ backgroundColor: '#faad14' }} />}
+        </Space>
+      ),
+      children: <AwardsTab awards={teacherAwards} />,
+    },
+    {
+      key: 'career',
+      label: <Space size={4}><Briefcase size={14} />Career History</Space>,
+      children: <CareerHistoryTab postings={postingHistory} />,
     },
   ]
 
@@ -539,7 +692,10 @@ export default function TeacherDetailPage() {
                 </Text>
               </div>
               <div>
-                <Title level={4} style={{ margin: 0 }}>{teacher.user?.displayName}</Title>
+                <Space align="center" size={8}>
+                  <Title level={4} style={{ margin: 0 }}>{teacher.user?.displayName}</Title>
+                  <SyncBadge source="SSM" relativeTime="2 min ago" absoluteTime="Synced from SSM Civil Service HR System" />
+                </Space>
                 <Space size={8}>
                   <Text type="secondary" style={{ fontSize: 13 }}>{teacher.staffId}</Text>
                   <Text type="secondary">·</Text>

@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   BookOpen,
   Award,
+  ClipboardList,
   Briefcase,
   School,
   DollarSign,
@@ -22,12 +23,21 @@ import {
   SlidersHorizontal,
   Receipt,
   HeartHandshake,
+  Brain,
   TrendingUp,
+  MessageSquare,
+  BookMarked,
+  Library,
+  Package,
+  ShieldAlert,
+  UserSquare2,
+  ClockCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useUIStore } from '@/stores/uiStore'
+import { AUTHORITY_META } from '@/hooks/useSchoolConfig'
 import type { UserRole } from '@/types'
 
 const { Sider } = Layout
@@ -86,46 +96,77 @@ const Sidebar = () => {
         roles: ['admin', 'manager', 'principal'],
       },
       // SIS - Student Information System
+      // counselor navigates SIS exclusively via their portal to avoid duplicates
       {
         key: '/sis',
         label: t('nav.sis'),
         icon: icon(Users),
-        roles: ['admin', 'manager', 'admissions', 'teacher', 'principal', 'counselor', 'hod'],
+        roles: ['admin', 'manager', 'admissions', 'teacher', 'principal', 'hod'],
         children: [
-          { key: '/sis/students', label: t('nav.sisStudents'), roles: ['admin', 'manager', 'teacher', 'principal', 'counselor', 'hod', 'admissions'] },
+          { key: '/sis/students', label: t('nav.sisStudents'), roles: ['admin', 'manager', 'teacher', 'principal', 'hod', 'admissions'] },
           { key: '/sis/admissions', label: t('nav.sisAdmissions'), roles: ['admin', 'manager', 'admissions', 'principal'] },
           { key: '/sis/grades', label: t('nav.sisGrades'), roles: ['admin', 'manager', 'teacher', 'principal'] },
           { key: '/sis/attendance', label: t('nav.sisAttendance'), roles: ['admin', 'manager', 'teacher', 'principal'] },
           { key: '/sis/fees', label: t('nav.sisFees', { defaultValue: 'Fee Invoices' }), icon: icon(Receipt), roles: ['admin', 'manager', 'finance', 'principal'] },
+          { key: '/sis/announcements', label: 'Announcements', icon: icon(Bell), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
+          { key: '/sis/behavior', label: 'Behavior & Discipline', icon: icon(ShieldAlert), roles: ['admin', 'manager', 'principal', 'hod'] },
+          { key: '/admin/transitions', label: 'Transitions', icon: icon(TrendingUp), roles: ['admin', 'manager', 'principal', 'hod', 'admissions'] },
+          { key: '/sen/students', label: t('nav.sen', { defaultValue: 'SEN / IEP' }), icon: icon(Brain), roles: ['admin', 'manager', 'principal', 'hod'] },
         ],
       },
       // EMS - Educator Management System
+      // hod navigates EMS exclusively via their portal to avoid duplicates
       {
         key: '/ems',
         label: t('nav.ems'),
         icon: icon(GraduationCap),
-        roles: ['admin', 'manager', 'teacher', 'hod', 'principal'],
+        roles: ['admin', 'manager', 'teacher', 'principal'],
         children: [
-          { key: '/ems/teachers', label: t('nav.emsTeachers'), roles: ['admin', 'manager', 'principal', 'hod'] },
+          { key: '/ems/teachers', label: t('nav.emsTeachers'), roles: ['admin', 'manager', 'principal'] },
           { key: '/ems/certifications', label: t('nav.emsCertifications'), roles: ['admin', 'manager', 'teacher'] },
           { key: '/ems/workload', label: t('nav.emsWorkload'), roles: ['admin', 'manager', 'teacher'] },
-          { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['admin', 'manager', 'hod', 'principal', 'teacher'] },
-          { key: '/ems/leave', label: 'Leave & Substitutes', roles: ['admin', 'manager', 'hod', 'principal', 'teacher'] },
-          { key: '/ems/cpd-workshops', label: 'CPD Workshops', roles: ['admin', 'manager', 'hod', 'principal', 'teacher'] },
+          { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['admin', 'manager', 'principal', 'teacher'] },
+          { key: '/ems/leave', label: 'Leave & Substitutes', roles: ['admin', 'manager', 'principal', 'teacher'] },
+          { key: '/ems/leave/balance', label: 'My Leave Balance', roles: ['teacher'] },
+          { key: '/ems/leave/calendar', label: 'Leave Calendar', roles: ['admin', 'manager', 'principal'] },
+          { key: '/ems/leave/reports', label: 'Leave Reports', roles: ['admin', 'manager', 'principal'] },
+          { key: '/ems/cpd-workshops', label: 'CPD Workshops', roles: ['admin', 'manager', 'principal', 'teacher'] },
+          { key: '/ems/retirement', label: t('nav.myRetirement', 'My Retirement'), roles: ['teacher'] },
+          { key: '/ems/retirement/dashboard', label: t('nav.retirementMgmt', 'Retirement Mgmt'), roles: ['admin', 'manager', 'principal', 'hod'] },
+          { key: '/ems/awards', label: t('nav.awardsRecognition', 'Awards & Recognition'), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
+          { key: '/ems/surveys', label: t('nav.surveys', 'Staff Surveys'), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
+        ],
+      },
+      // Attendance
+      {
+        key: '/attendance',
+        label: t('nav.attendance', 'Attendance'),
+        icon: icon(ClockCheck),
+        roles: ['admin', 'manager', 'principal', 'hod', 'teacher'],
+        children: [
+          { key: '/attendance/staff-check-in', label: t('nav.staffCheckIn', 'Check In / Out'), roles: ['teacher', 'hod'] },
+          { key: '/attendance/staff-history', label: t('nav.staffHistory', 'My Attendance'), roles: ['teacher', 'hod'] },
+          { key: '/attendance/staff-dashboard', label: t('nav.staffDashboard', 'Staff Dashboard'), roles: ['admin', 'manager', 'principal', 'hod'] },
         ],
       },
       // SMS - School Management System
+      // finance navigates SMS exclusively via their portal; hod via HOD portal
       {
         key: '/sms',
         label: t('nav.sms'),
         icon: icon(School),
-        roles: ['admin', 'manager', 'finance', 'principal', 'teacher', 'hod'],
+        roles: ['admin', 'manager', 'principal', 'teacher'],
         children: [
-          { key: '/sms/courses', label: t('nav.smsCourses'), roles: ['admin', 'manager', 'teacher', 'hod', 'principal'] },
-          { key: '/sms/resources', label: t('nav.smsResources'), roles: ['admin', 'manager', 'teacher', 'hod', 'principal'] },
-          { key: '/sms/timetable', label: t('nav.smsTimetable'), icon: icon(Calendar), roles: ['admin', 'manager', 'principal', 'teacher', 'hod'] },
-          { key: '/sms/calendar', label: t('nav.smsCalendar'), roles: ['admin', 'manager', 'principal', 'teacher', 'hod'] },
-          { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['admin', 'manager', 'finance', 'principal'] },
+          { key: '/sms/courses', label: t('nav.smsCourses'), roles: ['admin', 'manager', 'teacher', 'principal'] },
+          { key: '/sms/resources', label: t('nav.smsResources'), roles: ['admin', 'manager', 'teacher', 'principal'] },
+          { key: '/sms/timetable', label: t('nav.smsTimetable'), icon: icon(Calendar), roles: ['admin', 'manager', 'principal', 'teacher'] },
+          { key: '/sms/calendar', label: t('nav.smsCalendar'), roles: ['admin', 'manager', 'principal', 'teacher'] },
+          { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['admin', 'manager', 'principal'] },
+          { key: '/sms/cca', label: 'CCA', icon: icon(Award), roles: ['admin', 'manager', 'teacher', 'principal'] },
+          { key: '/sms/library', label: t('nav.smsLibrary', { defaultValue: 'Library' }), icon: icon(Library), roles: ['admin', 'manager', 'principal', 'teacher'] },
+          { key: '/sms/inventory', label: t('nav.smsInventory', { defaultValue: 'Inventory' }), icon: icon(Package), roles: ['admin', 'manager'] },
+          { key: '/sms/school-profile', label: t('nav.smsSchoolProfile', { defaultValue: 'School Profile' }), icon: icon(School), roles: ['admin', 'manager', 'principal'] },
+          { key: '/sms/exams', label: t('nav.smsExams', { defaultValue: 'Exam Management' }), icon: icon(ClipboardList), roles: ['admin', 'manager', 'principal', 'teacher'] },
         ],
       },
       // EGNC
@@ -136,6 +177,18 @@ const Sidebar = () => {
         roles: ['admin', 'manager'],
         children: [
           { key: '/egnc/integration', label: t('nav.egncIntegration'), roles: ['admin', 'manager'] },
+        ],
+      },
+      // Teacher Portal
+      {
+        key: '/teacher',
+        label: 'Teacher Portal',
+        icon: icon(UserSquare2),
+        roles: ['teacher'],
+        children: [
+          { key: '/teacher/form-class', label: 'My Form Class', icon: icon(Users), roles: ['teacher'] },
+          { key: '/teacher/assignments', label: 'Assignments', icon: icon(BookOpen), roles: ['teacher'] },
+          { key: '/teacher/messages', label: 'Messages', icon: icon(MessageSquare), roles: ['teacher'] },
         ],
       },
       // Counselor Portal
@@ -149,6 +202,8 @@ const Sidebar = () => {
           { key: '/counselor/cases', label: t('nav.counselorCases', { defaultValue: 'Case Management' }), roles: ['counselor'] },
           { key: '/dashboard/at-risk', label: t('nav.atRisk'), roles: ['counselor'] },
           { key: '/sis/students', label: t('nav.sisStudents'), roles: ['counselor'] },
+          { key: '/sis/behavior', label: 'Behavior Records', icon: icon(ShieldAlert), roles: ['counselor'] },
+          { key: '/sen/students', label: t('nav.sen', { defaultValue: 'SEN / IEP' }), icon: icon(Brain), roles: ['counselor'] },
         ],
       },
       // HOD Portal
@@ -160,11 +215,16 @@ const Sidebar = () => {
         children: [
           { key: '/hod/dashboard', label: t('common.dashboard'), roles: ['hod'] },
           { key: '/ems/teachers', label: t('nav.emsTeachers'), roles: ['hod'] },
+          { key: '/ems/certifications', label: t('nav.emsCertifications'), roles: ['hod'] },
+          { key: '/ems/workload', label: t('nav.emsWorkload'), roles: ['hod'] },
           { key: '/ems/performance-evaluations', label: t('nav.emsPerformance'), roles: ['hod'] },
           { key: '/ems/leave', label: 'Leave & Substitutes', roles: ['hod'] },
+          { key: '/ems/leave/calendar', label: 'Leave Calendar', roles: ['hod'] },
+          { key: '/ems/leave/reports', label: 'Leave Reports', roles: ['hod'] },
           { key: '/ems/cpd-workshops', label: 'CPD Workshops', roles: ['hod'] },
           { key: '/approvals', label: t('nav.approvals', { defaultValue: 'Approvals Inbox' }), roles: ['hod'] },
           { key: '/sms/timetable', label: t('nav.smsTimetable'), roles: ['hod'] },
+          { key: '/sms/exams', label: t('nav.smsExams', { defaultValue: 'Exam Management' }), roles: ['hod'] },
           { key: '/dashboard/at-risk', label: t('nav.atRisk'), roles: ['hod'] },
         ],
       },
@@ -178,6 +238,7 @@ const Sidebar = () => {
           { key: '/finance/dashboard', label: t('common.dashboard'), roles: ['finance'] },
           { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['finance'] },
           { key: '/sis/fees', label: t('nav.sisFees', { defaultValue: 'Fee Invoices' }), roles: ['finance'] },
+          { key: '/sms/library', label: t('nav.smsLibrary', { defaultValue: 'Library' }), icon: icon(Library), roles: ['finance'] },
         ],
       },
       // Student Portal
@@ -191,6 +252,11 @@ const Sidebar = () => {
           { key: '/student/profile', label: t('nav.studentProfile'), roles: ['student'] },
           { key: '/student/courses', label: t('nav.studentCourses'), roles: ['student'] },
           { key: '/student/grades', label: t('nav.studentGrades'), roles: ['student'] },
+          { key: '/student/assignments', label: 'Assignments', icon: icon(BookOpen), roles: ['student'] },
+          { key: '/student/announcements', label: 'Announcements', icon: icon(Bell), roles: ['student'] },
+          { key: '/student/behavior', label: 'Merit & Conduct', icon: icon(Award), roles: ['student'] },
+          { key: '/student/report-card', label: 'Report Card', icon: icon(FileText), roles: ['student'] },
+          { key: '/sms/cca', label: 'CCA Activities', icon: icon(BookMarked), roles: ['student'] },
         ],
       },
       // Parent Portal
@@ -204,6 +270,10 @@ const Sidebar = () => {
           { key: '/parent/grades', label: t('nav.parentGrades'), roles: ['parent'] },
           { key: '/parent/attendance', label: t('nav.parentAttendance'), roles: ['parent'] },
           { key: '/parent/fees', label: t('nav.parentFees', { defaultValue: 'Fee Invoices' }), roles: ['parent'] },
+          { key: '/parent/homework', label: 'Homework', icon: icon(BookOpen), roles: ['parent'] },
+          { key: '/parent/announcements', label: 'Announcements', icon: icon(Bell), roles: ['parent'] },
+          { key: '/parent/behavior', label: 'Conduct Record', icon: icon(ShieldAlert), roles: ['parent'] },
+          { key: '/parent/messages', label: 'Messages', icon: icon(MessageSquare), roles: ['parent'] },
           { key: '/parent/apply', label: t('nav.parentApply', { defaultValue: 'Apply for Admission' }), roles: ['parent'] },
           { key: '/parent/meetings', label: t('nav.parentMeetings', { defaultValue: 'Book Meeting' }), roles: ['parent'] },
         ],
@@ -214,6 +284,13 @@ const Sidebar = () => {
         label: t('nav.approvals', { defaultValue: 'Approvals Inbox' }),
         icon: icon(CheckSquare),
         roles: ['admin', 'manager', 'principal'],
+      },
+      // Multi-School Management (system admin only)
+      {
+        key: '/admin/schools',
+        label: 'All Schools',
+        icon: icon(Landmark),
+        roles: ['admin'],
       },
       // Settings
       {
@@ -316,29 +393,36 @@ const Sidebar = () => {
           <School size={18} color="#fff" />
         </div>
         {!collapsed && (
-          <div style={{ overflow: 'hidden' }}>
-            <div
-              style={{
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 700,
-                letterSpacing: 0.3,
-                lineHeight: 1.25,
-                whiteSpace: 'nowrap',
-              }}
-            >
+          <div style={{ overflow: 'hidden', flex: 1 }}>
+            <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 0.3, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
               MOE SERPS
             </div>
-            <div
-              style={{
-                color: 'rgba(255,255,255,0.45)',
-                fontSize: 11,
-                marginTop: 1,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              School ERP System
-            </div>
+            {user?.school ? (
+              <div>
+                <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 170 }}>
+                  {user.school.code}
+                </div>
+                <div
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 9,
+                    fontWeight: 600,
+                    background: AUTHORITY_META[user.school.authority]?.color ?? '#888',
+                    color: '#fff',
+                    borderRadius: 3,
+                    padding: '0 4px',
+                    marginTop: 2,
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  {user.school.authority}
+                </div>
+              </div>
+            ) : user?.systemAdmin ? (
+              <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, marginTop: 1 }}>System Administrator</div>
+            ) : (
+              <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, marginTop: 1 }}>School ERP System</div>
+            )}
           </div>
         )}
       </div>

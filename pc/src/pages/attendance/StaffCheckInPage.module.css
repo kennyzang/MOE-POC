@@ -1,0 +1,171 @@
+.wrapper {
+  min-height: 100vh;
+  background: var(--color-bg-layout, #f5f5f5);
+  display: flex;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.container {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Clock */
+.clockCard {
+  text-align: center;
+  background: linear-gradient(135deg, var(--color-primary, #1677ff) 0%, #0958d9 100%);
+  border-radius: 16px !important;
+}
+
+.clockCard :global(.ant-card-body) {
+  padding: 24px;
+}
+
+.clockTime {
+  font-size: 52px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 2px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.clockDate {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.clockDate :global(.ant-typography) {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Late alert */
+.lateAlert {
+  border-radius: 12px !important;
+}
+
+/* Check-in card */
+.checkInCard {
+  border-radius: 16px !important;
+  text-align: center;
+}
+
+.checkInCard :global(.ant-card-body) {
+  padding: 32px 24px;
+}
+
+.spinCenter {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* Checked-in state */
+.checkedInInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkIcon {
+  color: var(--color-success, #52c41a);
+}
+
+.locationLine {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-secondary, rgba(0,0,0,.45));
+  margin-top: 4px;
+}
+
+.checkOutInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary, rgba(0,0,0,.45));
+  margin-top: 8px;
+}
+
+.checkOutBtn {
+  margin-top: 16px;
+  border-radius: 10px !important;
+}
+
+/* Not checked in state */
+.checkInPrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.promptIcon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--color-primary-bg, #e6f4ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary, #1677ff);
+  margin-bottom: 8px;
+}
+
+.checkInBtn {
+  margin-top: 20px;
+  height: 52px !important;
+  border-radius: 12px !important;
+  font-size: 16px !important;
+  font-weight: 600;
+}
+
+/* History */
+.historyCard {
+  border-radius: 16px !important;
+}
+
+.historyGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-bg-container-disabled, #fafafa);
+  flex-wrap: wrap;
+}
+
+.historyDate {
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 100px;
+}
+
+.historyTime {
+  font-size: 12px;
+  color: var(--color-text-secondary, rgba(0,0,0,.45));
+  margin-left: auto;
+}
+
+.status_PRESENT {
+  border-left: 3px solid var(--color-success, #52c41a);
+}
+
+.status_LATE {
+  border-left: 3px solid var(--color-warning, #faad14);
+}
+
+.status_ABSENT {
+  border-left: 3px solid var(--color-error, #ff4d4f);
+}

@@ -1,0 +1,48 @@
+.page {
+  padding: 0;
+}
+
+.ssmBadge {
+  border-radius: 8px;
+}
+
+.balanceCard {
+  border-radius: 8px;
+  transition: box-shadow 0.2s;
+}
+
+.balanceCard:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.balanceNumbers {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.availableCount {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.totalCount {
+  font-size: 13px;
+  color: #8c8c8c;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}

@@ -29,6 +29,23 @@ import counselorRoutes from './routes/counselor'
 import hodRoutes from './routes/hod'
 import parentRoutes from './routes/parent'
 import fileRoutes from './routes/files'
+import assignmentRoutes from './routes/assignments'
+import announcementRoutes from './routes/announcements'
+import behaviorRoutes from './routes/behavior'
+import messageRoutes from './routes/messages'
+import ccaRoutes from './routes/cca'
+import schoolsRoutes from './routes/schools'
+import transitionsRoutes from './routes/transitions'
+import examRoutes from './routes/exams'
+import senRoutes from './routes/sen'
+import libraryRoutes from './routes/library'
+import inventoryRoutes from './routes/inventory'
+import leaveEnhancedRoutes from './routes/leaveEnhanced'
+import staffAttendanceRoutes from './routes/staffAttendance'
+import retirementRoutes from './routes/retirement'
+import awardsRoutes from './routes/awards'
+import postingsRoutes from './routes/postings'
+import surveysRoutes from './routes/surveys'
 import path from 'path'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
@@ -69,6 +86,7 @@ app.use('/api/v1/dashboard', dashboardRoutes)
 app.use('/api/v1/enrollments', enrollmentRoutes)
 app.use('/api/v1/egnc', egncRoutes)
 app.use('/api/v1/ems', emsRoutes)
+app.use('/api/v1/leave', leaveEnhancedRoutes)
 app.use('/api/v1/sms', smsRoutes)
 app.use('/api/v1/ai', aiRoutes)
 app.use('/api/v1/notifications', notificationRoutes)
@@ -81,6 +99,22 @@ app.use('/api/v1/counselor', counselorRoutes)
 app.use('/api/v1/hod', hodRoutes)
 app.use('/api/v1/parent', parentRoutes)
 app.use('/api/v1/files', fileRoutes)
+app.use('/api/v1/assignments', assignmentRoutes)
+app.use('/api/v1/announcements', announcementRoutes)
+app.use('/api/v1/behavior', behaviorRoutes)
+app.use('/api/v1/messages', messageRoutes)
+app.use('/api/v1/cca', ccaRoutes)
+app.use('/api/v1/schools', schoolsRoutes)
+app.use('/api/v1/transitions', transitionsRoutes)
+app.use('/api/v1/exams', examRoutes)
+app.use('/api/v1/sen', senRoutes)
+app.use('/api/v1/library', libraryRoutes)
+app.use('/api/v1/inventory', inventoryRoutes)
+app.use('/api/v1/staff-attendance', staffAttendanceRoutes)
+app.use('/api/v1/retirement', retirementRoutes)
+app.use('/api/v1/awards', awardsRoutes)
+app.use('/api/v1/postings', postingsRoutes)
+app.use('/api/v1/surveys', surveysRoutes)
 
 // Serve uploaded files (used by download route — not direct public access)
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
