@@ -32,6 +32,14 @@ import {
   ShieldAlert,
   UserSquare2,
   ClockCheck,
+  ExternalLink,
+  UserCog2,
+  BarChart3,
+  BookUser,
+  FileCheck,
+  History,
+  BellDot,
+  Shuffle,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -63,6 +71,7 @@ const ROLE_HOME: Record<UserRole, string> = {
   hod: '/hod/dashboard',
   principal: '/admin/command-center',
   counselor: '/counselor/dashboard',
+  priv_ed_officer: '/private-ed/dashboard',
 }
 
 const Sidebar = () => {
@@ -105,6 +114,7 @@ const Sidebar = () => {
         children: [
           { key: '/sis/students', label: t('nav.sisStudents'), roles: ['admin', 'manager', 'teacher', 'principal', 'hod', 'admissions'] },
           { key: '/sis/admissions', label: t('nav.sisAdmissions'), roles: ['admin', 'manager', 'admissions', 'principal'] },
+          { key: '/register', label: 'Public Registration Portal', icon: icon(ExternalLink), roles: ['admin', 'manager', 'admissions', 'principal'] },
           { key: '/sis/grades', label: t('nav.sisGrades'), roles: ['admin', 'manager', 'teacher', 'principal'] },
           { key: '/sis/attendance', label: t('nav.sisAttendance'), roles: ['admin', 'manager', 'teacher', 'principal'] },
           { key: '/sis/fees', label: t('nav.sisFees', { defaultValue: 'Fee Invoices' }), icon: icon(Receipt), roles: ['admin', 'manager', 'finance', 'principal'] },
@@ -135,6 +145,7 @@ const Sidebar = () => {
           { key: '/ems/retirement/dashboard', label: t('nav.retirementMgmt', 'Retirement Mgmt'), roles: ['admin', 'manager', 'principal', 'hod'] },
           { key: '/ems/awards', label: t('nav.awardsRecognition', 'Awards & Recognition'), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
           { key: '/ems/surveys', label: t('nav.surveys', 'Staff Surveys'), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
+          { key: '/ems/self-service', label: 'Self-Service Portal', icon: icon(UserCog2), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
         ],
       },
       // Attendance
@@ -162,11 +173,15 @@ const Sidebar = () => {
           { key: '/sms/timetable', label: t('nav.smsTimetable'), icon: icon(Calendar), roles: ['admin', 'manager', 'principal', 'teacher'] },
           { key: '/sms/calendar', label: t('nav.smsCalendar'), roles: ['admin', 'manager', 'principal', 'teacher'] },
           { key: '/sms/finance', label: t('nav.smsFinance'), roles: ['admin', 'manager', 'principal'] },
+          { key: '/sms/reports', label: 'Management Reports', icon: icon(BarChart3), roles: ['admin', 'manager', 'principal', 'hod'] },
           { key: '/sms/cca', label: 'CCA', icon: icon(Award), roles: ['admin', 'manager', 'teacher', 'principal'] },
           { key: '/sms/library', label: t('nav.smsLibrary', { defaultValue: 'Library' }), icon: icon(Library), roles: ['admin', 'manager', 'principal', 'teacher'] },
           { key: '/sms/inventory', label: t('nav.smsInventory', { defaultValue: 'Inventory' }), icon: icon(Package), roles: ['admin', 'manager'] },
           { key: '/sms/school-profile', label: t('nav.smsSchoolProfile', { defaultValue: 'School Profile' }), icon: icon(School), roles: ['admin', 'manager', 'principal'] },
           { key: '/sms/exams', label: t('nav.smsExams', { defaultValue: 'Exam Management' }), icon: icon(ClipboardList), roles: ['admin', 'manager', 'principal', 'teacher'] },
+          { key: '/sms/consent-forms', label: 'Consent Forms', icon: icon(FileCheck), roles: ['admin', 'manager', 'principal'] },
+          { key: '/sms/auto-triggers', label: 'Auto Triggers', icon: icon(BellDot), roles: ['admin', 'manager', 'principal'] },
+          { key: '/sms/timetable-conflicts', label: 'Conflict Detection', icon: icon(Shuffle), roles: ['admin', 'manager', 'principal', 'hod'] },
         ],
       },
       // EGNC
@@ -267,15 +282,12 @@ const Sidebar = () => {
         roles: ['parent'],
         children: [
           { key: '/parent/children', label: t('nav.parentChildren'), roles: ['parent'] },
-          { key: '/parent/grades', label: t('nav.parentGrades'), roles: ['parent'] },
-          { key: '/parent/attendance', label: t('nav.parentAttendance'), roles: ['parent'] },
           { key: '/parent/fees', label: t('nav.parentFees', { defaultValue: 'Fee Invoices' }), roles: ['parent'] },
           { key: '/parent/homework', label: 'Homework', icon: icon(BookOpen), roles: ['parent'] },
-          { key: '/parent/announcements', label: 'Announcements', icon: icon(Bell), roles: ['parent'] },
           { key: '/parent/behavior', label: 'Conduct Record', icon: icon(ShieldAlert), roles: ['parent'] },
-          { key: '/parent/messages', label: 'Messages', icon: icon(MessageSquare), roles: ['parent'] },
+          { key: '/parent/contact-directory', label: 'School Contacts', icon: icon(BookUser), roles: ['parent'] },
+          { key: '/parent/communications', label: 'Communications', icon: icon(MessageSquare), roles: ['parent'] },
           { key: '/parent/apply', label: t('nav.parentApply', { defaultValue: 'Apply for Admission' }), roles: ['parent'] },
-          { key: '/parent/meetings', label: t('nav.parentMeetings', { defaultValue: 'Book Meeting' }), roles: ['parent'] },
         ],
       },
       // Approvals
@@ -291,6 +303,16 @@ const Sidebar = () => {
         label: 'All Schools',
         icon: icon(Landmark),
         roles: ['admin'],
+      },
+      // Private Education Oversight (DPE officer + admin)
+      {
+        key: '/private-ed',
+        label: t('nav.privateEd', { defaultValue: 'Private Education' }),
+        icon: icon(ShieldAlert),
+        roles: ['priv_ed_officer', 'admin'],
+        children: [
+          { key: '/private-ed/dashboard', label: t('nav.privateEdDashboard', { defaultValue: 'Oversight Dashboard' }), roles: ['priv_ed_officer', 'admin'] },
+        ],
       },
       // Settings
       {

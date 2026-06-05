@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, schoolFilter, type AuthRequest } from '../middleware/auth'
+import { USER_SELECT_FULL, USER_SELECT_NAME } from '../lib/querySelects'
 
 const router = Router()
 
@@ -34,17 +35,7 @@ router.get(
       const teachers = await prisma.teacher.findMany({
         where,
         include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              email: true,
-              role: true,
-              avatar: true,
-              status: true,
-            },
-          },
+          user: { select: USER_SELECT_FULL },
         },
         orderBy: { createdAt: 'desc' },
       })
@@ -64,7 +55,7 @@ router.get('/me', authenticate, requireRole('teacher'), async (req: AuthRequest,
       where: { userId: req.user!.userId },
       include: {
         user: {
-          select: { id: true, username: true, displayName: true, email: true, role: true, avatar: true, status: true },
+          select: USER_SELECT_FULL,
         },
         courseAssignments: {
           include: {
@@ -213,7 +204,7 @@ router.get('/me/form-class', authenticate, requireRole('teacher', 'hod', 'admin'
     // Students in this class
     const students = await prisma.student.findMany({
       where: { className: roster.className, gradeLevel: roster.gradeLevel, enrollmentStatus: 'enrolled' },
-      include: { user: { select: { displayName: true } } },
+      include: { user: { select: USER_SELECT_NAME } },
     })
 
     const studentIds = students.map((s) => s.id)

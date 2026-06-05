@@ -158,6 +158,33 @@ const CcaPage = lazy(() => import('@/pages/cca/CcaPage'))
 const SchoolsPage = lazy(() => import('@/pages/admin/SchoolsPage'))
 const TransitionsPage = lazy(() => import('@/pages/admin/TransitionsPage'))
 
+// Private Education Oversight (DPE)
+const PrivateEdDashboardPage = lazy(() => import('@/pages/privateEd/PrivateEdDashboardPage'))
+const SchoolOversightPage = lazy(() => import('@/pages/privateEd/SchoolOversightPage'))
+
+// Module 5: Management Reports
+const ManagementReportsPage = lazy(() => import('@/pages/sms/ManagementReportsPage'))
+
+// Module 7: Self-Service Portal
+const SelfServicePortalPage = lazy(() => import('@/pages/ems/SelfServicePortalPage'))
+
+// Module 9: Notification Auto-Triggers
+const AutoTriggersPage = lazy(() => import('@/pages/sms/AutoTriggersPage'))
+
+// Module 10: Timetable Conflict Detection
+const TimetableConflictsPage = lazy(() => import('@/pages/sms/TimetableConflictsPage'))
+
+// Module 8: Parent-Teacher Communications
+const ParentContactDirectoryPage = lazy(() => import('@/pages/parent/ParentContactDirectoryPage'))
+const ParentConsentFormsPage = lazy(() => import('@/pages/parent/ParentConsentFormsPage'))
+const ParentCommHistoryPage = lazy(() => import('@/pages/parent/ParentCommHistoryPage'))
+const ParentCommunicationsPage = lazy(() => import('@/pages/parent/ParentCommunicationsPage'))
+const ConsentFormsAdminPage = lazy(() => import('@/pages/sms/ConsentFormsAdminPage'))
+
+// Public registration portal (no auth)
+const RegistrationPortalPage = lazy(() => import('@/pages/registration/RegistrationPortalPage'))
+const RegistrationStatusPage = lazy(() => import('@/pages/registration/RegistrationStatusPage'))
+
 // Error pages
 const NotFoundPage = lazy(() => import('@/pages/errors/NotFoundPage'))
 const UnauthorizedPage = lazy(() => import('@/pages/errors/UnauthorizedPage'))
@@ -166,6 +193,15 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: wrap(<LoginPage />),
+  },
+  // Public pages — no authentication required
+  {
+    path: '/register',
+    element: wrap(<RegistrationPortalPage />),
+  },
+  {
+    path: '/register/status',
+    element: wrap(<RegistrationStatusPage />),
   },
   {
     path: '/',
@@ -222,6 +258,9 @@ export const router = createBrowserRouter([
       { path: 'ems/surveys', element: r(['admin', 'manager', 'principal', 'hod', 'teacher'], <SurveysAdminPage />) },
       { path: 'ems/surveys/:id/respond', element: r(['teacher', 'hod', 'admin', 'manager', 'principal'], <SurveyRespondPage />) },
 
+      // Self-Service Portal
+      { path: 'ems/self-service', element: r(['teacher', 'hod', 'admin', 'manager', 'principal'], <SelfServicePortalPage />) },
+
       // Attendance
       { path: 'attendance/staff-check-in', element: r(['teacher', 'hod'], <StaffCheckInPage />) },
       { path: 'attendance/staff-history', element: r(['teacher', 'hod'], <StaffAttendanceHistoryPage />) },
@@ -240,6 +279,7 @@ export const router = createBrowserRouter([
       { path: 'sms/timetable', element: r(['admin', 'manager', 'principal', 'teacher', 'hod'], <TimetablePage />) },
       { path: 'sms/calendar', element: r(['admin', 'manager', 'principal', 'teacher', 'hod'], <SchoolCalendarPage />) },
       { path: 'sms/finance', element: r(['admin', 'manager', 'finance', 'principal'], <FinancialReportsPage />) },
+      { path: 'sms/reports', element: r(['admin', 'manager', 'principal', 'hod'], <ManagementReportsPage />) },
 
       // EGNC
       { path: 'egnc/integration', element: r(['admin', 'manager'], <EgncIntegrationPage />) },
@@ -276,6 +316,18 @@ export const router = createBrowserRouter([
       { path: 'parent/announcements', element: r(['parent'], <ParentAnnouncementsPage />) },
       { path: 'parent/behavior', element: r(['parent'], <ParentBehaviorPage />) },
       { path: 'parent/messages', element: r(['parent'], <ParentMessagesPage />) },
+      // Module 8: Parent-Teacher Communications (consolidated into one page)
+      { path: 'parent/communications', element: r(['parent'], <ParentCommunicationsPage />) },
+      // Legacy deep-link routes still work individually
+      { path: 'parent/contact-directory', element: r(['parent'], <ParentContactDirectoryPage />) },
+      { path: 'parent/consent-forms', element: r(['parent'], <ParentConsentFormsPage />) },
+      { path: 'parent/comm-history', element: r(['parent'], <ParentCommHistoryPage />) },
+      // Module 8: Admin Consent Forms
+      { path: 'sms/consent-forms', element: r(['admin', 'manager', 'principal'], <ConsentFormsAdminPage />) },
+      // Module 9: Auto Triggers
+      { path: 'sms/auto-triggers', element: r(['admin', 'manager', 'principal'], <AutoTriggersPage />) },
+      // Module 10: Timetable Conflicts
+      { path: 'sms/timetable-conflicts', element: r(['admin', 'manager', 'principal', 'hod'], <TimetableConflictsPage />) },
 
       // Teacher Portal additions
       { path: 'teacher/form-class', element: r(['teacher', 'hod'], <FormTeacherPage />) },
@@ -296,6 +348,10 @@ export const router = createBrowserRouter([
       // Multi-school administration
       { path: 'admin/schools', element: r(['admin', 'manager', 'principal'], <SchoolsPage />) },
       { path: 'admin/transitions', element: r(['admin', 'manager', 'principal', 'hod', 'admissions'], <TransitionsPage />) },
+
+      // Private Education Oversight (DPE)
+      { path: 'private-ed/dashboard', element: r(['admin', 'priv_ed_officer'], <PrivateEdDashboardPage />) },
+      { path: 'private-ed/schools/:id', element: r(['admin', 'priv_ed_officer'], <SchoolOversightPage />) },
 
       // Settings
       { path: 'settings', element: r(['admin'], <SettingsPage />) },

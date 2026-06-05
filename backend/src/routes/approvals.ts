@@ -105,7 +105,7 @@ router.get(
   requireRole('hod', 'principal', 'admin', 'manager'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const { id } = req.params
+      const id = req.params.id as string
       const approval = await prisma.approvalRequest.findUnique({ where: { id } })
       if (!approval) { res.status(404).json({ success: false, message: 'Not found' }); return }
 
@@ -118,7 +118,6 @@ router.get(
       } else if (approval.entityType === 'GradeAmendment') {
         entity = await prisma.gradeAmendment.findUnique({
           where: { id: approval.entityId },
-          include: { /* nothing complex */ },
         })
       }
 

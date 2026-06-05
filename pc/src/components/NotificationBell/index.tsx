@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Badge, Popover, Button, List, Typography, Space, Tag } from 'antd'
 import { Bell } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { useNotificationStore } from '@/stores/notificationStore'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -19,6 +20,7 @@ const typeColor: Record<string, string> = {
 
 const NotificationBell = () => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const {
     notifications,
@@ -71,12 +73,16 @@ const NotificationBell = () => {
               background: item.read ? 'transparent' : '#e6f4ff',
               padding: '10px 8px',
               borderRadius: 6,
-              cursor: item.read ? 'default' : 'pointer',
+              cursor: item.link ? 'pointer' : item.read ? 'default' : 'pointer',
               marginBottom: 2,
               border: 'none',
             }}
             onClick={() => {
               if (!item.read) markAsRead(item.id)
+              if (item.link) {
+                setOpen(false)
+                navigate(item.link)
+              }
             }}
           >
             <Space direction="vertical" size={2} style={{ width: '100%' }}>

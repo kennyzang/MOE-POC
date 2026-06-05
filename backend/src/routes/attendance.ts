@@ -6,6 +6,7 @@ import { sendPushToUser } from '../services/pushService'
 import { broadcast } from './events'
 import { recalcStudentRisk } from './ai'
 import { getConfigInt } from '../lib/config'
+import { USER_SELECT_BASIC } from '../lib/querySelects'
 
 const VALID_ABSENCE_REASONS = ['Sick', 'Personal', 'Unexplained', 'Other']
 
@@ -91,7 +92,7 @@ router.get(
   requireRole('admin', 'manager', 'teacher', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const { id } = req.params
+      const id = req.params.id as string
       const session = await prisma.attendanceSession.findUnique({
         where: { id },
         include: {
@@ -100,7 +101,7 @@ router.get(
             include: {
               student: {
                 include: {
-                  user: { select: { id: true, displayName: true } },
+                  user: { select: USER_SELECT_BASIC },
                 },
               },
             },
@@ -165,7 +166,7 @@ router.get('/records', authenticate, async (req: AuthRequest, res: Response) => 
       where.studentId = student.id
     }
 
-    // Parent: children's records only
+    // Parent: children's records only; honour the studentId filter if it belongs to their child
     if (req.user!.role === 'parent') {
       const parent = await prisma.parent.findUnique({
         where: { userId: req.user!.userId },
@@ -176,7 +177,11 @@ router.get('/records', authenticate, async (req: AuthRequest, res: Response) => 
         res.json({ success: true, data: [] })
         return
       }
-      where.studentId = { in: childIds }
+      if (studentId && childIds.includes(studentId)) {
+        where.studentId = studentId
+      } else {
+        where.studentId = { in: childIds }
+      }
     }
 
     const records = await prisma.attendanceRecord.findMany({
@@ -243,7 +248,7 @@ router.post(
         const students = await prisma.student.findMany({
           where: { id: { in: absentStudentIds } },
           include: {
-            user: { select: { id: true, displayName: true } },
+            user: { select: USER_SELECT_BASIC },
             parentLinks: { include: { parent: { include: { user: { select: { id: true } } } } } },
             attendances: {
               include: { session: true },
@@ -369,7 +374,7 @@ router.patch(
         include: {
           student: {
             include: {
-              user: { select: { id: true, displayName: true } },
+              user: { select: USER_SELECT_BASIC },
               parentLinks: { include: { parent: { include: { user: { select: { id: true } } } } } },
             },
           },

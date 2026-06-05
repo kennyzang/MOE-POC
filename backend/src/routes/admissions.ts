@@ -1,9 +1,12 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
-import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { authenticate, requireRole, schoolFilter, type AuthRequest } from '../middleware/auth'
 import { sendMany } from '../services/notificationService'
 import { broadcast } from './events'
 import { getConfigInt } from '../lib/config'
+import { USER_SELECT_NAME } from '../lib/querySelects'
+import { validateTransition, ADMISSION_TRANSITIONS } from '../lib/transitions'
+import { acceptOffer, EnrollmentError } from '../services/enrollmentService'
 
 const router = Router()
 
@@ -15,16 +18,23 @@ router.get(
   async (req: AuthRequest, res: Response) => {
     try {
       const { status, search } = req.query as { status?: string; search?: string }
+      const filter = schoolFilter(req)
 
-      const where: any = {}
-      if (status) where.status = status
+      // schoolId on Admission is the target school; seeded records may have null.
+      // Include records for this school OR unassigned (null) when school-scoped.
+      const andClauses: any[] = []
+      if (filter.schoolId) {
+        andClauses.push({ OR: [{ schoolId: filter.schoolId }, { schoolId: null }] })
+      }
+      if (status) andClauses.push({ status })
       if (search) {
-        where.OR = [
+        andClauses.push({ OR: [
           { applicantName: { contains: search } },
           { parentName: { contains: search } },
           { gradeApplied: { contains: search } },
-        ]
+        ]})
       }
+      const where: any = andClauses.length ? { AND: andClauses } : {}
 
       const admissions = await prisma.admission.findMany({
         where,
@@ -103,7 +113,7 @@ router.get(
       }
       const student = await prisma.student.findFirst({
         where: { user: { displayName: { contains: name.trim() } }, enrollmentStatus: 'enrolled' },
-        include: { user: { select: { displayName: true } } },
+        include: { user: { select: USER_SELECT_NAME } },
       })
       if (!student) {
         res.json({ success: true, data: { matched: false } })
@@ -249,10 +259,13 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('admin', 'manager', 'admissions'),
+  requireRole('admin', 'manager', 'admissions', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const admission = await prisma.admission.findUnique({ where: { id: req.params.id as string } })
+      const admission = await prisma.admission.findUnique({
+        where: { id: req.params.id as string },
+        include: { documents: { orderBy: { uploadedAt: 'asc' } } },
+      })
       if (!admission) {
         res.status(404).json({ success: false, message: 'Admission not found' })
         return
@@ -260,6 +273,186 @@ router.get(
       res.json({ success: true, data: admission })
     } catch (error) {
       console.error('GET /admissions/:id error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// ─── GET /:id/eligibility — run eligibility check with flags ─────
+// SR-09
+router.get(
+  '/:id/eligibility',
+  authenticate,
+  requireRole('admin', 'manager', 'admissions', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const application = await prisma.admission.findUnique({
+        where: { id: req.params.id as string },
+        include: { documents: true },
+      })
+      if (!application) {
+        res.status(404).json({ success: false, message: 'Application not found' })
+        return
+      }
+
+      const flags: Array<{ flag: string; passed: boolean; message: string; severity: string }> = []
+
+      // Age-grade check
+      if (application.dateOfBirth) {
+        const jan1 = new Date(new Date().getFullYear(), 0, 1)
+        const age = Math.floor((jan1.getTime() - application.dateOfBirth.getTime()) / (365.25 * 24 * 3600 * 1000))
+        const eligibleGrade = Math.min(Math.max(age - 5, 1), 12)
+        const appliedNum = parseInt(String(application.gradeApplied).replace(/\D/g, '')) || 0
+        const passed = eligibleGrade === appliedNum
+        flags.push({
+          flag: 'AGE_GRADE_MATCH',
+          passed,
+          message: passed ? `Age ${age} is appropriate for ${application.gradeApplied}.` : `Age ${age} suggests Year ${eligibleGrade}, but applying for ${application.gradeApplied}.`,
+          severity: passed ? 'ok' : 'warning',
+        })
+      }
+
+      // School capacity
+      if (application.schoolId) {
+        const gradeNum = parseInt(String(application.gradeApplied).replace(/\D/g, '')) || 0
+        const maxCapacity = await getConfigInt('class_capacity_max', 35)
+        const enrolled = await prisma.student.count({
+          where: { schoolId: application.schoolId, gradeLevel: `Year ${gradeNum}`, enrollmentStatus: 'enrolled' },
+        })
+        const capacityOk = enrolled < maxCapacity * 5 // assume 5 classes per grade max
+        flags.push({
+          flag: 'SCHOOL_CAPACITY',
+          passed: capacityOk,
+          message: capacityOk ? `School has capacity for ${application.gradeApplied}.` : `School may be at or near capacity for ${application.gradeApplied}.`,
+          severity: capacityOk ? 'ok' : 'warning',
+        })
+      }
+
+      // Duplicate IC
+      if (application.icNumber) {
+        const dupStudent = await prisma.student.findFirst({ where: { icNumber: application.icNumber } })
+        const dupApp = await prisma.admission.findFirst({
+          where: { icNumber: application.icNumber, id: { not: application.id }, status: { notIn: ['rejected'] } },
+        })
+        const noDup = !dupStudent && !dupApp
+        flags.push({
+          flag: 'NO_DUPLICATE',
+          passed: noDup,
+          message: noDup ? 'No duplicate student or application found.' : dupStudent ? 'A student with this IC is already enrolled.' : 'Another active application exists with this IC.',
+          severity: noDup ? 'ok' : 'error',
+        })
+      }
+
+      // Documents completeness
+      const requiredDocTypes = ['BIRTH_CERTIFICATE', 'STUDENT_IC', 'PARENT_IC', 'PHOTO']
+      const uploadedTypes = application.documents.map(d => d.type)
+      const missingDocs = requiredDocTypes.filter(t => !uploadedTypes.includes(t))
+      const docsOk = missingDocs.length === 0
+      flags.push({
+        flag: 'DOCUMENTS_COMPLETE',
+        passed: docsOk,
+        message: docsOk ? 'All required documents uploaded.' : `Missing: ${missingDocs.join(', ')}.`,
+        severity: docsOk ? 'ok' : 'warning',
+      })
+
+      // Update flags in DB
+      await prisma.admission.update({
+        where: { id: application.id },
+        data: { eligibilityFlags: JSON.stringify(flags) },
+      })
+
+      res.json({ success: true, data: { flags, score: application.eligibilityScore } })
+    } catch (error) {
+      console.error('GET /admissions/:id/eligibility error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// ─── PATCH /documents/:docId — verify or reject a document ───────
+// SR-08
+router.patch(
+  '/documents/:docId',
+  authenticate,
+  requireRole('admin', 'manager', 'admissions', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const docId = req.params.docId as string
+      const { docStatus, rejectionReason } = req.body as { docStatus: string; rejectionReason?: string }
+
+      const validStatuses = ['verified', 'rejected', 'required', 'pending']
+      if (!docStatus || !validStatuses.includes(docStatus)) {
+        res.status(400).json({ success: false, message: `docStatus must be one of: ${validStatuses.join(', ')}` })
+        return
+      }
+
+      const doc = await prisma.admissionDocument.findUnique({ where: { id: docId } })
+      if (!doc) {
+        res.status(404).json({ success: false, message: 'Document not found' })
+        return
+      }
+
+      const updated = await prisma.admissionDocument.update({
+        where: { id: docId },
+        data: { docStatus, rejectionReason: rejectionReason || null },
+      })
+
+      res.json({ success: true, data: updated })
+    } catch (error) {
+      console.error('PATCH /admissions/documents/:docId error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// ─── POST /:id/request-documents — request additional docs ───────
+// SR-08
+router.post(
+  '/:id/request-documents',
+  authenticate,
+  requireRole('admin', 'manager', 'admissions', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const id = req.params.id as string
+      const { note } = req.body as { note: string }
+
+      if (!note) {
+        res.status(400).json({ success: false, message: 'note is required' })
+        return
+      }
+
+      const application = await prisma.admission.findUnique({ where: { id } })
+      if (!application) {
+        res.status(404).json({ success: false, message: 'Application not found' })
+        return
+      }
+
+      const transitionResult = validateTransition(ADMISSION_TRANSITIONS, application.status, 'documents_required')
+      if (!transitionResult.ok) {
+        res.status(400).json({ success: false, message: transitionResult.reason })
+        return
+      }
+
+      const updated = await prisma.admission.update({
+        where: { id },
+        data: { status: 'documents_required', documentsRequiredNote: note },
+      })
+
+      // Notify parent if they have an account
+      if (application.guardianUserId) {
+        await prisma.notification.create({
+          data: {
+            userId: application.guardianUserId,
+            title: 'Additional Documents Required',
+            message: `Your application (${application.applicationNumber}) requires additional documents: ${note}`,
+            type: 'warning',
+          },
+        })
+      }
+
+      res.json({ success: true, data: updated })
+    } catch (error) {
+      console.error('POST /admissions/:id/request-documents error:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   },
@@ -287,19 +480,9 @@ router.patch(
         return
       }
 
-      const validTransitions: Record<string, string[]> = {
-        pending: ['under_review', 'rejected'],
-        submitted: ['under_review', 'rejected'],
-        under_review: ['offer_issued', 'accepted', 'rejected', 'waitlisted'],
-        offer_issued: ['offer_accepted', 'rejected'],
-      }
-
-      const allowed = validTransitions[existing.status]
-      if (!allowed || !allowed.includes(status)) {
-        res.status(400).json({
-          success: false,
-          message: `Cannot transition from '${existing.status}' to '${status}'`,
-        })
+      const transitionResult = validateTransition(ADMISSION_TRANSITIONS, existing.status, status)
+      if (!transitionResult.ok) {
+        res.status(400).json({ success: false, message: transitionResult.reason })
         return
       }
 
@@ -353,20 +536,10 @@ router.patch(
       }
 
       // Validate status transitions
-      const validTransitions: Record<string, string[]> = {
-        pending: ['under_review', 'rejected'],
-        submitted: ['under_review', 'rejected'],
-        under_review: ['offer_issued', 'accepted', 'rejected', 'waitlisted'],
-        offer_issued: ['offer_accepted', 'rejected'],
-      }
-
       if (status && status !== existing.status) {
-        const allowed = validTransitions[existing.status]
-        if (!allowed || !allowed.includes(status)) {
-          res.status(400).json({
-            success: false,
-            message: `Cannot transition from '${existing.status}' to '${status}'`,
-          })
+        const transitionResult = validateTransition(ADMISSION_TRANSITIONS, existing.status, status)
+        if (!transitionResult.ok) {
+          res.status(400).json({ success: false, message: transitionResult.reason })
           return
         }
       }
@@ -391,55 +564,6 @@ router.patch(
   },
 )
 
-// ─── Helper: class allocation algorithm ──────────────────────────
-async function allocateClass(
-  gradeNum: number,
-  siblingStudentId: string | null,
-  programmeStream: string | null,
-): Promise<{ className: string; waitlisted: boolean }> {
-  const maxCapacity = await getConfigInt('class_capacity_max', 35)
-  const gradeLevel = `Year ${gradeNum}`
-  const academicYear = '2025/2026'
-
-  const rosters = await prisma.classRoster.findMany({
-    where: { gradeLevel, academicYear },
-    orderBy: { className: 'asc' },
-  })
-
-  if (rosters.length === 0) {
-    // No roster configured — fall back to legacy 7A allocation
-    return { className: `${gradeNum}A`, waitlisted: false }
-  }
-
-  // Find sibling's class for the +30 bonus
-  let siblingClass: string | null = null
-  if (siblingStudentId) {
-    const sibling = await prisma.student.findUnique({ where: { id: siblingStudentId } })
-    siblingClass = sibling?.className ?? null
-  }
-
-  let bestRoster: { name: string; score: number } | null = null
-
-  for (const roster of rosters) {
-    const enrolledCount = await prisma.student.count({
-      where: { className: roster.className, enrollmentStatus: 'enrolled' },
-    })
-    if (enrolledCount >= maxCapacity) continue
-
-    let score = (maxCapacity - enrolledCount) * 2  // prefer less-full
-    if (siblingClass === roster.className) score += 30
-    if (programmeStream && roster.programme === programmeStream) score += 20
-
-    if (!bestRoster || score > bestRoster.score) {
-      bestRoster = { name: roster.className, score }
-    }
-  }
-
-  if (!bestRoster) {
-    return { className: `${gradeNum}W`, waitlisted: true }  // W = waitlisted
-  }
-  return { className: bestRoster.name, waitlisted: false }
-}
 
 // ─── GET /class-roster/:gradeLevel ───────────────────────────────
 router.get(
@@ -647,10 +771,17 @@ router.post(
         WAITLIST: 'waitlisted',
       }
 
+      const targetStatus = statusMap[decision]
+      const transitionResult = validateTransition(ADMISSION_TRANSITIONS, application.status, targetStatus)
+      if (!transitionResult.ok) {
+        res.status(400).json({ success: false, message: transitionResult.reason })
+        return
+      }
+
       const updated = await prisma.admission.update({
         where: { id },
         data: {
-          status: statusMap[decision],
+          status: targetStatus,
           remarks: notes,
           decidedAt: new Date(),
         },
@@ -700,146 +831,16 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id as string
-      const application = await prisma.admission.findUnique({ where: { id } })
-
-      if (!application) {
-        res.status(404).json({ success: false, message: 'Application not found' })
-        return
+      const result = await acceptOffer(id, req.user?.userId ?? 'system')
+      res.json({ success: true, data: result })
+    } catch (err) {
+      if (err instanceof EnrollmentError) {
+        const statusCode = { NOT_FOUND: 404, INVALID_STATUS: 400, CLASS_FULL: 409 }[err.code]
+        res.status(statusCode).json({ success: false, message: err.message })
+      } else {
+        console.error('POST /admissions/applications/:id/accept-offer error:', err)
+        res.status(500).json({ success: false, message: 'Internal server error' })
       }
-      if (application.status !== 'offer_issued') {
-        res.status(400).json({ success: false, message: 'No offer to accept' })
-        return
-      }
-
-      const gradeNum = parseInt(String(application.gradeApplied).replace(/\D/g, '')) || 7
-
-      // Class allocation via scoring algorithm (sibling +30, programme +20, balance scoring)
-      const { className, waitlisted } = await allocateClass(
-        gradeNum,
-        (application as any).siblingStudentId ?? null,
-        (application as any).programmeStream ?? null,
-      )
-
-      if (waitlisted) {
-        await prisma.admission.update({ where: { id }, data: { status: 'waitlisted' } })
-        res.status(409).json({
-          success: false,
-          message: `All Year ${gradeNum} classes are at full capacity (${await getConfigInt('class_capacity_max', 35)} students). Ahmad has been placed on the waitlist.`,
-        })
-        return
-      }
-
-      // Count existing students in that class to generate sequential ID
-      const classCount = await prisma.student.count({ where: { className } })
-      const studentId = `${new Date().getFullYear()}-${className}-${String(classCount + 1).padStart(3, '0')}`
-
-      // Create User + Student
-      const bcrypt = await import('bcryptjs')
-      const tempPassword = `S${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-      const newUser = await prisma.user.create({
-        data: {
-          username: `student.${studentId.replace(/-/g, '').toLowerCase()}`,
-          password: bcrypt.default.hashSync(tempPassword, 10),
-          displayName: application.applicantName,
-          email: application.parentEmail || undefined,
-          role: 'student',
-        },
-      })
-
-      const newStudent = await prisma.student.create({
-        data: {
-          userId: newUser.id,
-          studentId,
-          dateOfBirth: application.dateOfBirth,
-          gender: application.gender,
-          nationality: application.nationality,
-          icNumber: application.icNumber,
-          gradeLevel: `Year ${gradeNum}`,
-          className,
-          enrollmentStatus: 'enrolled',
-        },
-      })
-
-      // Update application status
-      await prisma.admission.update({
-        where: { id },
-        data: { status: 'offer_accepted', decidedAt: new Date() },
-      })
-
-      // Auto-generate fee invoice for this enrolment
-      try {
-        const gradeLevel = `Year ${gradeNum}`
-        const feeTypes = await prisma.feeType.findMany({
-          where: { isActive: true, OR: [{ gradeLevel }, { gradeLevel: null }] },
-        })
-        if (feeTypes.length > 0) {
-          const totalAmount = feeTypes.reduce((s, f) => s + f.amount, 0)
-          const invoiceCount = await prisma.feeInvoice.count()
-          const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(5, '0')}`
-          await prisma.feeInvoice.create({
-            data: {
-              studentId: newStudent.id,
-              invoiceNumber,
-              semester: '2026-S1',
-              amount: totalAmount,
-              dueDate: new Date(Date.now() + 30 * 24 * 3600 * 1000),
-              description: `${gradeLevel} Enrolment Fees — Semester 1`,
-              lineItems: JSON.stringify(feeTypes.map(f => ({ code: f.code, name: f.name, amount: f.amount }))),
-              status: 'unpaid',
-            },
-          })
-          const outstandingCount = await prisma.feeInvoice.count({ where: { status: { in: ['unpaid', 'overdue'] } } })
-          broadcast('dashboard', 'dashboard.fees.changed', { outstandingFeeInvoices: outstandingCount })
-        }
-      } catch (feeErr) {
-        console.error('[Fee] Invoice generation failed (non-fatal):', feeErr)
-      }
-
-      // Library provision mock
-      const libraryId = `KOHA-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 99999)).padStart(5, '0')}`
-
-      // Audit event
-      await prisma.auditEvent.create({
-        data: {
-          actorUserId: req.user?.userId || 'system',
-          action: 'STUDENT_ENROLLED',
-          entityType: 'Student',
-          entityId: newStudent.id,
-          details: JSON.stringify({ studentId, className, libraryId }),
-        },
-      })
-
-      // Notify parent
-      if (application.guardianUserId) {
-        await prisma.notification.create({
-          data: {
-            userId: application.guardianUserId,
-            title: 'Enrolment Complete',
-            message: `${application.applicantName} has been enrolled in Year ${gradeNum}. Student ID: ${studentId}. Login credentials have been sent to ${application.parentEmail}.`,
-            type: 'success',
-          },
-        })
-      }
-
-      // SSE: update Command Center widgets in Browser 2
-      const newEnrolment = await prisma.student.count({ where: { enrollmentStatus: 'enrolled' } })
-      const newPending = await prisma.admission.count({ where: { status: { in: ['draft', 'submitted', 'under_review'] } } })
-      broadcast('dashboard', 'dashboard.enrolment.changed', { totalEnrolment: newEnrolment, delta: 1 })
-      broadcast('dashboard', 'dashboard.applications.changed', { pendingApplications: newPending, delta: -1 })
-
-      res.json({
-        success: true,
-        data: {
-          studentId,
-          allocatedClass: { name: `Year ${gradeNum} (${className})`, className, grade: gradeNum },
-          credentialsSentTo: application.parentEmail,
-          libraryId,
-          timetableGenerated: true,
-        },
-      })
-    } catch (error) {
-      console.error('POST /admissions/applications/:id/accept-offer error:', error)
-      res.status(500).json({ success: false, message: 'Internal server error' })
     }
   },
 )

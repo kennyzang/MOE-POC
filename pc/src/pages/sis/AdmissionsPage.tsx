@@ -20,6 +20,10 @@ import {
   Progress,
   InputNumber,
   Badge,
+  List,
+  Divider,
+  Tooltip,
+  Tabs,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
@@ -35,9 +39,16 @@ import {
   ArrowRight,
   Gavel,
   Paperclip,
+  ShieldCheck,
+  ShieldAlert,
+  FileCheck2,
+  FileX2,
+  MailQuestion,
+  ExternalLink,
 } from 'lucide-react'
 import FileUploader from '../../components/FileUploader'
 import FileList from '../../components/FileList'
+import SyncBadge from '../../components/SyncBadge'
 import dayjs from 'dayjs'
 import api from '../../lib/api'
 import type { Admission } from '../../types'
@@ -71,6 +82,25 @@ function calcAge(dob: dayjs.Dayjs): number {
 function genRefId(): string {
   const num = Math.floor(Math.random() * 900) + 100
   return `ADM-2026-${num}`
+}
+
+interface AdmissionDoc {
+  id: string
+  type: string
+  filename: string
+  docStatus: string       // pending | verified | rejected | required
+  rejectionReason?: string
+  uploadedAt: string
+}
+
+interface AdmissionDetail extends Admission {
+  documents?: AdmissionDoc[]
+  eligibilityFlags?: string  // JSON string
+  parentIcNumber?: string
+  homeAddress?: string
+  parentRelationship?: string
+  specialNeeds?: string
+  documentsRequiredNote?: string
 }
 
 interface SiblingLookupResult {
@@ -153,6 +183,13 @@ const AdmissionsPage = () => {
   const [decideOpen, setDecideOpen] = useState(false)
   const [decideDecision, setDecideDecision] = useState<string>('')
   const [decideNotes, setDecideNotes] = useState('')
+
+  // Document verification & eligibility state
+  const [reqDocsNote, setReqDocsNote] = useState('')
+  const [reqDocsModalOpen, setReqDocsModalOpen] = useState(false)
+  const [verifyingDocId, setVerifyingDocId] = useState<string | null>(null)
+  const [rejectDocId, setRejectDocId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   // Wizard state
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -276,6 +313,55 @@ const AdmissionsPage = () => {
     onError: () => {
       message.error(t('common.error'))
     },
+  })
+
+  // Detail query — loads documents + eligibility flags when modal opens
+  const { data: admissionDetail, refetch: refetchDetail } = useQuery<AdmissionDetail>({
+    queryKey: ['admission-detail', selectedAdmission?.id],
+    queryFn: async () => {
+      const { data } = await api.get(`/admissions/${selectedAdmission!.id}`)
+      return data.data
+    },
+    enabled: !!selectedAdmission && detailOpen,
+  })
+
+  const docVerifyMutation = useMutation({
+    mutationFn: async ({ docId, docStatus, rejectionReason }: { docId: string; docStatus: string; rejectionReason?: string }) => {
+      const { data } = await api.patch(`/admissions/documents/${docId}`, { docStatus, rejectionReason })
+      return data
+    },
+    onSuccess: () => {
+      message.success('Document status updated')
+      refetchDetail()
+      setVerifyingDocId(null)
+      setRejectDocId(null)
+      setRejectReason('')
+    },
+    onError: () => message.error('Failed to update document'),
+  })
+
+  const requestDocsMutation = useMutation({
+    mutationFn: async ({ id, note }: { id: string; note: string }) => {
+      const { data } = await api.post(`/admissions/${id}/request-documents`, { note })
+      return data
+    },
+    onSuccess: () => {
+      message.success('Document request sent')
+      queryClient.invalidateQueries({ queryKey: ['admissions'] })
+      refetchDetail()
+      setReqDocsModalOpen(false)
+      setReqDocsNote('')
+    },
+    onError: () => message.error('Failed to send request'),
+  })
+
+  const eligibilityCheckQuery = useQuery({
+    queryKey: ['admission-eligibility', selectedAdmission?.id],
+    queryFn: async () => {
+      const { data } = await api.get(`/admissions/${selectedAdmission!.id}/eligibility`)
+      return data.data as { flags: Array<{ flag: string; passed: boolean; message: string; severity: string }>; score: number }
+    },
+    enabled: false, // only on demand
   })
 
   // Compute stats from data
@@ -576,7 +662,8 @@ const AdmissionsPage = () => {
 
   const canDecide = selectedAdmission?.status === 'pending' ||
     selectedAdmission?.status === 'submitted' ||
-    selectedAdmission?.status === 'under_review'
+    selectedAdmission?.status === 'under_review' ||
+    selectedAdmission?.status === 'documents_required'
 
   const wizardSteps = [
     { title: t('admissions.wizard.step1') },
@@ -614,6 +701,7 @@ const AdmissionsPage = () => {
                 </span>
               }
             />
+            <SyncBadge source="Brunei Digital ID" relativeTime="verified" absoluteTime="Applicant identity verified via Brunei Digital ID" />
           </Space>
         </Col>
         <Col>
@@ -889,23 +977,192 @@ const AdmissionsPage = () => {
               )}
             </Descriptions>
 
-            {/* Supporting Documents */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Paperclip size={14} />
-                Supporting Documents
-              </div>
-              <div style={{ marginBottom: 8 }}>
-                <FileUploader
-                  entityType="admission"
-                  entityId={selectedAdmission.id}
-                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                  description="Application document"
-                  label="Attach Document (IC, birth cert, report card…)"
-                />
-              </div>
-              <FileList entityType="admission" entityId={selectedAdmission.id} canDelete />
-            </div>
+            {/* Tabbed sections: Documents + Eligibility */}
+            <Divider style={{ margin: '12px 0' }} />
+            <Tabs
+              size="small"
+              items={[
+                {
+                  key: 'docs',
+                  label: <Space><Paperclip size={13} />Documents ({admissionDetail?.documents?.length ?? 0})</Space>,
+                  children: (
+                    <div>
+                      {admissionDetail?.documentsRequiredNote && (
+                        <Alert type="warning" message={`Documents requested: ${admissionDetail.documentsRequiredNote}`} style={{ marginBottom: 12 }} />
+                      )}
+                      {(!admissionDetail?.documents || admissionDetail.documents.length === 0) ? (
+                        <Alert type="info" message="No documents uploaded by applicant yet." />
+                      ) : (
+                        <List
+                          size="small"
+                          dataSource={admissionDetail.documents}
+                          renderItem={(doc) => {
+                            const docTypeLabel: Record<string, string> = {
+                              BIRTH_CERTIFICATE: 'Birth Certificate',
+                              STUDENT_IC: "Student IC",
+                              PARENT_IC: "Parent IC",
+                              PHOTO: 'Passport Photo',
+                              REPORT_CARD: 'Report Card',
+                              MEDICAL: 'Medical Report',
+                              OTHER: 'Document',
+                            }
+                            const statusColor: Record<string, string> = {
+                              pending: 'orange', verified: 'green', rejected: 'red', required: 'gold'
+                            }
+                            return (
+                              <List.Item
+                                actions={[
+                                  doc.docStatus !== 'verified' && (
+                                    <Tooltip title="Verify">
+                                      <Button
+                                        size="small"
+                                        type="link"
+                                        icon={<FileCheck2 size={14} />}
+                                        loading={verifyingDocId === doc.id && docVerifyMutation.isPending}
+                                        onClick={() => {
+                                          setVerifyingDocId(doc.id)
+                                          docVerifyMutation.mutate({ docId: doc.id, docStatus: 'verified' })
+                                        }}
+                                      >Verify</Button>
+                                    </Tooltip>
+                                  ),
+                                  doc.docStatus !== 'rejected' && (
+                                    rejectDocId === doc.id ? (
+                                      <Space>
+                                        <Input
+                                          size="small"
+                                          style={{ width: 160 }}
+                                          placeholder="Rejection reason"
+                                          value={rejectReason}
+                                          onChange={e => setRejectReason(e.target.value)}
+                                        />
+                                        <Button
+                                          size="small"
+                                          danger
+                                          loading={docVerifyMutation.isPending}
+                                          onClick={() => docVerifyMutation.mutate({ docId: doc.id, docStatus: 'rejected', rejectionReason: rejectReason })}
+                                        >Reject</Button>
+                                        <Button size="small" onClick={() => setRejectDocId(null)}>Cancel</Button>
+                                      </Space>
+                                    ) : (
+                                      <Tooltip title="Reject">
+                                        <Button
+                                          size="small"
+                                          type="link"
+                                          danger
+                                          icon={<FileX2 size={14} />}
+                                          onClick={() => { setRejectDocId(doc.id); setRejectReason('') }}
+                                        >Reject</Button>
+                                      </Tooltip>
+                                    )
+                                  ),
+                                ].filter(Boolean)}
+                              >
+                                <List.Item.Meta
+                                  title={<Space>{docTypeLabel[doc.type] ?? doc.type} <Tag color={statusColor[doc.docStatus] ?? 'default'}>{doc.docStatus}</Tag></Space>}
+                                  description={
+                                    <Space direction="vertical" size={0}>
+                                      <span style={{ fontSize: 12 }}>{doc.filename}</span>
+                                      {doc.rejectionReason && <span style={{ fontSize: 11, color: '#f5222d' }}>Reason: {doc.rejectionReason}</span>}
+                                    </Space>
+                                  }
+                                />
+                              </List.Item>
+                            )
+                          }}
+                        />
+                      )}
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Paperclip size={12} /> Attach Additional Documents
+                        </div>
+                        <FileUploader
+                          entityType="admission"
+                          entityId={selectedAdmission.id}
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          description="Application document"
+                          label="Upload document"
+                        />
+                        <FileList entityType="admission" entityId={selectedAdmission.id} canDelete />
+                      </div>
+                      <Button
+                        icon={<MailQuestion size={14} />}
+                        style={{ marginTop: 12 }}
+                        onClick={() => setReqDocsModalOpen(true)}
+                      >
+                        Request Additional Documents from Applicant
+                      </Button>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'eligibility',
+                  label: <Space><ShieldCheck size={13} />Eligibility Check</Space>,
+                  children: (
+                    <div>
+                      <Button
+                        size="small"
+                        type="dashed"
+                        icon={<ShieldCheck size={14} />}
+                        loading={eligibilityCheckQuery.isFetching}
+                        onClick={() => eligibilityCheckQuery.refetch()}
+                        style={{ marginBottom: 12 }}
+                      >
+                        Run Eligibility Check
+                      </Button>
+                      {eligibilityCheckQuery.data ? (
+                        <List
+                          size="small"
+                          dataSource={eligibilityCheckQuery.data.flags}
+                          renderItem={flag => (
+                            <List.Item>
+                              <Space>
+                                {flag.passed
+                                  ? <ShieldCheck size={16} style={{ color: '#52c41a' }} />
+                                  : <ShieldAlert size={16} style={{ color: flag.severity === 'error' ? '#f5222d' : '#fa8c16' }} />
+                                }
+                                <span style={{ fontSize: 13 }}>{flag.message}</span>
+                                <Tag color={flag.passed ? 'success' : flag.severity === 'error' ? 'error' : 'warning'}>
+                                  {flag.flag.replace(/_/g, ' ')}
+                                </Tag>
+                              </Space>
+                            </List.Item>
+                          )}
+                        />
+                      ) : (
+                        (() => {
+                          const flagsJson = admissionDetail?.eligibilityFlags
+                          if (!flagsJson) return <Alert type="info" message="Click 'Run Eligibility Check' to analyse this application." />
+                          try {
+                            const flags: Array<{ flag: string; passed: boolean; message: string; severity?: string }> = JSON.parse(flagsJson)
+                            return (
+                              <List
+                                size="small"
+                                dataSource={flags}
+                                renderItem={flag => (
+                                  <List.Item>
+                                    <Space>
+                                      {flag.passed
+                                        ? <ShieldCheck size={16} style={{ color: '#52c41a' }} />
+                                        : <ShieldAlert size={16} style={{ color: flag.severity === 'error' ? '#f5222d' : '#fa8c16' }} />
+                                      }
+                                      <span style={{ fontSize: 13 }}>{flag.message}</span>
+                                      <Tag color={flag.passed ? 'success' : flag.severity === 'error' ? 'error' : 'warning'}>
+                                        {flag.flag.replace(/_/g, ' ')}
+                                      </Tag>
+                                    </Space>
+                                  </List.Item>
+                                )}
+                              />
+                            )
+                          } catch { return <Alert type="info" message="Click 'Run Eligibility Check' to analyse this application." /> }
+                        })()
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+            />
 
             {/* Decide button (new spec endpoint) */}
             {canDecide && !actionType && (
@@ -968,6 +1225,27 @@ const AdmissionsPage = () => {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Request Documents Modal */}
+      <Modal
+        title="Request Additional Documents"
+        open={reqDocsModalOpen}
+        onCancel={() => setReqDocsModalOpen(false)}
+        onOk={() => {
+          if (!selectedAdmission || !reqDocsNote) return
+          requestDocsMutation.mutate({ id: selectedAdmission.id, note: reqDocsNote })
+        }}
+        okButtonProps={{ loading: requestDocsMutation.isPending, disabled: !reqDocsNote }}
+        okText="Send Request"
+      >
+        <p style={{ marginBottom: 8 }}>Describe which documents are needed. The applicant will see this note when checking their status.</p>
+        <Input.TextArea
+          rows={3}
+          value={reqDocsNote}
+          onChange={e => setReqDocsNote(e.target.value)}
+          placeholder="e.g. Please upload a copy of the student's birth certificate and passport photo."
+        />
       </Modal>
 
       {/* Decide Modal */}

@@ -35,6 +35,7 @@ const en = {
     total: 'Total',
     welcome: 'Welcome',
     dashboard: 'Dashboard',
+    refresh: 'Refresh',
   },
   auth: {
     username: 'Username',
@@ -97,6 +98,8 @@ const en = {
     hodPortal: 'HOD Portal',
     financePortal: 'Finance Portal',
     approvals: 'Approvals Inbox',
+    privateEd: 'Private Education',
+    privateEdDashboard: 'Oversight Dashboard',
   },
   notifications: {
     title: 'Notifications',
@@ -158,6 +161,7 @@ const en = {
     manager: 'School Manager',
     finance: 'Finance Officer',
     admissions: 'Admissions Officer',
+    priv_ed_officer: 'Private Education Officer',
   },
   dashboard: {
     totalStudents: 'Total Students',
@@ -632,6 +636,7 @@ const en = {
     studentsAtRisk: 'Students At Risk',
     timetableHealth: 'Timetable Health',
     facilityUtilization: 'Facility Utilization (7d)',
+    outstandingFeeInvoices: 'Outstanding Fee Invoices',
     warningLevel: 'Below target — attention needed',
     criticalLevel: 'Critical — immediate action required',
     beforeValues: 'Current snapshot',

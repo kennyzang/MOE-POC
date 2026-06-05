@@ -1,6 +1,8 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { USER_SELECT_NAME } from '../lib/querySelects'
+import { validateTransition, EXAM_TRANSITIONS, EXAM_CANDIDATE_TRANSITIONS } from '../lib/transitions'
 
 const router = Router()
 
@@ -77,7 +79,13 @@ router.put('/:id', authenticate, requireRole('admin', 'manager', 'principal'), a
     const data: any = {}
     if (venue !== undefined) data.venue = venue
     if (examDate !== undefined) data.examDate = new Date(examDate)
-    if (status !== undefined) data.status = status
+    if (status !== undefined) {
+      const transitionResult = validateTransition(EXAM_TRANSITIONS, existing.status, status)
+      if (!transitionResult.ok) {
+        res.status(400).json({ success: false, message: transitionResult.reason }); return
+      }
+      data.status = status
+    }
     if (examType !== undefined) {
       if (!VALID_EXAM_TYPES.includes(examType)) {
         res.status(400).json({ success: false, message: `examType must be one of: ${VALID_EXAM_TYPES.join(', ')}` })
@@ -125,7 +133,7 @@ router.get('/:id/candidates', authenticate, requireRole('admin', 'manager', 'pri
       where,
       include: {
         student: {
-          select: { studentId: true, icNumber: true, gradeLevel: true, className: true, user: { select: { displayName: true } } },
+          select: { studentId: true, icNumber: true, gradeLevel: true, className: true, user: { select: USER_SELECT_NAME } },
         },
       },
       orderBy: [{ subjectCode: 'asc' }, { seatNumber: 'asc' }],
@@ -269,7 +277,7 @@ router.post('/:id/generate-seating', authenticate, requireRole('admin', 'manager
 
     const updated = await prisma.examCandidate.findMany({
       where: { examId },
-      include: { student: { select: { user: { select: { displayName: true } }, studentId: true, icNumber: true, className: true } } },
+      include: { student: { select: { user: { select: USER_SELECT_NAME }, studentId: true, icNumber: true, className: true } } },
       orderBy: { seatNumber: 'asc' },
     })
 
@@ -290,7 +298,7 @@ router.get('/:id/seating-plan', authenticate, requireRole('admin', 'manager', 'p
       where: { examId, NOT: { seatNumber: null } },
       include: {
         student: {
-          select: { studentId: true, icNumber: true, className: true, user: { select: { displayName: true } } },
+          select: { studentId: true, icNumber: true, className: true, user: { select: USER_SELECT_NAME } },
         },
       },
       orderBy: { seatNumber: 'asc' },
@@ -328,6 +336,11 @@ router.patch('/:id/candidates/:candidateId', authenticate, requireRole('admin', 
     if (!valid.includes(status)) {
       res.status(400).json({ success: false, message: `status must be one of: ${valid.join(', ')}` })
       return
+    }
+
+    const transitionResult = validateTransition(EXAM_CANDIDATE_TRANSITIONS, candidate.status, status)
+    if (!transitionResult.ok) {
+      res.status(400).json({ success: false, message: transitionResult.reason }); return
     }
 
     const updated = await prisma.examCandidate.update({

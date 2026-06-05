@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
-import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
+import { authenticate, requireRole, schoolFilter, type AuthRequest } from '../middleware/auth'
+import { USER_SELECT_FULL, USER_SELECT_NAME } from '../lib/querySelects'
 
 const router = Router()
 
@@ -14,7 +15,7 @@ router.get(
       const { search, gradeLevel, className, status } = req.query
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const where: any = {}
+      const where: any = { ...schoolFilter(req) }
 
       if (gradeLevel) where.gradeLevel = gradeLevel as string
       if (className) where.className = className as string
@@ -31,17 +32,7 @@ router.get(
       const students = await prisma.student.findMany({
         where,
         include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              email: true,
-              role: true,
-              avatar: true,
-              status: true,
-            },
-          },
+          user: { select: USER_SELECT_FULL },
         },
         orderBy: { createdAt: 'desc' },
       })
@@ -61,7 +52,7 @@ router.get('/me', authenticate, requireRole('student'), async (req: AuthRequest,
       where: { userId: req.user!.userId },
       include: {
         user: {
-          select: { id: true, username: true, displayName: true, email: true, role: true, avatar: true, status: true },
+          select: USER_SELECT_FULL,
         },
         enrollments: { include: { course: true } },
         grades: { include: { gradeItem: true } },
@@ -111,7 +102,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
                 assignments: {
                   include: {
                     teacher: {
-                      include: { user: { select: { displayName: true } } },
+                      include: { user: { select: USER_SELECT_NAME } },
                     },
                   },
                   take: 1,
@@ -332,17 +323,7 @@ router.patch(
         where: { id },
         data,
         include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              email: true,
-              role: true,
-              avatar: true,
-              status: true,
-            },
-          },
+          user: { select: USER_SELECT_FULL },
         },
       })
 
@@ -353,5 +334,64 @@ router.patch(
     }
   }
 )
+
+// GET /students/me/assignments — published assignments for enrolled courses
+router.get('/me/assignments', authenticate, requireRole('student'), async (req: AuthRequest, res: Response) => {
+  try {
+    const student = await prisma.student.findUnique({ where: { userId: req.user!.userId } })
+    if (!student) { res.json({ success: true, data: [] }); return }
+
+    const enrollments = await prisma.enrollment.findMany({
+      where: { studentId: student.id, status: 'enrolled' },
+      select: { courseId: true },
+    })
+    const courseIds = enrollments.map((e) => e.courseId)
+
+    const assignments = await prisma.assignment.findMany({
+      where: { courseId: { in: courseIds }, status: 'published' },
+      include: {
+        course: { select: { name: true, code: true } },
+        submissions: { where: { studentId: student.id } },
+      },
+      orderBy: { dueDate: 'asc' },
+    })
+
+    const data = assignments.map((a) => {
+      const submission = a.submissions[0] ?? null
+      return {
+        ...a,
+        submission,
+        submissionStatus: submission
+          ? submission.status
+          : a.dueDate && new Date() > a.dueDate
+            ? 'overdue'
+            : 'pending',
+      }
+    })
+
+    res.json({ success: true, data })
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /students/me/behavior — own behavior records
+router.get('/me/behavior', authenticate, requireRole('student'), async (req: AuthRequest, res: Response) => {
+  try {
+    const student = await prisma.student.findUnique({ where: { userId: req.user!.userId } })
+    if (!student) { res.json({ success: true, data: { records: [], netPoints: 0, merits: 0, demerits: 0 } }); return }
+
+    const records = await prisma.behaviorRecord.findMany({
+      where: { studentId: student.id },
+      include: { recordedBy: { select: { displayName: true, role: true } } },
+      orderBy: { date: 'desc' },
+    })
+    const merits = records.filter((r) => r.type === 'merit').reduce((s, r) => s + r.points, 0)
+    const demerits = records.filter((r) => r.type === 'demerit').reduce((s, r) => s + Math.abs(r.points), 0)
+    res.json({ success: true, data: { records, netPoints: merits - demerits, merits, demerits } })
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
 
 export default router

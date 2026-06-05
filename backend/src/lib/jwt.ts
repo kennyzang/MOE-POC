@@ -7,6 +7,8 @@ export interface JwtPayload {
   userId: string
   role: string
   username: string
+  schoolId: string | null
+  systemAdmin: boolean
 }
 
 export const signToken = (payload: JwtPayload): string =>

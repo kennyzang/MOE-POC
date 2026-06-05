@@ -9,6 +9,7 @@ export type UserRole =
   | 'hod'
   | 'principal'
   | 'counselor'
+  | 'priv_ed_officer'
 
 export interface SchoolConfig {
   id: string
@@ -189,7 +190,9 @@ export interface Admission {
   gender?: string
   icNumber?: string
   nationality?: string
+  homeAddress?: string
   parentName?: string
+  parentIcNumber?: string
   parentPhone?: string
   parentEmail?: string
   parentRelationship?: string
@@ -197,12 +200,15 @@ export interface Admission {
   previousSchool?: string
   programmeStream?: string
   medicalConditions?: string
+  specialNeeds?: string
   previousAcademicAvg?: number
   hasSiblingPriority?: boolean
   siblingName?: string
   siblingStudentId?: string
   docsComplete?: boolean
+  documentsRequiredNote?: string
   eligibilityScore?: number
+  eligibilityFlags?: string
   status: string
   submittedAt: string
   decidedAt?: string

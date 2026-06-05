@@ -15,4 +15,10 @@ export const DEMO_CONFIG = {
 
   /** Milliseconds before risk score recalculation result is returned */
   riskRecalcDelayMs: 1500,
+
+  /** Milliseconds for simulated government integration sync (SIM-IL) */
+  integrationSyncDelayMs: 2000,
+
+  /** Fine rate per overdue day for library books (BND) */
+  libraryFinePerDay: 0.10,
 } as const

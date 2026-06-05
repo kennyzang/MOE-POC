@@ -39,6 +39,7 @@ interface ThreadDetail {
 
 interface Teacher {
   teacherId: string
+  teacherUserId: string
   teacherName: string
   teacherEmail: string
   courses: string[]
@@ -260,7 +261,7 @@ const ParentMessagesPage = () => {
             <Select
               placeholder="Select a teacher"
               options={teachers.map((t) => ({
-                value: t.teacherId,
+                value: t.teacherUserId,
                 label: `${t.teacherName} (${t.courses.join(', ')})`,
               }))}
             />

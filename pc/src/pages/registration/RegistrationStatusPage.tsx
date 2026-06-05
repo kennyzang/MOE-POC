@@ -1,0 +1,269 @@
+import { useState } from 'react'
+import {
+  Card,
+  Form,
+  Input,
+  Button,
+  Typography,
+  Steps,
+  Tag,
+  Alert,
+  Space,
+  Divider,
+  List,
+  Badge,
+  Row,
+  Col,
+} from 'antd'
+import { Search, FileText, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react'
+import axios from 'axios'
+
+const { Title, Text, Paragraph } = Typography
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
+const STATUS_CONFIG: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
+  draft:                { color: 'default',   label: 'Draft',                       icon: <Clock size={14} /> },
+  submitted:            { color: 'blue',      label: 'Submitted — Awaiting Review', icon: <Clock size={14} /> },
+  under_review:         { color: 'processing',label: 'Under Review',                icon: <Search size={14} /> },
+  documents_required:   { color: 'warning',   label: 'Additional Documents Required',icon: <AlertCircle size={14} /> },
+  offer_issued:         { color: 'cyan',      label: 'Offer Issued',                icon: <FileText size={14} /> },
+  offer_accepted:       { color: 'success',   label: 'Enrolled',                    icon: <CheckCircle size={14} /> },
+  rejected:             { color: 'error',     label: 'Application Rejected',        icon: <XCircle size={14} /> },
+  waitlisted:           { color: 'purple',    label: 'Waitlisted',                  icon: <Clock size={14} /> },
+}
+
+const DOC_STATUS_CONFIG: Record<string, { color: string; label: string }> = {
+  pending:  { color: 'default', label: 'Pending Review' },
+  verified: { color: 'success', label: 'Verified' },
+  rejected: { color: 'error',   label: 'Rejected' },
+  required: { color: 'warning', label: 'Additional Required' },
+}
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  BIRTH_CERTIFICATE: 'Birth Certificate',
+  STUDENT_IC:        'Child\'s IC / Passport',
+  PARENT_IC:         'Parent\'s IC / Passport',
+  PHOTO:             'Passport Photo',
+  REPORT_CARD:       'Previous School Report',
+  MEDICAL:           'Medical Report',
+  OTHER:             'Other Document',
+}
+
+interface ApplicationStatus {
+  applicationNumber: string
+  applicantName: string
+  gradeApplied: string
+  status: string
+  statusLabel: string
+  submittedAt: string
+  decidedAt?: string
+  remarks?: string
+  documentsRequiredNote?: string
+  documents: Array<{
+    id: string
+    type: string
+    filename: string
+    docStatus: string
+    rejectionReason?: string
+    uploadedAt: string
+  }>
+  timeline: Array<{ step: string; done: boolean; date?: string }>
+}
+
+export default function RegistrationStatusPage() {
+  const [form] = Form.useForm()
+  const [loading, setLoading] = useState(false)
+  const [appStatus, setAppStatus] = useState<ApplicationStatus | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSearch = async () => {
+    try {
+      const values = await form.validateFields()
+      setLoading(true)
+      setError(null)
+      setAppStatus(null)
+
+      const res = await axios.get(`${API}/api/v1/registration/status`, {
+        params: { appId: values.appId, parentIc: values.parentIc },
+      })
+      setAppStatus(res.data.data)
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        setError('No application found with that ID and Parent IC combination. Please check your details.')
+      } else if (err.isAxiosError) {
+        setError(err.response?.data?.message || 'Failed to fetch application status.')
+      }
+      // Validation errors are handled by form
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cfg = appStatus ? (STATUS_CONFIG[appStatus.status] ?? { color: 'default', label: appStatus.status, icon: null }) : null
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f0f2f5', padding: '24px 16px' }}>
+      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <Title level={2} style={{ marginBottom: 4 }}>Application Status</Title>
+          <Text type="secondary">Check the status of your student registration application</Text>
+        </div>
+
+        {/* Lookup Form */}
+        <Card style={{ marginBottom: 24 }}>
+          <Form form={form} layout="vertical" onFinish={handleSearch}>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="appId"
+                  label="Application ID"
+                  rules={[{ required: true, message: 'Enter your Application ID' }]}
+                >
+                  <Input
+                    placeholder="e.g. APP-2026-0001"
+                    style={{ textTransform: 'uppercase' }}
+                    onChange={e => form.setFieldValue('appId', e.target.value.toUpperCase())}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="parentIc"
+                  label="Parent / Guardian IC Number"
+                  rules={[{ required: true, message: 'Enter your IC number' }]}
+                >
+                  <Input placeholder="As entered during registration" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+              icon={<Search size={14} />}
+              block
+            >
+              Check Status
+            </Button>
+          </Form>
+        </Card>
+
+        {error && (
+          <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />
+        )}
+
+        {/* Status Result */}
+        {appStatus && cfg && (
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            {/* Overview Card */}
+            <Card>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <Title level={4} style={{ marginBottom: 4 }}>{appStatus.applicantName}</Title>
+                  <Text type="secondary">{appStatus.applicationNumber} · Applying for {appStatus.gradeApplied}</Text>
+                </div>
+                <Tag color={cfg.color} icon={cfg.icon} style={{ fontSize: 13, padding: '4px 12px' }}>
+                  {cfg.label}
+                </Tag>
+              </div>
+
+              {appStatus.submittedAt && (
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+                  Submitted: {new Date(appStatus.submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </Text>
+              )}
+            </Card>
+
+            {/* Progress Timeline */}
+            <Card title="Application Progress">
+              <Steps
+                direction="vertical"
+                size="small"
+                current={appStatus.timeline.filter(t => t.done).length - 1}
+                items={appStatus.timeline.map(t => ({
+                  title: t.step,
+                  description: t.date ? new Date(t.date).toLocaleDateString('en-GB') : undefined,
+                  status: t.done ? 'finish' : 'wait',
+                }))}
+              />
+            </Card>
+
+            {/* Special Alerts */}
+            {appStatus.status === 'documents_required' && appStatus.documentsRequiredNote && (
+              <Alert
+                type="warning"
+                showIcon
+                message="Additional Documents Required"
+                description={appStatus.documentsRequiredNote}
+              />
+            )}
+            {appStatus.status === 'rejected' && appStatus.remarks && (
+              <Alert
+                type="error"
+                showIcon
+                message="Application Rejected"
+                description={appStatus.remarks}
+              />
+            )}
+            {appStatus.status === 'offer_issued' && (
+              <Alert
+                type="success"
+                showIcon
+                message="Congratulations! An offer has been issued."
+                description="Please contact the school to accept your offer and complete the enrolment process."
+              />
+            )}
+            {appStatus.status === 'waitlisted' && (
+              <Alert
+                type="info"
+                showIcon
+                message="Your application is on the waitlist."
+                description="You will be notified if a place becomes available. Please contact the school for more information."
+              />
+            )}
+
+            {/* Documents */}
+            {appStatus.documents.length > 0 && (
+              <Card title={<Space><FileText size={16} /> Submitted Documents</Space>}>
+                <List
+                  dataSource={appStatus.documents}
+                  renderItem={doc => {
+                    const dCfg = DOC_STATUS_CONFIG[doc.docStatus] ?? { color: 'default', label: doc.docStatus }
+                    return (
+                      <List.Item>
+                        <List.Item.Meta
+                          title={
+                            <Space>
+                              <Text>{DOC_TYPE_LABELS[doc.type] ?? doc.type}</Text>
+                              <Badge status={dCfg.color as any} text={dCfg.label} />
+                            </Space>
+                          }
+                          description={
+                            <Space direction="vertical" size={0}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>{doc.filename}</Text>
+                              {doc.docStatus === 'rejected' && doc.rejectionReason && (
+                                <Text type="danger" style={{ fontSize: 12 }}>Reason: {doc.rejectionReason}</Text>
+                              )}
+                            </Space>
+                          }
+                        />
+                      </List.Item>
+                    )
+                  }}
+                />
+              </Card>
+            )}
+          </Space>
+        )}
+
+        <Divider />
+        <div style={{ textAlign: 'center' }}>
+          <Text type="secondary">
+            Want to register a new student? <a href="/register">Start a new application</a>
+          </Text>
+        </div>
+      </div>
+    </div>
+  )
+}

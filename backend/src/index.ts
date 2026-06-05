@@ -46,6 +46,13 @@ import retirementRoutes from './routes/retirement'
 import awardsRoutes from './routes/awards'
 import postingsRoutes from './routes/postings'
 import surveysRoutes from './routes/surveys'
+import registrationRoutes from './routes/registration'
+import reportsRoutes from './routes/reports'
+import selfServiceRoutes from './routes/selfService'
+import communicationsRoutes from './routes/communications'
+import autoTriggersRoutes from './routes/autoTriggers'
+import conflictsRoutes from './routes/conflicts'
+import privateEducationRoutes from './routes/privateEducation'
 import path from 'path'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
@@ -115,6 +122,13 @@ app.use('/api/v1/retirement', retirementRoutes)
 app.use('/api/v1/awards', awardsRoutes)
 app.use('/api/v1/postings', postingsRoutes)
 app.use('/api/v1/surveys', surveysRoutes)
+app.use('/api/v1/registration', registrationRoutes)
+app.use('/api/v1/reports', reportsRoutes)
+app.use('/api/v1/self-service', selfServiceRoutes)
+app.use('/api/v1/communications', communicationsRoutes)
+app.use('/api/v1/triggers', autoTriggersRoutes)
+app.use('/api/v1/conflicts', conflictsRoutes)
+app.use('/api/v1/private-ed', privateEducationRoutes)
 
 // Serve uploaded files (used by download route — not direct public access)
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))

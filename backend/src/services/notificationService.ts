@@ -6,14 +6,15 @@ interface NotifyOptions {
   title: string
   message: string
   type?: 'info' | 'warning' | 'success' | 'error'
+  link?: string
 }
 
 export async function send(opts: NotifyOptions): Promise<void> {
-  const { userId, title, message, type = 'info' } = opts
+  const { userId, title, message, type = 'info', link } = opts
 
   // 1. Write notification to DB (synchronous — we want this to persist)
-  await prisma.notification.create({
-    data: { userId, title, message, type },
+  await (prisma.notification.create as any)({
+    data: { userId, title, message, type, ...(link ? { link } : {}) },
   })
 
   // 2. Fire-and-forget email — look up user's email
