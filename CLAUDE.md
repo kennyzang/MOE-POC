@@ -140,10 +140,10 @@ cd pc && npm run build   # 完整构建，等同于 Docker 里的行为
 
 ## Git Rules
 - Never commit: `.env`, `*.key`, `*.pem`, `*.mp4`, `node_modules/`, `*.db`, `screenshots/`
-- Two remotes, push both every time:
+- Two remotes, push both every time (优先 github，origin 内网需 VPN 可后补):
   ```bash
-  git push origin master
   git push github master
+  git push origin master
   ```
 
 ## End-of-Conversation Checklist (MUST DO)
