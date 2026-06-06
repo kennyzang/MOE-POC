@@ -141,6 +141,8 @@ router.get(
       const counselorCase = await prisma.counselorCase.findUnique({
         where: { id },
         include: {
+          actionItems: { orderBy: { createdAt: 'asc' } },
+          evidenceDocs: { orderBy: { createdAt: 'asc' } },
           student: {
             include: {
               user: { select: { displayName: true, email: true } },
@@ -215,6 +217,7 @@ router.get(
 )
 
 // PATCH /counselor/cases/:id — update case status/notes
+// Transitioning to RESOLVED or CLOSED enforces: resolutionNotes, ≥1 evidence doc, all action items DONE
 router.patch(
   '/cases/:id',
   authenticate,
@@ -222,7 +225,7 @@ router.patch(
   async (req: AuthRequest, res: Response) => {
     try {
       const { id } = req.params as { id: string }
-      const { status, notes } = req.body as { status?: string; notes?: string }
+      const { status, notes, resolutionNotes } = req.body as { status?: string; notes?: string; resolutionNotes?: string }
 
       const updateData: Record<string, unknown> = { updatedAt: new Date() }
       if (status) {
@@ -232,10 +235,27 @@ router.patch(
         if (!transitionResult.ok) {
           res.status(400).json({ success: false, message: transitionResult.reason }); return
         }
-        updateData.status = status
+
+        // Gate: closing/resolving requires documentation
         if (status === 'RESOLVED' || status === 'CLOSED') {
+          if (!resolutionNotes || !resolutionNotes.trim()) {
+            res.status(400).json({ success: false, message: 'A resolution summary is required before closing a case.' }); return
+          }
+          const evidenceCount = await prisma.counselorCaseEvidence.count({ where: { caseId: id } })
+          if (evidenceCount === 0) {
+            res.status(400).json({ success: false, message: 'At least one supporting evidence document must be recorded before closing.' }); return
+          }
+          const openItems = await prisma.counselorCaseActionItem.count({
+            where: { caseId: id, status: { not: 'DONE' } },
+          })
+          if (openItems > 0) {
+            res.status(400).json({ success: false, message: `${openItems} intervention(s) are still open. Complete all before closing.` }); return
+          }
           updateData.resolvedAt = new Date()
+          updateData.resolutionNotes = resolutionNotes.trim()
         }
+
+        updateData.status = status
       }
       if (notes !== undefined) updateData.notes = notes
 
@@ -247,5 +267,96 @@ router.patch(
     }
   },
 )
+
+// ─── Counselor Case Action Items ───────────────────────────────────────────
+
+router.post('/cases/:id/action-items', authenticate, requireRole('counselor', 'admin', 'principal'), async (req: AuthRequest, res: Response) => {
+  try {
+    const caseId = req.params['id'] as string
+    const { title, description, assignedTo, dueDate, category } = req.body
+    if (!title || !title.trim()) { res.status(400).json({ success: false, message: 'title is required' }); return }
+    const item = await prisma.counselorCaseActionItem.create({
+      data: {
+        caseId,
+        title: title.trim(),
+        description: description?.trim() ?? null,
+        assignedTo: assignedTo?.trim() ?? null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        category: category?.trim() ?? null,
+        createdByUserId: req.user!.userId,
+      },
+    })
+    res.status(201).json({ success: true, data: item })
+  } catch (err) {
+    console.error('POST /counselor/cases/:id/action-items error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+router.patch('/cases/:id/action-items/:itemId', authenticate, requireRole('counselor', 'admin', 'principal'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { itemId } = req.params as { itemId: string }
+    const { status, title, description, assignedTo, dueDate, category } = req.body
+    const item = await prisma.counselorCaseActionItem.update({
+      where: { id: itemId },
+      data: {
+        ...(status !== undefined && { status, closedAt: status === 'DONE' ? new Date() : null }),
+        ...(title !== undefined && { title: title.trim() }),
+        ...(description !== undefined && { description: description?.trim() ?? null }),
+        ...(assignedTo !== undefined && { assignedTo: assignedTo?.trim() ?? null }),
+        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(category !== undefined && { category: category?.trim() ?? null }),
+      },
+    })
+    res.json({ success: true, data: item })
+  } catch (err) {
+    console.error('PATCH /counselor/cases/:id/action-items/:itemId error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+router.delete('/cases/:id/action-items/:itemId', authenticate, requireRole('counselor', 'admin', 'principal'), async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.counselorCaseActionItem.delete({ where: { id: req.params['itemId'] as string } })
+    res.json({ success: true })
+  } catch (err) {
+    console.error('DELETE /counselor/cases/:id/action-items/:itemId error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── Counselor Case Evidence ────────────────────────────────────────────────
+
+router.post('/cases/:id/evidence', authenticate, requireRole('counselor', 'admin', 'principal'), async (req: AuthRequest, res: Response) => {
+  try {
+    const caseId = req.params['id'] as string
+    const { fileName, fileType, description } = req.body
+    if (!fileName || !fileName.trim()) { res.status(400).json({ success: false, message: 'fileName is required' }); return }
+    const doc = await prisma.counselorCaseEvidence.create({
+      data: {
+        caseId,
+        fileName: fileName.trim(),
+        filePath: `/evidence/cases/${caseId}/${fileName.trim()}`,
+        fileType: fileType?.trim() ?? null,
+        description: description?.trim() ?? null,
+        uploadedByUserId: req.user!.userId,
+      },
+    })
+    res.status(201).json({ success: true, data: doc })
+  } catch (err) {
+    console.error('POST /counselor/cases/:id/evidence error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+router.delete('/cases/:id/evidence/:docId', authenticate, requireRole('counselor', 'admin', 'principal'), async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.counselorCaseEvidence.delete({ where: { id: req.params['docId'] as string } })
+    res.json({ success: true })
+  } catch (err) {
+    console.error('DELETE /counselor/cases/:id/evidence/:docId error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
 
 export default router

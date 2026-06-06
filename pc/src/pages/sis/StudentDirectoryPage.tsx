@@ -20,6 +20,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Users, Search, Eye } from 'lucide-react'
 import api from '../../lib/api'
 import type { Student } from '../../types'
+import { useSchoolConfig } from '../../hooks/useSchoolConfig'
+import { useAuthStore } from '../../stores/authStore'
 
 const STANDING_CONFIG: Record<string, { color: string; label: string }> = {
   GOOD_STANDING: { color: 'success', label: 'Good Standing' },
@@ -36,37 +38,43 @@ const STATUS_TAG_COLORS: Record<string, string> = {
   graduated: 'blue',
 }
 
-const GRADE_LEVELS = [
-  'Year 1',
-  'Year 2',
-  'Year 3',
-  'Year 4',
-  'Year 5',
-  'Year 6',
-  'Year 7',
-  'Year 8',
-  'Year 9',
-  'Year 10',
-  'Year 11',
-]
-
 const StudentDirectoryPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { user } = useAuthStore()
+  const isSysAdmin = user?.systemAdmin === true
+  const schoolConfig = useSchoolConfig()
 
   const [search, setSearch] = useState('')
   const [gradeLevel, setGradeLevel] = useState<string>('')
   const [className, setClassName] = useState<string>('')
   const [status, setStatus] = useState<string>('')
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('')
+
+  // Sysadmin: fetch all schools for the school picker
+  const { data: allSchools = [] } = useQuery({
+    queryKey: ['schools-list'],
+    queryFn: async () => {
+      const { data } = await api.get('/schools')
+      return data.data as Array<{ id: string; name: string; code: string; gradeLevels: string[] }>
+    },
+    enabled: isSysAdmin,
+  })
+
+  // Resolve grade levels: sysadmin uses picked school's levels, others use their own school config
+  const activeGradeLevels = isSysAdmin
+    ? (allSchools.find(s => s.id === selectedSchoolId)?.gradeLevels ?? [])
+    : schoolConfig.gradeLevels
 
   const { data: students = [], isLoading } = useQuery({
-    queryKey: ['students', search, gradeLevel, className, status],
+    queryKey: ['students', search, gradeLevel, className, status, selectedSchoolId],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (gradeLevel) params.set('gradeLevel', gradeLevel)
       if (className) params.set('className', className)
       if (status) params.set('status', status)
+      if (isSysAdmin && selectedSchoolId) params.set('schoolId', selectedSchoolId)
       const { data } = await api.get(`/students?${params}`)
       return data.data as Student[]
     },
@@ -205,6 +213,21 @@ const StudentDirectoryPage = () => {
       {/* Filters */}
       <Card size="small" style={{ marginBottom: 16 }}>
         <Row gutter={[12, 12]}>
+          {isSysAdmin && (
+            <Col xs={24} sm={12} md={6}>
+              <Select
+                placeholder="Select school"
+                allowClear
+                style={{ width: '100%' }}
+                value={selectedSchoolId || undefined}
+                onChange={(val) => {
+                  setSelectedSchoolId(val ?? '')
+                  setGradeLevel('')
+                }}
+                options={allSchools.map(s => ({ label: `${s.code} — ${s.name}`, value: s.id }))}
+              />
+            </Col>
+          )}
           <Col xs={24} sm={12} md={6}>
             <Input.Search
               placeholder={t('common.search')}
@@ -223,7 +246,8 @@ const StudentDirectoryPage = () => {
               style={{ width: '100%' }}
               value={gradeLevel || undefined}
               onChange={(val) => setGradeLevel(val ?? '')}
-              options={GRADE_LEVELS.map((g) => ({ label: g, value: g }))}
+              disabled={isSysAdmin && !selectedSchoolId}
+              options={activeGradeLevels.map((g) => ({ label: g, value: g }))}
             />
           </Col>
           <Col xs={24} sm={12} md={6}>

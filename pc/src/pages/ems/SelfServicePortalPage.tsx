@@ -20,8 +20,10 @@ import {
   message,
   Descriptions,
   List,
+  Upload,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import type { UploadFile } from 'antd/es/upload/interface'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRightLeft,
@@ -33,6 +35,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Paperclip,
 } from 'lucide-react'
 import api from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
@@ -69,6 +72,7 @@ export default function SelfServicePortalPage() {
   const isAdmin = ['admin', 'manager', 'principal', 'hod'].includes(user?.role || '')
 
   const [activeTab, setActiveTab] = useState('my-requests')
+  const [submitting, setSubmitting] = useState(false)
   const [reviewModal, setReviewModal] = useState<{ open: boolean; request: any | null }>({ open: false, request: null })
   const [reviewStatus, setReviewStatus] = useState('')
   const [reviewRemarks, setReviewRemarks] = useState('')
@@ -88,18 +92,7 @@ export default function SelfServicePortalPage() {
     enabled: activeTab === 'pending' && isAdmin,
   })
 
-  // ── Mutations ─────────────────────────────────────────────────
-  const submitMutation = useMutation({
-    mutationFn: async ({ endpoint, body }: { endpoint: string; body: Record<string, unknown> }) => {
-      const { data } = await api.post(`/self-service/${endpoint}`, body)
-      return data
-    },
-    onSuccess: () => {
-      message.success('Request submitted successfully')
-      queryClient.invalidateQueries({ queryKey: ['self-service-mine'] })
-    },
-    onError: (err: any) => message.error(err.response?.data?.message || 'Submission failed'),
-  })
+
 
   const reviewMutation = useMutation({
     mutationFn: async ({ id, status, reviewerRemarks, documentUrl }: any) => {
@@ -121,36 +114,88 @@ export default function SelfServicePortalPage() {
   const [documentForm] = Form.useForm()
   const [profileForm] = Form.useForm()
 
+  // File lists per form tab
+  const [transferFiles, setTransferFiles] = useState<UploadFile[]>([])
+  const [promotionFiles, setPromotionFiles] = useState<UploadFile[]>([])
+  const [trainingFiles, setTrainingFiles] = useState<UploadFile[]>([])
+  const [documentFiles, setDocumentFiles] = useState<UploadFile[]>([])
+  const [profileFiles, setProfileFiles] = useState<UploadFile[]>([])
+
+  const uploadAttachments = async (requestId: string, files: UploadFile[]) => {
+    for (const f of files) {
+      if (!f.originFileObj) continue
+      const fd = new FormData()
+      fd.append('file', f.originFileObj)
+      fd.append('entityType', 'self_service_request')
+      fd.append('entityId', requestId)
+      fd.append('description', f.name)
+      await api.post('/files/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    }
+  }
+
   const handleTransfer = async () => {
     const v = await transferForm.validateFields()
-    submitMutation.mutate({
-      endpoint: 'transfer',
-      body: {
+    setSubmitting(true)
+    try {
+      const { data } = await api.post('/self-service/transfer', {
         preferredSchools: v.preferredSchools,
         transferReason: v.transferReason,
         transferEffectiveDate: v.transferEffectiveDate?.toISOString(),
         notes: v.notes,
-      },
-    })
-    transferForm.resetFields()
+      })
+      if (data.data?.id) await uploadAttachments(data.data.id, transferFiles)
+      message.success('Transfer request submitted')
+      queryClient.invalidateQueries({ queryKey: ['self-service-mine'] })
+      transferForm.resetFields()
+      setTransferFiles([])
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? 'Submission failed')
+    } finally { setSubmitting(false) }
   }
 
   const handlePromotion = async () => {
     const v = await promotionForm.validateFields()
-    submitMutation.mutate({ endpoint: 'promotion', body: v })
-    promotionForm.resetFields()
+    setSubmitting(true)
+    try {
+      const { data } = await api.post('/self-service/promotion', v)
+      if (data.data?.id) await uploadAttachments(data.data.id, promotionFiles)
+      message.success('Promotion application submitted')
+      queryClient.invalidateQueries({ queryKey: ['self-service-mine'] })
+      promotionForm.resetFields()
+      setPromotionFiles([])
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? 'Submission failed')
+    } finally { setSubmitting(false) }
   }
 
   const handleTraining = async () => {
     const v = await trainingForm.validateFields()
-    submitMutation.mutate({ endpoint: 'training', body: { ...v, courseCost: v.courseCost ? Number(v.courseCost) : undefined } })
-    trainingForm.resetFields()
+    setSubmitting(true)
+    try {
+      const { data } = await api.post('/self-service/training', { ...v, courseCost: v.courseCost ? Number(v.courseCost) : undefined })
+      if (data.data?.id) await uploadAttachments(data.data.id, trainingFiles)
+      message.success('Training request submitted')
+      queryClient.invalidateQueries({ queryKey: ['self-service-mine'] })
+      trainingForm.resetFields()
+      setTrainingFiles([])
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? 'Submission failed')
+    } finally { setSubmitting(false) }
   }
 
   const handleDocument = async () => {
     const v = await documentForm.validateFields()
-    submitMutation.mutate({ endpoint: 'document-request', body: v })
-    documentForm.resetFields()
+    setSubmitting(true)
+    try {
+      const { data } = await api.post('/self-service/document-request', v)
+      if (data.data?.id) await uploadAttachments(data.data.id, documentFiles)
+      message.success('Document request submitted')
+      queryClient.invalidateQueries({ queryKey: ['self-service-mine'] })
+      documentForm.resetFields()
+      setDocumentFiles([])
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? 'Submission failed')
+    } finally { setSubmitting(false) }
   }
 
   const handleProfileUpdate = async () => {
@@ -159,10 +204,17 @@ export default function SelfServicePortalPage() {
       .filter(([, val]) => val !== undefined && val !== '')
       .map(([field, newValue]) => ({ field, newValue: String(newValue) }))
     if (changes.length === 0) { message.warning('No changes to submit'); return }
-    const { data } = await api.patch('/self-service/profile', { changes })
-    message.success(data.data?.message || 'Profile update submitted')
-    profileForm.resetFields()
-    queryClient.invalidateQueries({ queryKey: ['self-service-mine'] })
+    setSubmitting(true)
+    try {
+      const { data } = await api.patch('/self-service/profile', { changes })
+      if (data.data?.id) await uploadAttachments(data.data.id, profileFiles)
+      message.success(data.data?.message || 'Profile update submitted')
+      profileForm.resetFields()
+      setProfileFiles([])
+      queryClient.invalidateQueries({ queryKey: ['self-service-mine'] })
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? 'Submission failed')
+    } finally { setSubmitting(false) }
   }
 
   // ── My Requests table ─────────────────────────────────────────
@@ -250,7 +302,19 @@ export default function SelfServicePortalPage() {
                   <Form.Item name="notes" label="Additional Notes">
                     <TextArea rows={2} placeholder="Any additional information" />
                   </Form.Item>
-                  <Button type="primary" loading={submitMutation.isPending} onClick={handleTransfer} icon={<ArrowRightLeft size={14} />}>
+                  <Form.Item label={<Space><Paperclip size={13} />Supporting Documents (optional)</Space>}>
+                    <Upload.Dragger
+                      multiple
+                      beforeUpload={() => false}
+                      fileList={transferFiles}
+                      onChange={({ fileList }) => setTransferFiles(fileList)}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    >
+                      <p style={{ fontSize: 13, margin: 0 }}>Click or drag files here to attach</p>
+                      <p style={{ fontSize: 11, color: '#8c8c8c', margin: 0 }}>PDF, Word, Images · max 10 MB each</p>
+                    </Upload.Dragger>
+                  </Form.Item>
+                  <Button type="primary" loading={submitting} onClick={handleTransfer} icon={<ArrowRightLeft size={14} />}>
                     Submit Transfer Request
                   </Button>
                 </Form>
@@ -277,7 +341,19 @@ export default function SelfServicePortalPage() {
                   <Form.Item name="notes" label="Supporting Notes">
                     <TextArea rows={2} placeholder="Additional context" />
                   </Form.Item>
-                  <Button type="primary" loading={submitMutation.isPending} onClick={handlePromotion} icon={<TrendingUp size={14} />}>
+                  <Form.Item label={<Space><Paperclip size={13} />Attachments — CV, Certificates, etc. (optional)</Space>}>
+                    <Upload.Dragger
+                      multiple
+                      beforeUpload={() => false}
+                      fileList={promotionFiles}
+                      onChange={({ fileList }) => setPromotionFiles(fileList)}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    >
+                      <p style={{ fontSize: 13, margin: 0 }}>Click or drag files here to attach</p>
+                      <p style={{ fontSize: 11, color: '#8c8c8c', margin: 0 }}>PDF, Word, Images · max 10 MB each</p>
+                    </Upload.Dragger>
+                  </Form.Item>
+                  <Button type="primary" loading={submitting} onClick={handlePromotion} icon={<TrendingUp size={14} />}>
                     Submit Promotion Application
                   </Button>
                 </Form>
@@ -307,7 +383,19 @@ export default function SelfServicePortalPage() {
                   <Form.Item name="courseJustification" label="Justification" rules={[{ required: true }]}>
                     <TextArea rows={3} placeholder="How will this course benefit your teaching and the school?" />
                   </Form.Item>
-                  <Button type="primary" loading={submitMutation.isPending} onClick={handleTraining} icon={<BookOpen size={14} />}>
+                  <Form.Item label={<Space><Paperclip size={13} />Brochure / Registration Form (optional)</Space>}>
+                    <Upload.Dragger
+                      multiple
+                      beforeUpload={() => false}
+                      fileList={trainingFiles}
+                      onChange={({ fileList }) => setTrainingFiles(fileList)}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    >
+                      <p style={{ fontSize: 13, margin: 0 }}>Click or drag files here to attach</p>
+                      <p style={{ fontSize: 11, color: '#8c8c8c', margin: 0 }}>PDF, Word, Images · max 10 MB each</p>
+                    </Upload.Dragger>
+                  </Form.Item>
+                  <Button type="primary" loading={submitting} onClick={handleTraining} icon={<BookOpen size={14} />}>
                     Submit Training Request
                   </Button>
                 </Form>
@@ -333,7 +421,19 @@ export default function SelfServicePortalPage() {
                   <Form.Item name="notes" label="Notes / Specific Requirements">
                     <TextArea rows={2} placeholder="e.g. Required for bank loan application — please include salary details" />
                   </Form.Item>
-                  <Button type="primary" loading={submitMutation.isPending} onClick={handleDocument} icon={<FileText size={14} />}>
+                  <Form.Item label={<Space><Paperclip size={13} />Supporting Documents (optional)</Space>}>
+                    <Upload.Dragger
+                      multiple
+                      beforeUpload={() => false}
+                      fileList={documentFiles}
+                      onChange={({ fileList }) => setDocumentFiles(fileList)}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    >
+                      <p style={{ fontSize: 13, margin: 0 }}>Click or drag files here to attach</p>
+                      <p style={{ fontSize: 11, color: '#8c8c8c', margin: 0 }}>PDF, Word, Images · max 10 MB each</p>
+                    </Upload.Dragger>
+                  </Form.Item>
+                  <Button type="primary" loading={submitting} onClick={handleDocument} icon={<FileText size={14} />}>
                     Request Document
                   </Button>
                 </Form>
@@ -373,6 +473,18 @@ export default function SelfServicePortalPage() {
                       </Form.Item>
                       <Form.Item name="department" label="Department">
                         <Input placeholder="e.g. Science Department" />
+                      </Form.Item>
+                      <Form.Item label={<Space><Paperclip size={13} />Identity / Qualification Documents (optional)</Space>}>
+                        <Upload.Dragger
+                          multiple
+                          beforeUpload={() => false}
+                          fileList={profileFiles}
+                          onChange={({ fileList }) => setProfileFiles(fileList)}
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        >
+                          <p style={{ fontSize: 13, margin: 0 }}>Click or drag files here to attach</p>
+                          <p style={{ fontSize: 11, color: '#8c8c8c', margin: 0 }}>PDF, Word, Images · max 10 MB each</p>
+                        </Upload.Dragger>
                       </Form.Item>
                       <Button type="primary" onClick={handleProfileUpdate} icon={<UserCog size={14} />}>
                         Submit Profile Update

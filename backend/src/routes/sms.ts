@@ -304,7 +304,7 @@ router.post(
 router.post(
   '/timetable/publish',
   authenticate,
-  requireRole('admin', 'manager', 'principal'),
+  requireRole('admin', 'manager', 'principal', 'hod'),
   async (req: AuthRequest, res: Response) => {
     try {
       const { gradeLevel = 'Year 7', className = '7A', semester = '2026-S1' } = req.body as {
@@ -349,6 +349,123 @@ router.post(
       res.json({ success: true, data: { published: true, notifiedCount: uniqueIds.length, gradeLevel, className, semester } })
     } catch (error) {
       console.error('Error publishing timetable:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
+// ─── GET /sms/timetable/my-schedule — teacher's own weekly teaching slots ────
+router.get(
+  '/timetable/my-schedule',
+  authenticate,
+  requireRole('teacher', 'hod'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const teacher = await prisma.teacher.findUnique({ where: { userId: req.user!.userId } })
+      if (!teacher) { res.json({ success: true, data: [] }); return }
+      const semester = (req.query.semester as string) || '2026-S1'
+      const slots = await prisma.timetableSlot.findMany({
+        where: { teacherId: teacher.id, semester },
+        include: {
+          course: { select: { id: true, code: true, name: true, gradeLevel: true } },
+          teacher: { include: { user: { select: { displayName: true } } } },
+        },
+        orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+      })
+      res.json({ success: true, data: slots })
+    } catch (error) {
+      console.error('GET /sms/timetable/my-schedule error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
+// ─── POST /sms/timetable/slot — manually add one slot ────────────────────────
+router.post(
+  '/timetable/slot',
+  authenticate,
+  requireRole('admin', 'manager', 'principal', 'hod'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { courseId, teacherId, gradeLevel, className, dayOfWeek, startTime, endTime, room, semester = '2026-S1' } = req.body as {
+        courseId: string; teacherId: string; gradeLevel: string; className: string
+        dayOfWeek: number; startTime: string; endTime: string; room?: string; semester?: string
+      }
+      if (!courseId || !teacherId || !gradeLevel || !className || dayOfWeek == null || !startTime || !endTime) {
+        res.status(400).json({ success: false, message: 'Missing required fields' }); return
+      }
+      const classConflict = await prisma.timetableSlot.findFirst({
+        where: { gradeLevel, className, dayOfWeek, startTime, semester },
+      })
+      if (classConflict) { res.status(409).json({ success: false, message: 'This class already has a lesson at this time.' }); return }
+      const teacherConflict = await prisma.timetableSlot.findFirst({
+        where: { teacherId, dayOfWeek, startTime, semester },
+      })
+      if (teacherConflict) { res.status(409).json({ success: false, message: 'This teacher is already teaching at this time.' }); return }
+      const slot = await prisma.timetableSlot.create({
+        data: { courseId, teacherId, gradeLevel, className, dayOfWeek, startTime, endTime, room: room ?? `Classroom ${className}`, semester },
+        include: {
+          course: { select: { id: true, code: true, name: true } },
+          teacher: { include: { user: { select: { displayName: true } } } },
+        },
+      })
+      res.status(201).json({ success: true, data: slot })
+    } catch (error) {
+      console.error('POST /sms/timetable/slot error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
+// ─── PATCH /sms/timetable/slot/:id — move slot to new day/time ───────────────
+router.patch(
+  '/timetable/slot/:id',
+  authenticate,
+  requireRole('admin', 'manager', 'principal', 'hod'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const id = req.params.id as string
+      const { dayOfWeek, startTime, endTime } = req.body as { dayOfWeek: number; startTime: string; endTime: string }
+      const existing = await prisma.timetableSlot.findUnique({ where: { id } })
+      if (!existing) { res.status(404).json({ success: false, message: 'Slot not found' }); return }
+      const classConflict = await prisma.timetableSlot.findFirst({
+        where: { gradeLevel: existing.gradeLevel, className: existing.className, dayOfWeek, startTime, semester: existing.semester, id: { not: id } },
+      })
+      if (classConflict) { res.status(409).json({ success: false, message: 'This class already has a lesson at this time.' }); return }
+      const teacherConflict = await prisma.timetableSlot.findFirst({
+        where: { teacherId: existing.teacherId, dayOfWeek, startTime, semester: existing.semester, id: { not: id } },
+      })
+      if (teacherConflict) { res.status(409).json({ success: false, message: 'This teacher is already teaching at this time.' }); return }
+      const updated = await prisma.timetableSlot.update({
+        where: { id },
+        data: { dayOfWeek, startTime, endTime },
+        include: {
+          course: { select: { id: true, code: true, name: true } },
+          teacher: { include: { user: { select: { displayName: true } } } },
+        },
+      })
+      res.json({ success: true, data: updated })
+    } catch (error) {
+      console.error('PATCH /sms/timetable/slot error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
+// ─── DELETE /sms/timetable/slot/:id ──────────────────────────────────────────
+router.delete(
+  '/timetable/slot/:id',
+  authenticate,
+  requireRole('admin', 'manager', 'principal', 'hod'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const id = req.params.id as string
+      const existing = await prisma.timetableSlot.findUnique({ where: { id } })
+      if (!existing) { res.status(404).json({ success: false, message: 'Slot not found' }); return }
+      await prisma.timetableSlot.delete({ where: { id } })
+      res.json({ success: true })
+    } catch (error) {
+      console.error('DELETE /sms/timetable/slot error:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   }
@@ -578,9 +695,16 @@ router.post(
 )
 
 // ─── GET /sms/calendar-events ──────────────────────────────────────────────
-router.get('/calendar-events', authenticate, async (_req: AuthRequest, res: Response) => {
+router.get('/calendar-events', authenticate, async (req: AuthRequest, res: Response) => {
   try {
+    const { userId } = req.user!
     const events = await prisma.schoolEvent.findMany({
+      where: {
+        OR: [
+          { isPersonal: false },
+          { isPersonal: true, createdByUserId: userId },
+        ],
+      },
       orderBy: { date: 'asc' },
     })
     res.json({ success: true, data: events })
@@ -594,9 +718,9 @@ router.get('/calendar-events', authenticate, async (_req: AuthRequest, res: Resp
 router.post(
   '/calendar-events',
   authenticate,
-  requireRole('admin', 'manager', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
+      const { userId, role } = req.user!
       const { title, date, endDate, type, description } = req.body as {
         title: string
         date: string
@@ -608,6 +732,11 @@ router.post(
         res.status(400).json({ success: false, message: 'title and date are required' })
         return
       }
+      const isPersonal = type === 'personal' || type === 'reminder'
+      if (!isPersonal && !['admin', 'manager', 'principal'].includes(role)) {
+        res.status(403).json({ success: false, message: 'Only admin/manager/principal can create school events' })
+        return
+      }
       const event = await prisma.schoolEvent.create({
         data: {
           title,
@@ -615,6 +744,8 @@ router.post(
           endDate: endDate ? new Date(endDate) : undefined,
           type: type ?? 'event',
           description,
+          isPersonal,
+          createdByUserId: isPersonal ? userId : undefined,
         },
       })
       res.status(201).json({ success: true, data: event })
@@ -629,10 +760,17 @@ router.post(
 router.patch(
   '/calendar-events/:id',
   authenticate,
-  requireRole('admin', 'manager', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
+      const { userId, role } = req.user!
       const id = req.params.id as string
+      const existing = await prisma.schoolEvent.findUnique({ where: { id } })
+      if (!existing) { res.status(404).json({ success: false, message: 'Event not found' }); return }
+      if (existing.isPersonal) {
+        if (existing.createdByUserId !== userId) { res.status(403).json({ success: false, message: 'Forbidden' }); return }
+      } else if (!['admin', 'manager', 'principal'].includes(role)) {
+        res.status(403).json({ success: false, message: 'Forbidden' }); return
+      }
       const { title, date, endDate, type, description } = req.body
       const data: any = {}
       if (title !== undefined) data.title = title
@@ -653,10 +791,18 @@ router.patch(
 router.delete(
   '/calendar-events/:id',
   authenticate,
-  requireRole('admin', 'manager', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
-      await prisma.schoolEvent.delete({ where: { id: req.params.id as string } })
+      const { userId, role } = req.user!
+      const id = req.params.id as string
+      const existing = await prisma.schoolEvent.findUnique({ where: { id } })
+      if (!existing) { res.status(404).json({ success: false, message: 'Event not found' }); return }
+      if (existing.isPersonal) {
+        if (existing.createdByUserId !== userId) { res.status(403).json({ success: false, message: 'Forbidden' }); return }
+      } else if (!['admin', 'manager', 'principal'].includes(role)) {
+        res.status(403).json({ success: false, message: 'Forbidden' }); return
+      }
+      await prisma.schoolEvent.delete({ where: { id } })
       res.json({ success: true })
     } catch (error) {
       console.error('DELETE /sms/calendar-events error:', error)

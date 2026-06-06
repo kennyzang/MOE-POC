@@ -9,7 +9,7 @@ const router = Router()
 router.get(
   '/',
   authenticate,
-  requireRole('admin', 'manager', 'hod', 'principal'),
+  requireRole('admin', 'manager', 'hod', 'principal', 'teacher'),
   async (req: AuthRequest, res: Response) => {
     try {
       const { search, department, staffType } = req.query as { search?: string; department?: string; staffType?: string }

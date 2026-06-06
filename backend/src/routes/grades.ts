@@ -5,8 +5,11 @@ import { send } from '../services/notificationService'
 import { sendPushToUser } from '../services/pushService'
 import { recalcStudentRisk } from './ai'
 import { broadcast } from './events'
+import * as XLSX from 'xlsx'
+import multer from 'multer'
 
 const router = Router()
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
 // Helper: get student IDs the current user can access
 async function getAccessibleStudentIds(user: AuthRequest['user']): Promise<string[] | null> {
@@ -230,5 +233,147 @@ router.patch(
     }
   },
 )
+
+// GET /grades/template/:courseId — download blank Excel grade template
+router.get('/template/:courseId', authenticate, requireRole('admin', 'manager', 'teacher'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { courseId } = req.params as { courseId: string }
+    const [course, gradeItems, enrollments] = await Promise.all([
+      prisma.course.findUnique({ where: { id: courseId }, select: { code: true, name: true } }),
+      prisma.gradeItem.findMany({ where: { courseId }, orderBy: { name: 'asc' } }),
+      prisma.enrollment.findMany({
+        where: { courseId, status: 'enrolled' },
+        include: { student: { include: { user: { select: { displayName: true } } } } },
+        orderBy: { student: { user: { displayName: 'asc' } } },
+      }),
+    ])
+    if (!course) { res.status(404).json({ success: false, message: 'Course not found' }); return }
+
+    const headers = ['Student Name', 'Student ID', ...gradeItems.map(gi => `${gi.name} (max ${gi.maxScore})`)]
+    const rows = enrollments.map(en => [
+      en.student?.user?.displayName ?? '',
+      en.studentId,
+      ...gradeItems.map(() => ''),
+    ])
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    ws['!cols'] = [{ wch: 28 }, { wch: 16 }, ...gradeItems.map(() => ({ wch: 20 }))]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, `${course.code} Grades`)
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+
+    res.setHeader('Content-Disposition', `attachment; filename="grade_template_${course.code}.xlsx"`)
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.send(buf)
+  } catch (error) {
+    console.error('GET /grades/template error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /grades/report/:courseId — download grade report as Excel
+router.get('/report/:courseId', authenticate, requireRole('admin', 'manager', 'teacher'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { courseId } = req.params as { courseId: string }
+    const [course, gradeItems, enrollments, grades] = await Promise.all([
+      prisma.course.findUnique({ where: { id: courseId }, select: { code: true, name: true } }),
+      prisma.gradeItem.findMany({ where: { courseId }, orderBy: { name: 'asc' } }),
+      prisma.enrollment.findMany({
+        where: { courseId, status: 'enrolled' },
+        include: { student: { include: { user: { select: { displayName: true } } } } },
+        orderBy: { student: { user: { displayName: 'asc' } } },
+      }),
+      prisma.grade.findMany({ where: { gradeItem: { courseId } }, include: { gradeItem: true } }),
+    ])
+    if (!course) { res.status(404).json({ success: false, message: 'Course not found' }); return }
+
+    const gradeMap = new Map<string, number>()
+    grades.forEach(g => gradeMap.set(`${g.studentId}:${g.gradeItemId}`, g.score ?? 0))
+
+    const getLetterGrade = (pct: number) => pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : pct >= 60 ? 'D' : 'F'
+
+    const headers = ['Student Name', 'Student ID', ...gradeItems.map(gi => `${gi.name} (/${gi.maxScore})`), 'Average %', 'Letter Grade']
+    const rows = enrollments.map(en => {
+      const scores: (string | number)[] = gradeItems.map(gi => gradeMap.get(`${en.studentId}:${gi.id}`) ?? '')
+      let totalWeight = 0, weightedSum = 0, hasAny = false
+      gradeItems.forEach((gi, i) => {
+        const s = scores[i]
+        if (s !== '' && gi.maxScore > 0) {
+          weightedSum += ((s as number) / gi.maxScore) * 100 * gi.weight
+          totalWeight += gi.weight
+          hasAny = true
+        }
+      })
+      const avg = hasAny && totalWeight > 0 ? weightedSum / totalWeight : null
+      return [en.student?.user?.displayName ?? '', en.studentId, ...scores, avg !== null ? Math.round(avg * 10) / 10 : '', avg !== null ? getLetterGrade(avg) : '']
+    })
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    ws['!cols'] = [{ wch: 28 }, { wch: 16 }, ...gradeItems.map(() => ({ wch: 18 })), { wch: 12 }, { wch: 10 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, `${course.code} Report`)
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+
+    res.setHeader('Content-Disposition', `attachment; filename="grade_report_${course.code}.xlsx"`)
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.send(buf)
+  } catch (error) {
+    console.error('GET /grades/report error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// POST /grades/import/:courseId — bulk import from Excel/CSV
+router.post('/import/:courseId', authenticate, requireRole('admin', 'manager', 'teacher'), upload.single('file'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { courseId } = req.params as { courseId: string }
+    if (!req.file) { res.status(400).json({ success: false, message: 'No file uploaded' }); return }
+
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer' })
+    const ws = wb.Sheets[wb.SheetNames[0]]
+    const rows = XLSX.utils.sheet_to_json<Record<string, string | number>>(ws, { defval: '' })
+
+    if (rows.length === 0) { res.status(400).json({ success: false, message: 'File is empty or unreadable' }); return }
+
+    const gradeItems = await prisma.gradeItem.findMany({ where: { courseId } })
+    if (gradeItems.length === 0) { res.status(400).json({ success: false, message: 'No grade items found for this course' }); return }
+
+    const enrollments = await prisma.enrollment.findMany({
+      where: { courseId, status: 'enrolled' },
+      select: { studentId: true },
+    })
+    const validStudentIds = new Set(enrollments.map(e => e.studentId))
+
+    let upserted = 0, skipped = 0
+    const errors: string[] = []
+
+    for (const row of rows) {
+      const studentId = String(row['Student ID'] ?? '').trim()
+      if (!studentId || !validStudentIds.has(studentId)) { skipped++; continue }
+
+      for (const gi of gradeItems) {
+        const colName = gradeItems.find(g => g.id === gi.id) ? `${gi.name} (max ${gi.maxScore})` : gi.name
+        const rawVal = row[colName] ?? row[gi.name] ?? ''
+        if (rawVal === '' || rawVal === null || rawVal === undefined) continue
+        const score = Number(rawVal)
+        if (isNaN(score) || score < 0 || score > gi.maxScore) {
+          errors.push(`${studentId}: "${gi.name}" value "${rawVal}" is invalid`)
+          continue
+        }
+        await prisma.grade.upsert({
+          where: { studentId_gradeItemId: { studentId, gradeItemId: gi.id } },
+          create: { studentId, gradeItemId: gi.id, score, gradedAt: new Date() },
+          update: { score, gradedAt: new Date() },
+        })
+        upserted++
+      }
+    }
+
+    res.json({ success: true, data: { upserted, skipped, errors: errors.slice(0, 10) } })
+  } catch (error) {
+    console.error('POST /grades/import error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
 
 export default router

@@ -1,14 +1,21 @@
 import { useState } from 'react'
 import {
   Card, Row, Col, Statistic, Table, Tag, Space, Button, Typography, Spin,
-  Alert, Modal, Form, Input, Select, message, Tabs, DatePicker, Badge,
+  Alert, Modal, Form, Input, Select, message, Tabs, DatePicker, Badge, List, Avatar,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { UserSquare2, Award, BookOpen, Users, Bell, ShieldAlert, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import {
+  UserSquare2, Award, BookOpen, Users, Bell, ShieldAlert, Plus,
+  TrendingDown, CalendarCheck, ClipboardList,
+} from 'lucide-react'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 import api from '@/lib/api'
+
+dayjs.extend(relativeTime)
 
 const { Title, Text } = Typography
 
@@ -28,6 +35,15 @@ interface FormClassData {
   summary: { total: number; avgGpa: number; netBehavior: number }
 }
 
+interface AttendanceSession {
+  id: string
+  date: string
+  status: string
+  course: { id: string; code: string; name: string }
+  presentCount?: number
+  absentCount?: number
+}
+
 const STANDING_COLOR: Record<string, string> = {
   GOOD_STANDING: 'green',
   ACADEMIC_WATCH: 'orange',
@@ -37,6 +53,7 @@ const STANDING_COLOR: Record<string, string> = {
 
 const FormTeacherPage = () => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [noticeOpen, setNoticeOpen] = useState(false)
   const [behaviorOpen, setBehaviorOpen] = useState(false)
@@ -52,6 +69,14 @@ const FormTeacherPage = () => {
     queryFn: async () => {
       const { data } = await api.get('/teachers/me/form-class')
       return data.data as FormClassData | null
+    },
+  })
+
+  const { data: recentSessions = [] } = useQuery({
+    queryKey: ['teacher-recent-sessions'],
+    queryFn: async () => {
+      const { data } = await api.get('/attendance/sessions')
+      return ((data.data as AttendanceSession[]) ?? []).slice(0, 8)
     },
   })
 
@@ -87,9 +112,6 @@ const FormTeacherPage = () => {
 
   const rollCallMutation = useMutation({
     mutationFn: async () => {
-      // Create daily attendance session for the Daily Roll Call course (DAILY001)
-      // This is a simplified form-teacher roll call, stored as notification/log
-      // For now we just show a success message since daily roll call is separate from course-based sessions
       await new Promise((r) => setTimeout(r, 500))
     },
     onSuccess: () => {
@@ -115,6 +137,46 @@ const FormTeacherPage = () => {
   }
 
   const { roster, students, summary } = data
+  const atRiskCount = students.filter((s) => s.academicStanding !== 'GOOD_STANDING').length
+
+  const KPI_CARDS = [
+    {
+      title: 'Total Students',
+      value: summary.total,
+      icon: <Users size={18} />,
+      color: '#1677ff',
+      bg: '#e6f4ff',
+      navTo: '/sis/students',
+      suffix: undefined as string | undefined,
+    },
+    {
+      title: 'Class Avg GPA',
+      value: Math.round(summary.avgGpa * 10) / 10,
+      icon: <BookOpen size={18} />,
+      color: summary.avgGpa >= 70 ? '#52c41a' : '#fa8c16',
+      bg: summary.avgGpa >= 70 ? '#f6ffed' : '#fff7e6',
+      navTo: '/sis/grades',
+      suffix: '%',
+    },
+    {
+      title: 'At Risk',
+      value: atRiskCount,
+      icon: <TrendingDown size={18} />,
+      color: atRiskCount > 0 ? '#f5222d' : '#52c41a',
+      bg: atRiskCount > 0 ? '#fff1f0' : '#f6ffed',
+      navTo: '/dashboard/at-risk',
+      suffix: undefined,
+    },
+    {
+      title: 'Net Conduct Points',
+      value: summary.netBehavior,
+      icon: <Award size={18} />,
+      color: summary.netBehavior >= 0 ? '#52c41a' : '#f5222d',
+      bg: summary.netBehavior >= 0 ? '#f6ffed' : '#fff1f0',
+      navTo: '/sis/behavior',
+      suffix: undefined,
+    },
+  ]
 
   const columns: ColumnsType<StudentRow> = [
     {
@@ -122,8 +184,11 @@ const FormTeacherPage = () => {
       dataIndex: 'displayName',
       key: 'name',
       render: (name: string, r: StudentRow) => (
-        <div>
-          <Text strong>{name}</Text>
+        <div
+          style={{ cursor: 'pointer' }}
+          onClick={() => navigate(`/sis/students/${r.id}`)}
+        >
+          <Text strong style={{ color: '#1677ff' }}>{name}</Text>
           <div style={{ fontSize: 12, color: '#888' }}>{r.studentId}</div>
         </div>
       ),
@@ -134,7 +199,7 @@ const FormTeacherPage = () => {
       key: 'standing',
       render: (s: string) => (
         <Tag color={STANDING_COLOR[s] ?? 'default'} style={{ fontSize: 11 }}>
-          {s.replace('_', ' ')}
+          {s.replace(/_/g, ' ')}
         </Tag>
       ),
     },
@@ -185,6 +250,8 @@ const FormTeacherPage = () => {
     status: rollCallMap[s.id] ?? 'present',
   }))
 
+  const sessionStatusColor: Record<string, string> = { active: 'green', closed: 'default', draft: 'orange' }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Header */}
@@ -210,55 +277,97 @@ const FormTeacherPage = () => {
         </div>
       </Card>
 
-      {/* KPI Cards */}
+      {/* KPI Cards — clickable */}
       <Row gutter={[16, 16]}>
-        <Col xs={12} sm={6}>
-          <Card size="small">
-            <Statistic title="Total Students" value={summary.total} prefix={<Users size={16} />} />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small">
-            <Statistic
-              title="Class Avg GPA"
-              value={Math.round(summary.avgGpa * 10) / 10}
-              suffix="%"
-              styles={{ content: { color: summary.avgGpa >= 70 ? '#52c41a' : '#fa8c16' } }}
+        {KPI_CARDS.map((kpi) => (
+          <Col xs={12} sm={6} key={kpi.title}>
+            <Card
+              size="small"
+              hoverable
+              style={{ cursor: 'pointer', borderTop: `3px solid ${kpi.color}` }}
+              onClick={() => navigate(kpi.navTo)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ background: kpi.bg, borderRadius: 8, padding: 6, display: 'flex', color: kpi.color }}>
+                  {kpi.icon}
+                </div>
+              </div>
+              <Statistic
+                title={kpi.title}
+                value={kpi.value}
+                suffix={kpi.suffix}
+                valueStyle={{ fontSize: 24, fontWeight: 700, color: kpi.color }}
+              />
+            </Card>
+          </Col>
+        ))}
+      </Row>
+
+      {/* Main content: roster + recent sessions */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={17}>
+          {/* Student Roster Table */}
+          <Card title={<Space><Users size={16} /> Student Roster</Space>}>
+            <Table
+              columns={columns}
+              dataSource={students}
+              rowKey="id"
+              size="middle"
+              pagination={{ pageSize: 15, showSizeChanger: false }}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small">
-            <Statistic
-              title="At Risk"
-              value={students.filter((s) => s.academicStanding !== 'GOOD_STANDING').length}
-              styles={{ content: { color: '#f5222d' } }}
-              prefix={<ShieldAlert size={16} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small">
-            <Statistic
-              title="Net Conduct Points"
-              value={summary.netBehavior}
-              prefix={<Award size={16} />}
-              styles={{ content: { color: summary.netBehavior >= 0 ? '#52c41a' : '#f5222d' } }}
-            />
+        <Col xs={24} lg={7}>
+          {/* Recent Attendance Sessions */}
+          <Card
+            title={<Space><ClipboardList size={16} />Recent Sessions</Space>}
+            extra={
+              <Button type="link" size="small" onClick={() => navigate('/sis/attendance')}>
+                View All
+              </Button>
+            }
+            style={{ height: '100%' }}
+          >
+            {recentSessions.length === 0 ? (
+              <Alert type="info" showIcon message="No recent sessions found." />
+            ) : (
+              <List
+                size="small"
+                dataSource={recentSessions}
+                renderItem={(session: AttendanceSession) => (
+                  <List.Item
+                    style={{ cursor: 'pointer', padding: '8px 0' }}
+                    onClick={() => navigate(`/sis/attendance`)}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <Avatar
+                          size="small"
+                          style={{ background: session.status === 'active' ? '#52c41a' : '#d9d9d9' }}
+                          icon={<CalendarCheck size={12} />}
+                        />
+                      }
+                      title={
+                        <Space size={4}>
+                          <Text style={{ fontSize: 13 }}>{session.course?.name ?? 'Unknown'}</Text>
+                          <Tag color={sessionStatusColor[session.status] ?? 'default'} style={{ fontSize: 10, margin: 0 }}>
+                            {session.status}
+                          </Tag>
+                        </Space>
+                      }
+                      description={
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          {dayjs(session.date).format('DD MMM YYYY')} · {session.course?.code}
+                        </Text>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            )}
           </Card>
         </Col>
       </Row>
-
-      {/* Student Roster Table */}
-      <Card title={<Space><Users size={16} /> Student Roster</Space>}>
-        <Table
-          columns={columns}
-          dataSource={students}
-          rowKey="id"
-          size="middle"
-          pagination={{ pageSize: 20, showSizeChanger: false }}
-        />
-      </Card>
 
       {/* Daily Roll Call Modal */}
       <Modal

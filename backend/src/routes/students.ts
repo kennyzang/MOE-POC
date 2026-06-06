@@ -12,10 +12,13 @@ router.get(
   requireRole('admin', 'manager', 'teacher', 'principal', 'counselor', 'hod', 'admissions'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const { search, gradeLevel, className, status } = req.query
+      const { search, gradeLevel, className, status, schoolId } = req.query
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const where: any = { ...schoolFilter(req) }
+
+      // Sysadmin may pass schoolId to scope the listing to a specific school
+      if (schoolId && req.user?.systemAdmin) where.schoolId = schoolId as string
 
       if (gradeLevel) where.gradeLevel = gradeLevel as string
       if (className) where.className = className as string

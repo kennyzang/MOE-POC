@@ -71,7 +71,7 @@ async function main() {
       address: 'Jalan Kota Batu, Bandar Seri Begawan, Brunei',
       phone: '+673-2234567',
       principal: 'Hjh Rashidah Binti Mohamad',
-      gradeLevels: JSON.stringify(['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11']),
+      gradeLevels: JSON.stringify(['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'Year 12']),
       programmes: JSON.stringify(['Academic', 'Science', 'Arts', 'Vocational']),
       classLetters: JSON.stringify(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O']),
       establishedYear: 1978,
@@ -915,7 +915,7 @@ async function main() {
   ]
 
   for (let i = 0; i < 4; i++) {
-    await prisma.counselorCase.create({
+    const cc = await prisma.counselorCase.create({
       data: {
         studentId: counselorStudents[i],
         counselorUserId: farahUser.id,
@@ -925,6 +925,38 @@ async function main() {
         openedAt: daysAgo(14 - i * 3),
       },
     })
+
+    // Case 0 (OPEN, risk threshold): 2 interventions assigned, no evidence yet
+    if (i === 0) {
+      await prisma.counselorCaseActionItem.createMany({
+        data: [
+          { caseId: cc.id, category: 'Academic', title: 'Schedule initial assessment session with student', description: 'Conduct a 1-on-1 session to assess academic and social-emotional factors contributing to high risk score.', assignedTo: 'Ms. Farah (Counselor)', dueDate: daysAgo(-3), status: 'IN_PROGRESS', createdByUserId: farahUser.id },
+          { caseId: cc.id, category: 'Family', title: 'Contact parent/guardian for situation update', description: 'Phone or email parent to discuss student\'s recent performance and risk indicators.', assignedTo: 'Ms. Farah (Counselor)', dueDate: daysAgo(-7), status: 'OPEN', createdByUserId: farahUser.id },
+        ],
+      })
+    }
+
+    // Case 1 (IN_PROGRESS, absence): has interventions in progress + one session note
+    if (i === 1) {
+      await prisma.counselorCaseActionItem.createMany({
+        data: [
+          { caseId: cc.id, category: 'Attendance', title: 'Conduct weekly attendance check-in for 4 weeks', description: 'Meet student each Monday to review attendance and address any barriers to attending school.', assignedTo: 'Ms. Farah (Counselor)', dueDate: daysAgo(-5), status: 'IN_PROGRESS', createdByUserId: farahUser.id },
+          { caseId: cc.id, category: 'Family', title: 'Refer to Student Welfare Officer if absences continue', description: 'If absence rate does not improve within 2 weeks, escalate to Student Welfare Officer.', assignedTo: 'Student Welfare Officer', dueDate: daysAgo(-10), status: 'OPEN', createdByUserId: farahUser.id },
+        ],
+      })
+      await prisma.counselorCaseEvidence.create({
+        data: { caseId: cc.id, fileName: 'Session-Notes-Week1-Attendance.pdf', filePath: `/evidence/cases/${cc.id}/Session-Notes-Week1-Attendance.pdf`, fileType: 'Session Notes', description: 'Written notes from first attendance counseling session', uploadedByUserId: farahUser.id },
+      })
+    }
+
+    // Case 2 (OPEN, teacher referral): 1 intervention, no evidence
+    if (i === 2) {
+      await prisma.counselorCaseActionItem.create({
+        data: { caseId: cc.id, category: 'Behaviour', title: 'Gather behavioural report from referring teacher', description: 'Request written incident/observation report from the teacher who made the referral. Use Form COU-01.', assignedTo: 'Form Teacher', dueDate: daysAgo(-5), status: 'OPEN', createdByUserId: farahUser.id },
+      })
+    }
+
+    // Case 3 (OPEN, risk threshold): newly opened, no interventions yet
   }
 
   // ─── HIGH_RISK RiskScores for counselor-case students ────────────────────
@@ -1102,6 +1134,7 @@ async function main() {
       overallScore: 81.7,
       rating: 'Good',
       comments: 'Ms. Aminah demonstrates good classroom management skills. CPD hours at 18/20 — on track to complete before year end.',
+      selfAssessment: 'This year I have focused on improving my questioning techniques in classroom discussions. I incorporated more Socratic questioning in my Year 7 and Year 8 classes, which I believe has improved student engagement and critical thinking. I completed 18 CPD hours including the Digital Pedagogy workshop in March. For improvement, I aim to incorporate more differentiated assessment methods to better cater to diverse learners in my classes. I also plan to complete the remaining 2 CPD hours before the year-end deadline.',
       status: 'submitted',
       submittedAt: daysAgo(5),
     },
@@ -1118,11 +1151,62 @@ async function main() {
       overallScore: 92.3,
       rating: 'Excellent',
       comments: 'Dr. Siti consistently exceeds expectations. Recommended for senior role consideration.',
+      selfAssessment: 'I believe I have performed strongly this academic year. As Head of Department, I supported three younger colleagues in developing their lesson plans and assessment strategies. In my own classes, I introduced project-based learning for the Year 9 and Year 10 ICT curriculum, resulting in noticeably improved student motivation. I have completed all 20 required CPD hours and attended the national STEM conference in April as a presenter. I aim to continue mentoring junior teachers and lead the department curriculum review scheduled for Term 3.',
       status: 'approved',
       submittedAt: daysAgo(20),
       reviewerId: principalUser.id,
       reviewerComments: 'Approved. Excellent performance.',
       reviewedAt: daysAgo(15),
+    },
+  })
+
+  await prisma.performanceEvaluation.create({
+    data: {
+      teacherId: faizal.id,
+      academicYear: '2025/2026',
+      evaluatorId: hodUser.id,
+      teachingScore: 75,
+      professionalScore: 72,
+      conductScore: 80,
+      overallScore: 75.7,
+      rating: 'Satisfactory',
+      comments: 'Mr. Faizal shows dedication but requires improvement in lesson pacing. Recommend completing the Classroom Management CPD module.',
+      selfAssessment: 'I acknowledge areas for growth in my teaching practice this year. I have worked to improve my lesson delivery by attending two CPD sessions on active learning strategies. I found the smaller Year 7 classes easier to manage; the larger Year 9 classes remain a challenge. I plan to complete the Classroom Management CPD module recommended by the HOD and apply those techniques from Term 3 onward.',
+      status: 'submitted',
+      submittedAt: daysAgo(12),
+    },
+  })
+
+  await prisma.performanceEvaluation.create({
+    data: {
+      teacherId: ridwan.id,
+      academicYear: '2025/2026',
+      evaluatorId: hodUser.id,
+      teachingScore: 88,
+      professionalScore: 85,
+      conductScore: 90,
+      overallScore: 87.7,
+      rating: 'Good',
+      comments: 'Mr. Ridwan is a reliable and effective teacher. His Year 10 students consistently perform well in assessments.',
+      selfAssessment: "I am satisfied with my performance this year. My Year 10 Mathematics class achieved a class average of 78% in the mid-term assessment. I have completed 19 of 20 CPD hours. I participated in the inter-school Mathematics competition as a coach, which was rewarding. I intend to explore more technology-integrated lessons using the school's iPads next semester.",
+      status: 'draft',
+    },
+  })
+
+  await prisma.performanceEvaluation.create({
+    data: {
+      teacherId: hassan.id,
+      academicYear: '2025/2026',
+      evaluatorId: hodUser.id,
+      teachingScore: 70,
+      professionalScore: 68,
+      conductScore: 78,
+      overallScore: 72.0,
+      rating: 'Satisfactory',
+      comments: 'Mr. Hassan needs to improve CPD hours (currently at 12/20). Lesson objectives could be more clearly stated.',
+      selfAssessment: 'This academic year has been challenging but I have maintained my commitment to my students. I completed 12 CPD hours and plan to attend two more workshops before the deadline. I will work on making my lesson objectives more explicit, as noted in the evaluation feedback.',
+      status: 'submitted',
+      submittedAt: daysAgo(3),
     },
   })
 
@@ -1140,6 +1224,21 @@ async function main() {
   ]
   for (const slot of y7aSlots) {
     await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 7', className: '7A', semester: '2026-S1' } })
+  }
+
+  // Year 8A timetable
+  const y8aSlots = [
+    { courseId: math8.id, teacherId: teacher01.id, dayOfWeek: 1, startTime: '10:00', endTime: '11:30', room: 'Classroom 8A' },
+    { courseId: math8.id, teacherId: teacher01.id, dayOfWeek: 3, startTime: '10:00', endTime: '11:30', room: 'Classroom 8A' },
+    { courseId: sci8.id,  teacherId: hassan.id,    dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
+    { courseId: sci8.id,  teacherId: hassan.id,    dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
+    { courseId: eng8.id,  teacherId: faizal.id,    dayOfWeek: 0, startTime: '13:00', endTime: '14:30', room: 'Classroom 8A' },
+    { courseId: eng8.id,  teacherId: faizal.id,    dayOfWeek: 2, startTime: '13:00', endTime: '14:30', room: 'Classroom 8A' },
+    { courseId: mib8.id,  teacherId: faizal.id,    dayOfWeek: 4, startTime: '08:00', endTime: '09:30', room: 'Classroom 8A' },
+    { courseId: ict8.id,  teacherId: drsiti.id,    dayOfWeek: 4, startTime: '10:00', endTime: '11:30', room: 'Computer Lab' },
+  ]
+  for (const slot of y8aSlots) {
+    await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 8', className: '8A', semester: '2026-S1' } })
   }
 
   // ─── Facility Bookings ────────────────────────────────────────────────────
@@ -1193,6 +1292,55 @@ async function main() {
   ]
   for (const ev of schoolEvents) {
     await prisma.schoolEvent.create({ data: ev })
+  }
+
+  // ─── Homework Assignments & Submissions (for parent portal demo) ─────────────
+
+  const ahmadStudentRecord = await prisma.student.findFirst({ where: { userId: adamUser.id } })
+  const teacher01ForHw = await prisma.teacher.findFirst({ where: { userId: teacher01User.id } })
+  const year7Courses = await prisma.course.findMany({ where: { gradeLevel: 'Year 7', semester: '2026-S1' }, select: { id: true, name: true, code: true } })
+
+  if (ahmadStudentRecord && teacher01ForHw && year7Courses.length > 0) {
+    const hwTemplates = [
+      { suffix: 'Chapter 1 Review Exercises', type: 'homework', daysBack: 28, desc: 'Complete all exercises from Chapter 1. Show your working clearly for full marks.', maxScore: 100 },
+      { suffix: 'Week 3 Quiz', type: 'quiz', daysBack: 21, desc: 'Short quiz covering weeks 1–3 topics. Open-notes. 30 minutes.', maxScore: 20 },
+      { suffix: 'Mid-Term Written Assignment', type: 'project', daysBack: 14, desc: 'Write a 2-page response to the set question. Include evidence and references.', maxScore: 100 },
+      { suffix: 'Chapter 3 Review', type: 'homework', daysBack: 7, desc: 'Answer all review questions at the end of Chapter 3 in your textbook.', maxScore: 100 },
+      { suffix: 'Term 2 Project', type: 'project', daysBack: -7, desc: 'Submit individual project report. Printed or digital copy accepted.', maxScore: 100 },
+      { suffix: 'Chapter 4 Worksheet', type: 'homework', daysBack: -14, desc: 'Complete the worksheet distributed in class. Show all workings for calculation questions.', maxScore: 50 },
+    ]
+    const hwToCreate = year7Courses.flatMap(c =>
+      hwTemplates.map(t => ({
+        courseId: c.id, teacherId: teacher01ForHw.id,
+        title: `${t.suffix} — ${c.name}`, description: t.desc,
+        type: t.type, dueDate: weeksAgo(Math.ceil(t.daysBack / 7)), maxScore: t.maxScore, status: 'published',
+      }))
+    )
+    for (const hw of hwToCreate) {
+      await prisma.assignment.create({ data: hw })
+    }
+
+    // Submissions for Ahmad for all past assignments
+    const ahmadEnrolledCourseIds = (await prisma.enrollment.findMany({ where: { studentId: ahmadStudentRecord.id, status: 'enrolled' }, select: { courseId: true } })).map(e => e.courseId)
+    const pastHwAsgns = await prisma.assignment.findMany({
+      where: { courseId: { in: ahmadEnrolledCourseIds }, dueDate: { lte: new Date() } },
+      orderBy: { dueDate: 'asc' },
+    })
+    const hwGrades = [85, 72, 91, 68, 78, 88, 95, 73, 82, 77, 90, 65, 83, 79, 94, 87, 71, 93, 76, 88, 84, 69, 92, 75, 89]
+    for (let i = 0; i < pastHwAsgns.length; i++) {
+      const a = pastHwAsgns[i]
+      const g = hwGrades[i % hwGrades.length]
+      const isLate = i % 7 === 3
+      await prisma.assignmentSubmission.create({
+        data: {
+          assignmentId: a.id, studentId: ahmadStudentRecord.id,
+          submittedAt: weeksAgo(Math.max(0, Math.ceil(((Date.now() - (a.dueDate?.getTime() ?? 0)) / 86400000) / 7) - 1)),
+          isLate, score: g, status: 'graded',
+          feedback: g >= 80 ? 'Good work! Keep it up.' : g >= 65 ? 'Needs improvement in a few areas — see comments.' : 'Please review this topic and see me for support.',
+        },
+      })
+    }
+    console.log(`  Created ${hwToCreate.length} assignments + ${pastHwAsgns.length} submissions`)
   }
 
   // ─── Notifications ─────────────────────────────────────────────────────────
@@ -1252,6 +1400,24 @@ async function main() {
     })
   }
 
+  // Additional fee invoices for Ahmad — unpaid current + overdue previous
+  await prisma.feeInvoice.createMany({
+    data: [
+      {
+        studentId: adam.id, invoiceNumber: 'INV-2026-S1-ACT', semester: '2026-S1', amount: 50,
+        status: 'unpaid', dueDate: (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d })(),
+        description: 'Year 7 Activity & Co-curricular Fee — Term 2 2026',
+        lineItems: JSON.stringify([{ code: 'ACTIVITY', name: 'Activity Fee', amount: 50 }]),
+      },
+      {
+        studentId: adam.id, invoiceNumber: 'INV-2026-S1-TUI', semester: '2026-S1', amount: 350,
+        status: 'paid', dueDate: daysAgo(90), paidAt: daysAgo(85),
+        description: 'Year 7 Tuition & Library Fee — Semester 1 Term 1 2026',
+        lineItems: JSON.stringify([{ code: 'TUITION', name: 'Tuition Fee', amount: 300 }, { code: 'LIBRARY', name: 'Library Fee', amount: 50 }]),
+      },
+    ],
+  })
+
   // ─── Class Rosters ────────────────────────────────────────────────────────
 
   const PROGRAMMES = { A: 'Academic', B: 'Academic', C: 'Academic', D: 'Academic', E: 'Academic',
@@ -1302,17 +1468,35 @@ async function main() {
     },
   })
 
-  // ─── Aminah Expiring Certification ────────────────────────────────────────
+  // ─── Aminah Certifications ────────────────────────────────────────────────
 
-  await prisma.certification.create({
-    data: {
-      teacherId: teacher01.id,
-      name: 'First Aid & CPR Certificate',
-      issuedBy: 'Red Crescent Society of Brunei',
-      issuedDate: new Date('2023-06-01'),
-      expiryDate: new Date(Date.now() + 45 * 24 * 3600 * 1000),  // expires in 45 days
-      status: 'active',
-    },
+  await prisma.certification.createMany({
+    data: [
+      {
+        teacherId: teacher01.id,
+        name: 'Teaching License — Mathematics (Secondary)',
+        issuedBy: 'Ministry of Education Brunei',
+        issuedDate: new Date('2014-01-10'),
+        expiryDate: new Date('2029-01-10'),
+        status: 'active',
+      },
+      {
+        teacherId: teacher01.id,
+        name: 'Cambridge International Certificate in Teaching and Learning',
+        issuedBy: 'Cambridge Assessment International Education',
+        issuedDate: new Date('2020-09-15'),
+        expiryDate: new Date('2025-09-15'),  // already expired — triggers the warning badge
+        status: 'active',
+      },
+      {
+        teacherId: teacher01.id,
+        name: 'First Aid & CPR Certificate',
+        issuedBy: 'Red Crescent Society of Brunei',
+        issuedDate: new Date('2023-06-01'),
+        expiryDate: new Date(Date.now() + 45 * 24 * 3600 * 1000),  // expires in ~45 days
+        status: 'active',
+      },
+    ],
   })
 
   // ─── Hafiz Probation marker ────────────────────────────────────────────────
@@ -1827,6 +2011,44 @@ async function main() {
       { title: 'Year 12 Graduation Ceremony',   date: new Date('2026-08-16'), type: 'event', description: 'Annual graduation ceremony for Year 12 leavers and parents' },
       { title: 'A-Level Results Day',           date: new Date('2026-08-20'), type: 'event', description: 'Year 12 A-Level examination results released' },
       { title: 'O-Level Results Day',           date: new Date('2026-08-25'), type: 'event', description: 'Year 11 O-Level national examination results released' },
+    ],
+  })
+
+  // ── Full-year academic calendar ───────────────────────────────────────────
+
+  await prisma.schoolEvent.createMany({
+    data: [
+      // ─ Term 1 (Jan–Mar 2026) ─
+      { title: 'First Day of School — Term 1',      date: new Date('2026-01-05'), type: 'event',    description: 'Term 1 begins. Year 7 welcome assembly at 7:30 AM, all other years normal schedule.' },
+      { title: 'Chinese New Year',                  date: new Date('2026-01-29'), endDate: new Date('2026-01-30'), type: 'holiday', description: 'Public holiday — school closed.' },
+      { title: 'Year 7 Orientation Week',           date: new Date('2026-02-09'), endDate: new Date('2026-02-13'), type: 'activity', description: 'New Year 7 students join their form classes and complete orientation activities.' },
+      { title: 'National Day',                      date: new Date('2026-02-23'), type: 'holiday',  description: 'Brunei National Day — public holiday. School closed.' },
+      { title: 'Year 11 & 12 Trial Examinations',   date: new Date('2026-02-26'), endDate: new Date('2026-03-06'), type: 'exam', description: 'Internal trial exams for O-Level and A-Level candidates. Normal timetable suspended for affected classes.' },
+      { title: 'Teacher Professional Development',  date: new Date('2026-03-11'), type: 'activity', description: 'Whole-school CPD day. Students do not attend. Teachers report at 8:00 AM for workshops.' },
+      { title: 'End of Term 1',                     date: new Date('2026-03-20'), type: 'event',    description: 'Last day of Term 1. Half-day — school dismisses at 12:00 noon.' },
+      // ─ Term break (Mar–Apr 2026) ─
+      { title: 'Hari Raya Puasa (Eid al-Fitr)',     date: new Date('2026-03-31'), endDate: new Date('2026-04-01'), type: 'holiday', description: 'Public holiday — school closed.' },
+      { title: 'Term 1 School Holiday',             date: new Date('2026-03-21'), endDate: new Date('2026-04-05'), type: 'holiday', description: 'Term 1 school holiday break.' },
+      // ─ Term 2 (Apr–Jun 2026) ─
+      { title: 'Term 2 Begins',                     date: new Date('2026-04-06'), type: 'event',    description: 'Students return to school for Term 2.' },
+      { title: 'Year 11 & 12 Internal Assessment',  date: new Date('2026-04-20'), endDate: new Date('2026-04-24'), type: 'exam', description: 'Internal coursework assessments and oral examinations for Year 11 and Year 12.' },
+      { title: 'Labour Day',                        date: new Date('2026-05-01'), type: 'holiday',  description: 'Public holiday — school closed.' },
+      { title: 'Annual School Assembly',            date: new Date('2026-05-11'), type: 'activity', description: 'Full school assembly. Prize presentations, head boy and head girl announcement.' },
+      { title: 'Royal Brunei Armed Forces Day',     date: new Date('2026-05-31'), type: 'holiday',  description: 'Public holiday — school closed.' },
+      { title: 'End of Term 2',                     date: new Date('2026-06-19'), type: 'event',    description: 'Last day of Term 2.' },
+      // ─ Term 3 (Aug–Oct 2026) ─
+      { title: 'Term 3 Begins',                     date: new Date('2026-08-03'), type: 'event',    description: 'Students return to school for Term 3.' },
+      { title: 'Year 7–10 Semester Assessment',     date: new Date('2026-09-07'), endDate: new Date('2026-09-18'), type: 'exam', description: 'End-of-semester assessments for Year 7, 8, 9, and 10. Some afternoon periods repurposed for written exams.' },
+      { title: 'School Foundation Day',             date: new Date('2026-09-16'), type: 'activity', description: 'Celebrating the school\'s founding anniversary. Cultural performances and alumni display.' },
+      { title: 'Prophet Muhammad\'s Birthday',      date: new Date('2026-09-04'), type: 'holiday',  description: 'Public holiday — school closed.' },
+      { title: 'Inter-School Debate Competition',   date: new Date('2026-09-26'), type: 'activity', description: 'SMHK hosts the annual inter-school debate. Students from 12 schools competing.' },
+      { title: 'Cultural Day',                      date: new Date('2026-10-01'), type: 'activity', description: 'Annual Cultural Day celebration. Students perform traditional dances, music, and display handicrafts.' },
+      { title: 'Teacher CPD Days',                  date: new Date('2026-10-05'), endDate: new Date('2026-10-07'), type: 'activity', description: 'Three-day school-wide professional development. Students do not attend school.' },
+      { title: 'Prize-Giving Ceremony',             date: new Date('2026-10-15'), type: 'event',    description: 'Annual prize-giving for academic excellence and co-curricular achievement. Parents invited.' },
+      { title: 'Last Day of School — Term 3',       date: new Date('2026-10-23'), type: 'event',    description: 'Last day of the academic year 2026. Half-day — dismissal at 12:00 noon.' },
+      // ─ Year-end holiday (Oct–Dec 2026) ─
+      { title: 'Year-End School Holiday',           date: new Date('2026-10-24'), endDate: new Date('2026-12-31'), type: 'holiday', description: 'Year-end school holiday. School reopens in January 2027.' },
+      { title: 'Christmas Day',                     date: new Date('2026-12-25'), type: 'holiday',  description: 'Public holiday.' },
     ],
   })
 
@@ -2590,8 +2812,9 @@ async function main() {
   // ─── Module 8: Parent-Teacher Communication — Consent Forms ──────────────
   console.log('Seeding Module 8 consent forms...')
 
-  // Get admin user and a school for seeding
-  const adminForComms = await prisma.user.findFirst({ where: { role: 'admin' }, select: { id: true, schoolId: true } })
+  // Get school admin (not sysadmin — needs a schoolId to target the right students)
+  const adminForComms = await prisma.user.findFirst({ where: { role: 'admin', schoolId: { not: null } }, select: { id: true, schoolId: true } })
+    ?? await prisma.user.findFirst({ where: { role: 'admin' }, select: { id: true, schoolId: true } })
   if (adminForComms) {
     // Delete old consent forms
     await prisma.consentFormRecipient.deleteMany({})
@@ -3125,6 +3348,17 @@ async function main() {
   await prisma.directMessage.create({ data: { threadId: thread3.id, senderId: zuraidahUser.id, content: 'Dear Mrs. Fatimah, following our meeting, I recommend: 1) "To Kill a Mockingbird", 2) "Animal Farm", 3) "The Kite Runner". These will prepare Nurul well for Year 8 Literature.', createdAt: daysAgo(20), readAt: daysAgo(20) } })
   await prisma.directMessage.create({ data: { threadId: thread3.id, senderId: fatimahUser.id, content: 'Thank you Ms. Zuraidah! We will borrow them from the library. Nurul is very excited to start reading.', createdAt: daysAgo(19), readAt: daysAgo(19) } })
 
+  // Additional threads for parent01 (Ahmad's father)
+  const thread4 = await prisma.messageThread.create({ data: { subject: "Ahmad's upcoming exams — revision support", parentUserId: parent01User.id, teacherUserId: teacher01User.id, studentId: ahmad.id } })
+  await prisma.directMessage.create({ data: { threadId: thread4.id, senderId: parent01User.id, content: "Assalamualaikum Ms. Aminah. The mock exams are next week. Ahmad is feeling anxious. What topics should we focus on at home?", createdAt: daysAgo(5), readAt: daysAgo(5) } })
+  await prisma.directMessage.create({ data: { threadId: thread4.id, senderId: teacher01User.id, content: "Wa'alaikumsalam. Focus on Chapter 3 for English and the algebra revision sheet from last Friday. Ahmad is well-prepared — he just needs confidence. I am available Thursday after school if you would like to speak.", createdAt: daysAgo(4), readAt: daysAgo(4) } })
+  await prisma.directMessage.create({ data: { threadId: thread4.id, senderId: parent01User.id, content: "Thank you Ms. Aminah. We will revise those tonight. Really appreciate your continued support.", createdAt: daysAgo(3), readAt: daysAgo(3) } })
+
+  const thread5 = await prisma.messageThread.create({ data: { subject: 'Attendance concern — 2 unexplained absences', parentUserId: parent01User.id, teacherUserId: teacher01User.id, studentId: ahmad.id } })
+  await prisma.directMessage.create({ data: { threadId: thread5.id, senderId: teacher01User.id, content: "Dear Hj Abdullah, I am writing regarding Ahmad's two unexplained absences on 28 and 29 May. Please submit a written note or medical certificate to the school office to regularise these absences. Thank you.", createdAt: daysAgo(8), readAt: daysAgo(7) } })
+  await prisma.directMessage.create({ data: { threadId: thread5.id, senderId: parent01User.id, content: "Apologise for the delay, Ms. Aminah. Ahmad was ill with a fever. I will bring the medical certificate tomorrow.", createdAt: daysAgo(7), readAt: daysAgo(7) } })
+  await prisma.directMessage.create({ data: { threadId: thread5.id, senderId: teacher01User.id, content: "Thank you. Please submit the certificate to the office so Ahmad's attendance record can be updated. I hope he is fully recovered now.", createdAt: daysAgo(6), readAt: daysAgo(6) } })
+
   console.log('  ✓ Meetings, messages — done')
 
   // ── 11. Announcements ─────────────────────────────────────────────────────
@@ -3157,7 +3391,9 @@ async function main() {
       { teacherId: hassan.id,   schoolName: 'Sekolah Menengah Belait',                        position: 'Teacher',        department: 'Science',               startDate: new Date('2016-01-01'), endDate: new Date('2018-12-31'), isCurrent: false },
       { teacherId: hassan.id,   schoolName: 'Sekolah Menengah Hj Kamaruddin (SMHK)',          position: 'Teacher',        department: 'Science & Mathematics', startDate: new Date('2019-03-01'), isCurrent: true },
       { teacherId: ridwan.id,   schoolName: 'Sekolah Menengah Hj Kamaruddin (SMHK)',          position: 'Teacher',        department: 'Science & Mathematics', startDate: new Date('2022-01-10'), isCurrent: true },
-      { teacherId: teacher01.id, schoolName: 'Sekolah Menengah Hj Kamaruddin (SMHK)',         position: 'Teacher',        department: 'Science & Mathematics', startDate: new Date('2018-08-01'), isCurrent: true },
+      { teacherId: teacher01.id, schoolName: 'Sekolah Rendah Berakas B',                      position: 'Relief Teacher',  department: 'Mathematics',           startDate: new Date('2014-01-15'), endDate: new Date('2015-07-31'), isCurrent: false, notes: 'Short-term relief posting while awaiting permanent placement.' },
+      { teacherId: teacher01.id, schoolName: 'Sekolah Menengah Rimba A',                       position: 'Teacher',         department: 'Mathematics',           startDate: new Date('2015-08-01'), endDate: new Date('2018-07-31'), isCurrent: false, notes: 'Permanent placement. Initiated the school\'s first Math Olympiad preparation programme.' },
+      { teacherId: teacher01.id, schoolName: 'Sekolah Menengah Hj Kamaruddin (SMHK)',          position: 'Teacher',         department: 'Science & Mathematics', startDate: new Date('2018-08-01'), isCurrent: true },
     ],
   })
 
@@ -3529,7 +3765,7 @@ async function main() {
       })
     }
 
-    await prisma.schoolInspection.create({
+    const inspection = await prisma.schoolInspection.create({
       data: {
         schoolId: school.id,
         inspectionDate: ps.inspection.inspectionDate,
@@ -3540,9 +3776,55 @@ async function main() {
         followUpDueDate: ('followUpDueDate' in ps.inspection ? ps.inspection.followUpDueDate : null) ?? null,
         resolved: ps.inspection.resolved,
         resolvedAt: ps.inspection.resolved ? ps.inspection.inspectionDate : null,
+        resolutionStatus: ps.inspection.resolved ? 'RESOLVED' : 'OPEN',
+        resolutionNotes: ps.inspection.resolved
+          ? 'Inspection verified. All compliance requirements confirmed met. No deficiencies noted on follow-up review.'
+          : null,
         notes: ps.inspection.notes,
       },
     })
+
+    // Seed action items and evidence per school
+    if (ps.code === 'SPB') {
+      // Resolved school — add evidence docs showing what was uploaded for resolution
+      await prisma.inspectionEvidenceDocument.createMany({
+        data: [
+          { inspectionId: inspection.id, fileName: 'DPE-Inspection-Report-SPB-2026-02.pdf', filePath: `/evidence/inspections/${inspection.id}/DPE-Inspection-Report-SPB-2026-02.pdf`, fileType: 'PDF', description: 'Signed DPE inspection report confirming EXCELLENT rating', uploadedByUserId: dpeOfficer.id },
+          { inspectionId: inspection.id, fileName: 'Principal-Attestation-SPB-Feb2026.pdf', filePath: `/evidence/inspections/${inspection.id}/Principal-Attestation-SPB-Feb2026.pdf`, fileType: 'PDF', description: 'Principal attestation letter confirming teacher CPD records', uploadedByUserId: dpeOfficer.id },
+        ],
+      })
+    }
+
+    if (ps.code === 'PPAH') {
+      // Open inspection, overdue — action items in progress
+      await prisma.inspectionActionItem.createMany({
+        data: [
+          { inspectionId: inspection.id, findingCategory: 'Staffing', title: 'Submit MOE approval forms for 2 unapproved teachers', description: 'Complete and submit Form DPE-TA-02 for each unapproved teacher to MOE Teacher Approval Unit.', assignedTo: 'Yayasan Al-Hidayah Administration', dueDate: (() => { const d = new Date(); d.setDate(d.getDate() - 5); return d })(), status: 'IN_PROGRESS', createdByUserId: dpeOfficer.id },
+          { inspectionId: inspection.id, findingCategory: 'Facilities', title: 'Complete and submit library acquisition log Q4 2025', description: 'Retrieve purchase records and update the library acquisition register for Oct–Dec 2025, then submit to DPE.', assignedTo: 'School Admin Office', dueDate: (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d })(), status: 'OPEN', createdByUserId: dpeOfficer.id },
+        ],
+      })
+    }
+
+    if (ps.code === 'ILA') {
+      // Open inspection, 25 days remaining — action items assigned
+      await prisma.inspectionActionItem.createMany({
+        data: [
+          { inspectionId: inspection.id, findingCategory: 'Health & Safety', title: 'Conduct fire evacuation drill and submit records', description: 'Schedule and conduct a full fire evacuation drill for Term 2. Submit signed drill record form to DPE within 30 days of inspection.', assignedTo: 'Health & Safety Coordinator', dueDate: (() => { const d = new Date(); d.setDate(d.getDate() + 20); return d })(), status: 'OPEN', createdByUserId: dpeOfficer.id },
+          { inspectionId: inspection.id, findingCategory: 'Curriculum', title: 'Adjust Bahasa Melayu timetable for non-IGCSE students', description: 'Revise the timetable for non-IGCSE students to meet minimum BM instructional hours per MOE Curriculum Circular 2024/01.', assignedTo: 'Deputy Principal (Academic)', dueDate: (() => { const d = new Date(); d.setDate(d.getDate() + 25); return d })(), status: 'OPEN', createdByUserId: dpeOfficer.id },
+        ],
+      })
+    }
+
+    if (ps.code === 'TCA') {
+      // Open inspection, suspended school — multiple critical action items
+      await prisma.inspectionActionItem.createMany({
+        data: [
+          { inspectionId: inspection.id, findingCategory: 'Staffing', title: 'Cease classroom deployment of 4 unqualified teaching staff', description: 'Issue written notice to stop classroom assignment for the 4 identified staff until MOE qualifications are regularised or substitutes are appointed.', assignedTo: 'Principal En. Hairul Bin Tarmizi', dueDate: (() => { const d = new Date(); d.setDate(d.getDate() - 15); return d })(), status: 'IN_PROGRESS', createdByUserId: dpeOfficer.id },
+          { inspectionId: inspection.id, findingCategory: 'Compliance', title: 'Submit audited financial statements for 2024/25', description: 'Engage an approved independent auditor and submit audited income statement and balance sheet for academic year 2024/25 to DPE.', assignedTo: 'Anggerek Education Centre Finance Department', dueDate: (() => { const d = new Date(); d.setDate(d.getDate() - 10); return d })(), status: 'OPEN', createdByUserId: dpeOfficer.id },
+          { inspectionId: inspection.id, findingCategory: 'Health & Safety', title: 'Recertify all fire safety equipment', description: 'Engage an approved fire safety service provider to inspect and recertify all fire extinguishers, alarms, and emergency systems. Submit new certificate to DPE.', assignedTo: 'Building Management / Facilities', dueDate: (() => { const d = new Date(); d.setDate(d.getDate() - 18); return d })(), status: 'OPEN', createdByUserId: dpeOfficer.id },
+        ],
+      })
+    }
 
     // Audit trail for the seeded license issuance
     await prisma.auditEvent.create({

@@ -8,6 +8,7 @@ import { Bell, Plus, Pin, Trash2 } from 'lucide-react'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import api from '@/lib/api'
+import { useSchoolConfig } from '@/hooks/useSchoolConfig'
 
 const { Title, Text } = Typography
 
@@ -25,10 +26,10 @@ interface Announcement {
 }
 
 const PRIORITY_COLOR: Record<string, string> = { normal: 'default', high: 'orange', urgent: 'red' }
-const GRADE_LEVELS = ['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'Year 12']
 
 const AnnouncementsAdminPage = () => {
   const queryClient = useQueryClient()
+  const { gradeLevels } = useSchoolConfig()
   const [createOpen, setCreateOpen] = useState(false)
   const [editItem, setEditItem] = useState<Announcement | null>(null)
   const [form] = Form.useForm()
@@ -181,7 +182,7 @@ const AnnouncementsAdminPage = () => {
             <Select
               allowClear
               placeholder="All grades"
-              options={GRADE_LEVELS.map((g) => ({ value: g, label: g }))}
+              options={gradeLevels.map((g) => ({ value: g, label: g }))}
             />
           </Form.Item>
         </Col>

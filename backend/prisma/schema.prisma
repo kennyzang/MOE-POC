@@ -245,12 +245,46 @@ model SchoolInspection {
   followUpDueDate   DateTime?
   resolved          Boolean  @default(false)
   resolvedAt        DateTime?
+  resolutionStatus  String   @default("OPEN")  // OPEN | UNDER_REMEDIATION | RESOLVED
+  resolutionNotes   String?                    // mandatory summary required before resolving
   reportPath        String?                   // PDF inspection report
   notes             String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   school            School   @relation(fields: [schoolId], references: [id])
+  actionItems       InspectionActionItem[]
+  evidenceDocs      InspectionEvidenceDocument[]
+}
+
+model InspectionActionItem {
+  id              String    @id @default(uuid())
+  inspectionId    String
+  findingCategory String?                      // which finding this addresses
+  title           String
+  description     String?
+  assignedTo      String?                      // party/person responsible
+  dueDate         DateTime?
+  status          String    @default("OPEN")   // OPEN | IN_PROGRESS | DONE
+  createdByUserId String
+  closedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  inspection      SchoolInspection @relation(fields: [inspectionId], references: [id])
+}
+
+model InspectionEvidenceDocument {
+  id               String   @id @default(uuid())
+  inspectionId     String
+  fileName         String
+  filePath         String
+  fileType         String?                     // e.g. PDF, JPG, DOCX
+  description      String?
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  inspection       SchoolInspection @relation(fields: [inspectionId], references: [id])
 }
 
 model ComplianceCircular {
@@ -425,6 +459,7 @@ model PerformanceEvaluation {
   overallScore      Float?    // (teaching+professional+conduct)/3
   rating            String?   // Excellent | Good | Satisfactory | NeedsImprovement
   comments          String?
+  selfAssessment    String?   // teacher's own reflection before HOD submits
   status            String    @default("draft") // draft | submitted | approved | rejected
   reviewerId        String?   // Principal User.id
   reviewerComments  String?
@@ -619,14 +654,16 @@ model PushSubscription {
 // ─── School Calendar ─────────────────────────────────────────────
 
 model SchoolEvent {
-  id          String   @id @default(uuid())
-  title       String
-  date        DateTime
-  endDate     DateTime?
-  type        String   @default("event") // holiday, exam, activity, event
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  title           String
+  date            DateTime
+  endDate         DateTime?
+  type            String   @default("event") // holiday, exam, activity, event, personal
+  description     String?
+  isPersonal      Boolean  @default(false)
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // ─── Risk Scores (AI layer) ──────────────────────────────────────
@@ -653,12 +690,45 @@ model CounselorCase {
   openedReason    String   // AUTO_RISK_THRESHOLD, AUTO_ABSENCE_THRESHOLD, TEACHER_REFERRAL, PARENT_REQUEST
   status          String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
   notes           String?
+  resolutionNotes String?  // mandatory summary required before RESOLVED/CLOSED
   openedAt        DateTime @default(now())
   resolvedAt      DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   student         Student  @relation(fields: [studentId], references: [id])
+  actionItems     CounselorCaseActionItem[]
+  evidenceDocs    CounselorCaseEvidence[]
+}
+
+model CounselorCaseActionItem {
+  id              String    @id @default(uuid())
+  caseId          String
+  category        String?                      // e.g. Attendance, Behaviour, Academic
+  title           String
+  description     String?
+  assignedTo      String?                      // person/party responsible
+  dueDate         DateTime?
+  status          String    @default("OPEN")   // OPEN | IN_PROGRESS | DONE
+  createdByUserId String
+  closedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  case            CounselorCase @relation(fields: [caseId], references: [id])
+}
+
+model CounselorCaseEvidence {
+  id               String   @id @default(uuid())
+  caseId           String
+  fileName         String
+  filePath         String
+  fileType         String?
+  description      String?
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  case             CounselorCase @relation(fields: [caseId], references: [id])
 }
 
 // ─── Leave Applications (EMS) ────────────────────────────────────
@@ -799,6 +869,7 @@ model CpdWorkshop {
   endDate      DateTime
   location     String?
   maxParticipants Int    @default(30)
+  category     String    @default("General") // Pedagogy | Subject Knowledge | Educational Technology | Leadership | Special Education | General
   status       String    @default("open") // open, full, completed, cancelled
   createdAt    DateTime  @default(now())
 

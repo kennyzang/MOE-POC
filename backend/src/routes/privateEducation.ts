@@ -186,7 +186,13 @@ router.get('/schools/:id', authenticate, requireRole(...DPE_ROLES), async (req: 
       include: {
         privEdProfile: true,
         licenses: { orderBy: { expiryDate: 'desc' }, include: { renewals: { orderBy: { renewedAt: 'desc' } } } },
-        inspections: { orderBy: { inspectionDate: 'desc' } },
+        inspections: {
+          orderBy: { inspectionDate: 'desc' },
+          include: {
+            actionItems: { orderBy: { createdAt: 'asc' } },
+            evidenceDocs: { orderBy: { createdAt: 'asc' } },
+          },
+        },
         circularTargets: {
           include: { circular: true },
           orderBy: { circular: { effectiveDate: 'desc' } },
@@ -396,14 +402,139 @@ router.post('/inspections', authenticate, requireRole(...DPE_ROLES), async (req:
   }
 })
 
+// Action Items CRUD
+router.post('/inspections/:id/action-items', authenticate, requireRole(...DPE_ROLES), async (req: AuthRequest, res: Response) => {
+  try {
+    const inspectionId = req.params['id'] as string
+    const { title, description, assignedTo, dueDate, findingCategory } = req.body
+    if (!title || !title.trim()) {
+      res.status(400).json({ success: false, message: 'title is required' })
+      return
+    }
+    const item = await prisma.inspectionActionItem.create({
+      data: {
+        inspectionId,
+        title: title.trim(),
+        description: description?.trim() ?? null,
+        assignedTo: assignedTo?.trim() ?? null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        findingCategory: findingCategory?.trim() ?? null,
+        createdByUserId: req.user!.userId,
+      },
+    })
+    res.status(201).json({ success: true, data: item })
+  } catch (err) {
+    console.error('POST /private-ed/inspections/:id/action-items error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+router.patch('/inspections/:id/action-items/:itemId', authenticate, requireRole(...DPE_ROLES), async (req: AuthRequest, res: Response) => {
+  try {
+    const { itemId } = req.params as { itemId: string }
+    const { status, title, description, assignedTo, dueDate, findingCategory } = req.body
+    const item = await prisma.inspectionActionItem.update({
+      where: { id: itemId },
+      data: {
+        ...(status !== undefined && {
+          status,
+          closedAt: status === 'DONE' ? new Date() : null,
+        }),
+        ...(title !== undefined && { title: title.trim() }),
+        ...(description !== undefined && { description: description?.trim() ?? null }),
+        ...(assignedTo !== undefined && { assignedTo: assignedTo?.trim() ?? null }),
+        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(findingCategory !== undefined && { findingCategory: findingCategory?.trim() ?? null }),
+      },
+    })
+    res.json({ success: true, data: item })
+  } catch (err) {
+    console.error('PATCH /private-ed/inspections/:id/action-items/:itemId error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+router.delete('/inspections/:id/action-items/:itemId', authenticate, requireRole(...DPE_ROLES), async (req: AuthRequest, res: Response) => {
+  try {
+    const { itemId } = req.params as { itemId: string }
+    await prisma.inspectionActionItem.delete({ where: { id: itemId } })
+    res.json({ success: true })
+  } catch (err) {
+    console.error('DELETE /private-ed/inspections/:id/action-items/:itemId error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// Evidence Documents CRUD
+router.post('/inspections/:id/evidence', authenticate, requireRole(...DPE_ROLES), async (req: AuthRequest, res: Response) => {
+  try {
+    const inspectionId = req.params['id'] as string
+    const { fileName, fileType, description } = req.body
+    if (!fileName || !fileName.trim()) {
+      res.status(400).json({ success: false, message: 'fileName is required' })
+      return
+    }
+    const doc = await prisma.inspectionEvidenceDocument.create({
+      data: {
+        inspectionId,
+        fileName: fileName.trim(),
+        filePath: `/evidence/inspections/${inspectionId}/${fileName.trim()}`,
+        fileType: fileType?.trim() ?? null,
+        description: description?.trim() ?? null,
+        uploadedByUserId: req.user!.userId,
+      },
+    })
+    res.status(201).json({ success: true, data: doc })
+  } catch (err) {
+    console.error('POST /private-ed/inspections/:id/evidence error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+router.delete('/inspections/:id/evidence/:docId', authenticate, requireRole(...DPE_ROLES), async (req: AuthRequest, res: Response) => {
+  try {
+    const { docId } = req.params as { docId: string }
+    await prisma.inspectionEvidenceDocument.delete({ where: { id: docId } })
+    res.json({ success: true })
+  } catch (err) {
+    console.error('DELETE /private-ed/inspections/:id/evidence/:docId error:', err)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// Resolve — enforces: resolutionNotes required, ≥1 evidence doc, all action items DONE
 router.post('/inspections/:id/resolve', authenticate, requireRole(...DPE_ROLES), async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params['id'] as string
     const { resolutionNotes } = req.body
 
+    if (!resolutionNotes || !resolutionNotes.trim()) {
+      res.status(400).json({ success: false, message: 'Resolution summary notes are required.' })
+      return
+    }
+
+    const evidenceCount = await prisma.inspectionEvidenceDocument.count({ where: { inspectionId: id } })
+    if (evidenceCount === 0) {
+      res.status(400).json({ success: false, message: 'At least one supporting evidence document must be recorded before resolving.' })
+      return
+    }
+
+    const openItems = await prisma.inspectionActionItem.count({
+      where: { inspectionId: id, status: { not: 'DONE' } },
+    })
+    if (openItems > 0) {
+      res.status(400).json({ success: false, message: `${openItems} action item(s) are still open or in progress. All must be completed before resolving.` })
+      return
+    }
+
     const updated = await prisma.schoolInspection.update({
       where: { id },
-      data: { resolved: true, resolvedAt: new Date(), notes: resolutionNotes ?? null },
+      data: {
+        resolved: true,
+        resolvedAt: new Date(),
+        resolutionStatus: 'RESOLVED',
+        resolutionNotes: resolutionNotes.trim(),
+      },
     })
 
     await writeAudit({
@@ -411,7 +542,7 @@ router.post('/inspections/:id/resolve', authenticate, requireRole(...DPE_ROLES),
       action: 'PRIV_ED_INSPECTION_RESOLVED',
       entityType: 'SchoolInspection',
       entityId: id,
-      details: { resolutionNotes },
+      details: { resolutionNotes: resolutionNotes.trim(), evidenceCount },
     })
 
     res.json({ success: true, data: updated })

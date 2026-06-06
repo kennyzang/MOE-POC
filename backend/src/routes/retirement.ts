@@ -352,6 +352,48 @@ router.patch('/applications/:id', authenticate, async (req: AuthRequest, res: Re
   }
 })
 
+// ─── POST /notify-teacher/:teacherId ─────────────────────────────
+// Admin/manager: send targeted retirement reminder to a single teacher
+
+router.post('/notify-teacher/:teacherId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Insufficient permissions' }); return
+    }
+
+    const { teacherId } = req.params as { teacherId: string }
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: teacherId },
+      include: {
+        user: { select: USER_SELECT_BASIC },
+        retirementApplication: { select: { status: true } },
+      },
+    })
+    if (!teacher) { res.status(404).json({ success: false, message: 'Teacher not found' }); return }
+
+    const e = computeEligibility(teacher)
+    if (e.urgencyLevel === 'NONE') {
+      res.status(400).json({ success: false, message: 'Teacher is not approaching retirement within the alert window' }); return
+    }
+
+    const msg = e.urgencyLevel === 'OVERDUE'
+      ? 'You have passed your mandatory retirement date. Please submit a formal retirement application as soon as possible.'
+      : `Your retirement eligibility date is in ${e.daysUntilEligible} days. Please begin the retirement planning process.`
+
+    await send({
+      userId: teacher.user.id,
+      title: 'Retirement Planning Reminder',
+      message: msg,
+      type: e.urgencyLevel === 'OVERDUE' ? 'error' : 'warning',
+    })
+
+    res.json({ success: true, data: { notified: 1, teacherName: teacher.user.displayName } })
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
 // ─── POST /run-alerts ─────────────────────────────────────────────
 // Checks all teachers, sends upcoming-retirement notifications
 

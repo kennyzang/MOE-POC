@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import {
   Card, Row, Col, Typography, Space, Table, Tag, Button, Modal,
-  Form, Select, Input, Statistic, Badge, Alert, Spin, Tooltip,
+  Form, Select, Input, Statistic, Badge, Alert, Spin, Tooltip, message,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Users, AlertTriangle, Clock, CalendarClock, Bell, CheckCircle2, XCircle,
+  Users, AlertTriangle, Clock, CalendarClock, Bell, CheckCircle2, XCircle, Download,
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import api from '../../lib/api'
@@ -128,6 +128,31 @@ function ReviewModal({ app, onClose }: { app: Application | null; onClose: () =>
   )
 }
 
+// ─── CSV export helper ────────────────────────────────────────────
+
+function exportUpcomingCsv(teachers: EligibilityInfo[]) {
+  const header = ['Name', 'Staff ID', 'Department', 'Age', 'Service (yrs)', 'Eligible From', 'Days Until Eligible', 'Urgency', 'Application']
+  const rows = teachers.map(t => [
+    t.teacherName,
+    t.staffId,
+    t.department ?? '',
+    t.currentAge ?? '',
+    t.serviceYears ?? '',
+    t.eligibleRetirementDate ? dayjs(t.eligibleRetirementDate).format('YYYY-MM-DD') : '',
+    t.daysUntilEligible ?? '',
+    t.urgencyLevel,
+    t.hasApplication ? (t.applicationStatus ?? '') : 'None',
+  ])
+  const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `upcoming-retirements-${dayjs().format('YYYY-MM-DD')}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ─── Main ─────────────────────────────────────────────────────────
 
 export default function RetirementDashboard() {
@@ -164,6 +189,22 @@ export default function RetirementDashboard() {
       qc.invalidateQueries({ queryKey: ['retirementUpcoming'] })
     },
   })
+
+  const notifyTeacherMutation = useMutation({
+    mutationFn: async (teacherId: string) => {
+      const r = await api.post(`/retirement/notify-teacher/${teacherId}`, {})
+      return r.data
+    },
+    onSuccess: d => {
+      message.success(`Notification sent to ${d.data.teacherName}.`)
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message ?? 'Failed to send notification.')
+    },
+  })
+
+  // HOD department (for context label)
+  const hodDept = role === 'hod' ? upcoming?.teachers[0]?.department : undefined
 
   // Upcoming table columns
   const upcomingCols: ColumnsType<EligibilityInfo> = [
@@ -217,6 +258,29 @@ export default function RetirementDashboard() {
         ? <Tag color={appStatusColor[r.applicationStatus ?? ''] ?? 'default'}>{(r.applicationStatus ?? '').replace('_', ' ')}</Tag>
         : <Text type="secondary">—</Text>,
     },
+    ...(['admin', 'manager'].includes(role) ? [{
+      title: '',
+      key: 'notify',
+      width: 80,
+      render: (_: unknown, r: EligibilityInfo) => (
+        !r.hasApplication ? (
+          <Tooltip title={`Send retirement reminder to ${r.teacherName}`}>
+            <Button
+              size="small"
+              icon={<Bell size={12} />}
+              loading={notifyTeacherMutation.isPending}
+              onClick={() => Modal.confirm({
+                title: 'Send Reminder',
+                content: `Send a retirement notification to ${r.teacherName}?`,
+                onOk: () => notifyTeacherMutation.mutate(r.teacherId),
+              })}
+            >
+              Notify
+            </Button>
+          </Tooltip>
+        ) : null
+      ),
+    }] as ColumnsType<EligibilityInfo> : []),
   ]
 
   // Applications table columns
@@ -276,24 +340,36 @@ export default function RetirementDashboard() {
       {/* Header */}
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
-          <Space>
+          <Space align="center">
             <CalendarClock size={20} />
             <Title level={4} style={{ margin: 0 }}>{t('retirement.dashboard', 'Retirement Management')}</Title>
+            {role === 'hod' && hodDept && (
+              <Tag color="blue" style={{ fontSize: 12 }}>{hodDept} Dept</Tag>
+            )}
           </Space>
         </Col>
         {['admin', 'manager'].includes(role) && (
           <Col>
-            <Button
-              icon={<Bell size={14} />}
-              onClick={() => Modal.confirm({
-                title: t('retirement.runAlertsTitle', 'Send Retirement Notifications'),
-                content: t('retirement.runAlertsContent', 'This will notify all teachers with upcoming retirement dates who have not yet applied. Continue?'),
-                onOk: () => runAlertsMutation.mutate(),
-              })}
-              loading={runAlertsMutation.isPending}
-            >
-              {t('retirement.runAlerts', 'Send Alerts')}
-            </Button>
+            <Space>
+              <Button
+                icon={<Download size={14} />}
+                disabled={!upcoming?.teachers?.length}
+                onClick={() => exportUpcomingCsv(upcoming?.teachers ?? [])}
+              >
+                {t('retirement.exportCsv', 'Export CSV')}
+              </Button>
+              <Button
+                icon={<Bell size={14} />}
+                onClick={() => Modal.confirm({
+                  title: t('retirement.runAlertsTitle', 'Send Retirement Notifications'),
+                  content: t('retirement.runAlertsContent', 'This will notify all teachers with upcoming retirement dates who have not yet applied. Continue?'),
+                  onOk: () => runAlertsMutation.mutate(),
+                })}
+                loading={runAlertsMutation.isPending}
+              >
+                {t('retirement.runAlerts', 'Send All Alerts')}
+              </Button>
+            </Space>
           </Col>
         )}
       </Row>

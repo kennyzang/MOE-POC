@@ -50,6 +50,7 @@ const AttendanceTrackingPage = lazy(() => import('@/pages/sis/AttendanceTracking
 const TeacherDirectoryPage = lazy(() => import('@/pages/ems/TeacherDirectoryPage'))
 const TeacherDetailPage = lazy(() => import('@/pages/ems/TeacherDetailPage'))
 const CertificationsPage = lazy(() => import('@/pages/ems/CertificationsPage'))
+const MyProfilePage = lazy(() => import('@/pages/ems/MyProfilePage'))
 const TeachingWorkloadPage = lazy(() => import('@/pages/ems/TeachingWorkloadPage'))
 const PerformanceEvaluationPage = lazy(() => import('@/pages/ems/PerformanceEvaluationPage'))
 const LeaveManagementPage = lazy(() => import('@/pages/ems/LeaveManagementPage'))
@@ -240,6 +241,7 @@ export const router = createBrowserRouter([
       { path: 'ems/teachers', element: r(['admin', 'manager', 'principal', 'hod'], <TeacherDirectoryPage />) },
       { path: 'ems/teachers/:id', element: r(['admin', 'manager', 'hod', 'principal'], <TeacherDetailPage />) },
       { path: 'ems/certifications', element: r(['admin', 'manager', 'teacher'], <CertificationsPage />) },
+      { path: 'ems/my-profile', element: r(['teacher'], <MyProfilePage />) },
       { path: 'ems/workload', element: r(['admin', 'manager', 'teacher'], <TeachingWorkloadPage />) },
       { path: 'ems/performance-evaluations', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <PerformanceEvaluationPage />) },
       { path: 'ems/leave', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <LeaveManagementPage />) },

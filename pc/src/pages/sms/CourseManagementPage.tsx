@@ -24,18 +24,10 @@ import { BookOpen, Plus, Edit2, Trash2, Search, Eye } from 'lucide-react'
 import api from '../../lib/api'
 import type { Course } from '../../types'
 import { useAuthStore } from '../../stores/authStore'
+import { useSchoolConfig } from '../../hooks/useSchoolConfig'
 
 const { Title } = Typography
 const { TextArea } = Input
-
-const GRADE_LEVELS = [
-  'Year 7',
-  'Year 8',
-  'Year 9',
-  'Year 10',
-  'Year 11',
-  'Year 12',
-]
 
 const STATUS_TAG_COLORS: Record<string, string> = {
   active: 'green',
@@ -55,6 +47,7 @@ const CourseManagementPage = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
+  const { gradeLevels } = useSchoolConfig()
   const canManage = ['admin', 'manager'].includes(user?.role ?? '')
   const [form] = Form.useForm<CourseFormValues>()
 
@@ -276,7 +269,7 @@ const CourseManagementPage = () => {
               style={{ width: '100%' }}
               value={gradeLevel || undefined}
               onChange={(val) => setGradeLevel(val ?? '')}
-              options={GRADE_LEVELS.map((g) => ({ label: g, value: g }))}
+              options={gradeLevels.map((g) => ({ label: g, value: g }))}
             />
           </Col>
           <Col xs={24} sm={12} md={8}>
@@ -347,7 +340,7 @@ const CourseManagementPage = () => {
             <Select
               placeholder={t('courses.gradeLevelPlaceholder')}
               allowClear
-              options={GRADE_LEVELS.map((g) => ({ label: g, value: g }))}
+              options={gradeLevels.map((g) => ({ label: g, value: g }))}
             />
           </Form.Item>
 

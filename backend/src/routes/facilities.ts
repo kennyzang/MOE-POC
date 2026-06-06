@@ -8,7 +8,7 @@ const router = Router()
 router.get(
   '/',
   authenticate,
-  requireRole('admin', 'manager'),
+  requireRole('admin', 'manager', 'hod', 'principal', 'teacher'),
   async (req: AuthRequest, res: Response) => {
     try {
       const { type, status } = req.query

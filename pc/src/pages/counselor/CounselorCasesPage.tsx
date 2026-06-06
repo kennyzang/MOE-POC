@@ -5,13 +5,15 @@ import {
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { FolderOpen, AlertTriangle, MessageSquare, ExternalLink } from 'lucide-react'
+import { FolderOpen, AlertTriangle, MessageSquare, ExternalLink, ClipboardList } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import type { ColumnsType } from 'antd/es/table'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import ResolutionDrawer from '@/components/ResolutionDrawer'
+import type { ResolutionActionItem, ResolutionEvidenceDoc } from '@/components/ResolutionDrawer'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -32,8 +34,11 @@ interface CaseRow {
 interface CaseDetail extends CaseRow {
   attendanceRate: number
   gpa: number
+  resolutionNotes: string | null
   riskHistory: { score: number; band: string; gradeAvg: number | null; absences14d: number; computedAt: string }[]
   parents: { name: string; email: string | null }[]
+  actionItems: ResolutionActionItem[]
+  evidenceDocs: ResolutionEvidenceDoc[]
 }
 
 const RISK_COLORS: Record<string, string> = { HIGH_RISK: '#f5222d', MONITOR: '#fa8c16', ON_TRACK: '#52c41a' }
@@ -61,6 +66,9 @@ const RISK_FILTER_OPTIONS = [
   { value: 'LOW_RISK', label: 'Low Risk' },
 ]
 
+// Statuses that go through ResolutionDrawer gate (cannot be clicked directly)
+const GATED_STATUSES = new Set(['RESOLVED', 'CLOSED'])
+
 const CounselorCasesPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -70,6 +78,10 @@ const CounselorCasesPage = () => {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null)
   const [notesForm] = Form.useForm()
+
+  // Resolution drawer
+  const [resolutionCaseId, setResolutionCaseId] = useState<string | null>(null)
+  const [resolutionNotes, setResolutionNotes] = useState('')
 
   const { data: cases, isLoading } = useQuery({
     queryKey: ['counselor-cases', statusFilter, riskFilter],
@@ -91,17 +103,81 @@ const CounselorCasesPage = () => {
     enabled: !!selectedCaseId,
   })
 
+  // Active case for resolution drawer — use caseDetail if IDs match, otherwise find from cases list
+  const resolutionCase = resolutionCaseId === selectedCaseId ? caseDetail : null
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['counselor-cases'] })
+    void queryClient.invalidateQueries({ queryKey: ['counselor-case-detail', selectedCaseId] })
+    void queryClient.invalidateQueries({ queryKey: ['counselor-case-detail', resolutionCaseId] })
+    void queryClient.invalidateQueries({ queryKey: ['counselor-dashboard'] })
+  }
+
   const updateCase = useMutation({
     mutationFn: async ({ id, status, notes }: { id: string; status?: string; notes?: string }) => {
       const { data } = await api.patch(`/counselor/cases/${id}`, { status, notes })
       return data
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['counselor-cases'] })
-      void queryClient.invalidateQueries({ queryKey: ['counselor-case-detail', selectedCaseId] })
-      void queryClient.invalidateQueries({ queryKey: ['counselor-dashboard'] })
+      invalidate()
       message.success(t('counselor.caseUpdated', { defaultValue: 'Case updated successfully' }))
     },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(msg ?? 'Failed to update case')
+    },
+  })
+
+  const closeCaseMutation = useMutation({
+    mutationFn: async ({ id, targetStatus, notes }: { id: string; targetStatus: string; notes: string }) =>
+      (await api.patch(`/counselor/cases/${id}`, { status: targetStatus, resolutionNotes: notes })).data,
+    onSuccess: () => {
+      invalidate()
+      message.success('Case closed successfully')
+      setResolutionCaseId(null)
+      setResolutionNotes('')
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(msg ?? 'Failed to close case')
+    },
+  })
+
+  // Action item mutations
+  const createActionItemMutation = useMutation({
+    mutationFn: async (vals: Record<string, unknown>) =>
+      (await api.post(`/counselor/cases/${resolutionCaseId}/action-items`, vals)).data,
+    onSuccess: () => { message.success('Intervention added'); invalidate() },
+    onError: () => message.error('Failed to add intervention'),
+  })
+
+  const updateActionItemMutation = useMutation({
+    mutationFn: async ({ itemId, status }: { itemId: string; status: string }) =>
+      (await api.patch(`/counselor/cases/${resolutionCaseId}/action-items/${itemId}`, { status })).data,
+    onSuccess: () => invalidate(),
+    onError: () => message.error('Failed to update intervention'),
+  })
+
+  const deleteActionItemMutation = useMutation({
+    mutationFn: async (itemId: string) =>
+      (await api.delete(`/counselor/cases/${resolutionCaseId}/action-items/${itemId}`)).data,
+    onSuccess: () => { message.success('Intervention removed'); invalidate() },
+    onError: () => message.error('Failed to remove intervention'),
+  })
+
+  // Evidence mutations
+  const addEvidenceMutation = useMutation({
+    mutationFn: async (vals: Record<string, unknown>) =>
+      (await api.post(`/counselor/cases/${resolutionCaseId}/evidence`, vals)).data,
+    onSuccess: () => { message.success('Record added'); invalidate() },
+    onError: () => message.error('Failed to add record'),
+  })
+
+  const deleteEvidenceMutation = useMutation({
+    mutationFn: async (docId: string) =>
+      (await api.delete(`/counselor/cases/${resolutionCaseId}/evidence/${docId}`)).data,
+    onSuccess: () => { message.success('Record removed'); invalidate() },
+    onError: () => message.error('Failed to remove record'),
   })
 
   const handleSaveNotes = (values: { notes: string }) => {
@@ -111,6 +187,12 @@ const CounselorCasesPage = () => {
 
   const handleStatusChange = (status: string) => {
     if (!selectedCaseId) return
+    // Gated statuses go through ResolutionDrawer — open it instead
+    if (GATED_STATUSES.has(status)) {
+      setResolutionCaseId(selectedCaseId)
+      setResolutionNotes('')
+      return
+    }
     updateCase.mutate({ id: selectedCaseId, status })
   }
 
@@ -162,9 +244,20 @@ const CounselorCasesPage = () => {
       title: t('common.actions'),
       key: 'actions',
       render: (_: unknown, record: CaseRow) => (
-        <Button size="small" onClick={() => openDrawer(record.id)}>
-          {t('common.view')}
-        </Button>
+        <Space size={4}>
+          <Button size="small" onClick={() => openDrawer(record.id)}>
+            {t('common.view')}
+          </Button>
+          {!GATED_STATUSES.has(record.status) && record.status !== 'CLOSED' && (
+            <Button
+              size="small"
+              icon={<ClipboardList size={12} />}
+              onClick={() => { setResolutionCaseId(record.id); setResolutionNotes('') }}
+            >
+              Resolve
+            </Button>
+          )}
+        </Space>
       ),
     },
   ]
@@ -180,18 +273,8 @@ const CounselorCasesPage = () => {
               {t('counselor.caseManagement', { defaultValue: 'Case Management' })}
             </Title>
           </span>
-          <Select
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={STATUS_OPTIONS}
-            style={{ width: 160 }}
-          />
-          <Select
-            value={riskFilter}
-            onChange={setRiskFilter}
-            options={RISK_FILTER_OPTIONS}
-            style={{ width: 160 }}
-          />
+          <Select value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} style={{ width: 160 }} />
+          <Select value={riskFilter} onChange={setRiskFilter} options={RISK_FILTER_OPTIONS} style={{ width: 160 }} />
         </Space>
       </Card>
 
@@ -217,13 +300,25 @@ const CounselorCasesPage = () => {
         }
         extra={
           caseDetail ? (
-            <Button
-              size="small"
-              icon={<ExternalLink size={13} />}
-              onClick={() => navigate(`/sis/students/${caseDetail.studentId}`)}
-            >
-              {t('counselor.viewStudentProfile', { defaultValue: 'View Student' })}
-            </Button>
+            <Space>
+              {!GATED_STATUSES.has(caseDetail.status) && caseDetail.status !== 'CLOSED' && (
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<ClipboardList size={13} />}
+                  onClick={() => { setResolutionCaseId(selectedCaseId); setResolutionNotes('') }}
+                >
+                  Manage Resolution
+                </Button>
+              )}
+              <Button
+                size="small"
+                icon={<ExternalLink size={13} />}
+                onClick={() => navigate(`/sis/students/${caseDetail.studentId}`)}
+              >
+                {t('counselor.viewStudentProfile', { defaultValue: 'View Student' })}
+              </Button>
+            </Space>
           ) : null
         }
         open={drawerOpen}
@@ -232,9 +327,7 @@ const CounselorCasesPage = () => {
         destroyOnClose
       >
         {detailLoading ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <Spin />
-          </div>
+          <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
         ) : caseDetail ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Student Snapshot */}
@@ -310,21 +403,24 @@ const CounselorCasesPage = () => {
                   {new Date(caseDetail.resolvedAt).toLocaleDateString()}
                 </Descriptions.Item>
               )}
+              {caseDetail.resolutionNotes && (
+                <Descriptions.Item label="Resolution Summary">
+                  <Text style={{ fontSize: 12 }}>{caseDetail.resolutionNotes}</Text>
+                </Descriptions.Item>
+              )}
               {caseDetail.parents.length > 0 && (
                 <Descriptions.Item label={t('counselor.parentContact', { defaultValue: 'Parent Contact' })}>
                   {caseDetail.parents.map((p) => (
-                    <div key={p.name}>
-                      {p.name} {p.email ? `— ${p.email}` : ''}
-                    </div>
+                    <div key={p.name}>{p.name} {p.email ? `— ${p.email}` : ''}</div>
                   ))}
                 </Descriptions.Item>
               )}
             </Descriptions>
 
-            {/* Status Actions */}
+            {/* Status Actions — gated statuses redirect to ResolutionDrawer */}
             <Card size="small" title={t('counselor.updateStatus', { defaultValue: 'Update Status' })}>
               <Space wrap>
-                {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((s) => (
+                {['OPEN', 'IN_PROGRESS'].map((s) => (
                   <Button
                     key={s}
                     size="small"
@@ -336,46 +432,42 @@ const CounselorCasesPage = () => {
                     {s.replace('_', ' ')}
                   </Button>
                 ))}
+                {!GATED_STATUSES.has(caseDetail.status) && caseDetail.status !== 'CLOSED' && (
+                  <Button
+                    size="small"
+                    type="primary"
+                    icon={<ClipboardList size={12} />}
+                    onClick={() => { setResolutionCaseId(selectedCaseId); setResolutionNotes('') }}
+                  >
+                    Manage Resolution
+                  </Button>
+                )}
+                {(GATED_STATUSES.has(caseDetail.status) || caseDetail.status === 'CLOSED') && (
+                  <Tag color={STATUS_COLOR[caseDetail.status]}>{caseDetail.status.replace('_', ' ')}</Tag>
+                )}
               </Space>
+              {!GATED_STATUSES.has(caseDetail.status) && caseDetail.status !== 'CLOSED' && (
+                <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
+                  Resolving or closing a case requires documented interventions and evidence.
+                </div>
+              )}
             </Card>
 
             {/* Case Notes */}
             <Card
               size="small"
-              title={
-                <Space>
-                  <MessageSquare size={14} />
-                  {t('counselor.caseNotes', { defaultValue: 'Case Notes' })}
-                </Space>
-              }
+              title={<Space><MessageSquare size={14} />{t('counselor.caseNotes', { defaultValue: 'Case Notes' })}</Space>}
             >
               {caseDetail.notes && (
-                <Paragraph
-                  style={{
-                    background: '#f5f5f5',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    marginBottom: 12,
-                    fontSize: 13,
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
+                <Paragraph style={{ background: '#f5f5f5', padding: '8px 12px', borderRadius: 6, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>
                   {caseDetail.notes}
                 </Paragraph>
               )}
               <Form form={notesForm} onFinish={handleSaveNotes} initialValues={{ notes: caseDetail.notes ?? '' }}>
                 <Form.Item name="notes" style={{ marginBottom: 8 }}>
-                  <TextArea
-                    rows={3}
-                    placeholder={t('counselor.addNote', { defaultValue: 'Add or update case notes...' })}
-                  />
+                  <TextArea rows={3} placeholder={t('counselor.addNote', { defaultValue: 'Add or update case notes...' })} />
                 </Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  size="small"
-                  loading={updateCase.isPending}
-                >
+                <Button type="primary" htmlType="submit" size="small" loading={updateCase.isPending}>
                   {t('counselor.saveNotes', { defaultValue: 'Save Notes' })}
                 </Button>
               </Form>
@@ -383,6 +475,54 @@ const CounselorCasesPage = () => {
           </div>
         ) : null}
       </Drawer>
+
+      {/* ── Resolution Drawer (shared component) ──────────────────────────────── */}
+      <ResolutionDrawer
+        open={!!resolutionCaseId}
+        onClose={() => { setResolutionCaseId(null); setResolutionNotes('') }}
+        title={
+          <Space>
+            <ClipboardList size={16} />
+            {resolutionCase
+              ? (GATED_STATUSES.has(resolutionCase.status) || resolutionCase.status === 'CLOSED'
+                  ? 'Resolution Record'
+                  : 'Manage Case Resolution')
+              : 'Case Resolution'}
+            {resolutionCase && ` — ${resolutionCase.studentName}`}
+          </Space>
+        }
+        isResolved={
+          resolutionCase
+            ? GATED_STATUSES.has(resolutionCase.status) || resolutionCase.status === 'CLOSED'
+            : false
+        }
+        resolvedAt={resolutionCase?.resolvedAt}
+        resolvedNotes={resolutionCase?.resolutionNotes}
+        actionItems={resolutionCase?.actionItems ?? []}
+        evidenceDocs={resolutionCase?.evidenceDocs ?? []}
+        resolutionNotes={resolutionNotes}
+        onResolutionNotesChange={setResolutionNotes}
+        actionItemLabel="Intervention"
+        evidenceLabel="Session Record"
+        categoryOptions={['Attendance', 'Behaviour', 'Academic', 'Mental Health', 'Family', 'Peer Relations']}
+        onCreateActionItem={(vals) => createActionItemMutation.mutate(vals as Record<string, unknown>)}
+        onUpdateActionItemStatus={(itemId, status) => updateActionItemMutation.mutate({ itemId, status })}
+        onDeleteActionItem={(itemId) => deleteActionItemMutation.mutate(itemId)}
+        onCreateEvidence={(vals) => addEvidenceMutation.mutate(vals as Record<string, unknown>)}
+        onDeleteEvidence={(docId) => deleteEvidenceMutation.mutate(docId)}
+        onResolve={() => {
+          if (resolutionCaseId) {
+            closeCaseMutation.mutate({
+              id: resolutionCaseId,
+              targetStatus: 'RESOLVED',
+              notes: resolutionNotes,
+            })
+          }
+        }}
+        resolving={closeCaseMutation.isPending}
+        creatingActionItem={createActionItemMutation.isPending}
+        creatingEvidence={addEvidenceMutation.isPending}
+      />
     </div>
   )
 }

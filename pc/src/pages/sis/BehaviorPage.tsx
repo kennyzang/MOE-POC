@@ -8,6 +8,7 @@ import { Award, ShieldAlert, AlertTriangle, Plus } from 'lucide-react'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import api from '@/lib/api'
+import { useSchoolConfig } from '@/hooks/useSchoolConfig'
 
 const { Title, Text } = Typography
 
@@ -33,10 +34,9 @@ interface Summary {
   thisMonthCount: number
 }
 
-const GRADE_LEVELS = ['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'Year 12']
-
 const BehaviorPage = () => {
   const queryClient = useQueryClient()
+  const { gradeLevels } = useSchoolConfig()
   const [logOpen, setLogOpen] = useState(false)
   const [form] = Form.useForm()
   const [gradeFilter, setGradeFilter] = useState('')
@@ -193,7 +193,7 @@ const BehaviorPage = () => {
             allowClear
             value={gradeFilter || undefined}
             onChange={(v) => setGradeFilter(v ?? '')}
-            options={GRADE_LEVELS.map((g) => ({ value: g, label: g }))}
+            options={gradeLevels.map((g) => ({ value: g, label: g }))}
             style={{ width: 140 }}
           />
           <Select

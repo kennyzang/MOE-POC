@@ -36,12 +36,9 @@ import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import type { ColumnsType } from 'antd/es/table'
+import { useSchoolConfig } from '@/hooks/useSchoolConfig'
 
 const { Title, Text } = Typography
-
-const GRADE_LEVELS = [
-  'Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11',
-]
 
 interface StudentRisk {
   studentId: string
@@ -127,7 +124,8 @@ const StudentChart = ({ student }: { student: StudentRisk }) => {
 
 const AtRiskPage = () => {
   const { t } = useTranslation()
-  const [selectedGrade, setSelectedGrade] = useState<string>('Year 7')
+  const { gradeLevels } = useSchoolConfig()
+  const [selectedGrade, setSelectedGrade] = useState<string>(() => gradeLevels[0] ?? 'Year 7')
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
   const {
@@ -278,7 +276,7 @@ const AtRiskPage = () => {
             value={selectedGrade}
             onChange={setSelectedGrade}
             style={{ width: 140 }}
-            options={GRADE_LEVELS.map(g => ({ value: g, label: g }))}
+            options={gradeLevels.map(g => ({ value: g, label: g }))}
           />
           <Button
             icon={<RefreshCw size={14} />}

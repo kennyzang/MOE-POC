@@ -699,31 +699,34 @@ router.get('/cpd-workshops', authenticate, async (req: AuthRequest, res: Respons
       res.status(403).json({ success: false, message: 'Forbidden' }); return
     }
 
-    // If teacher: only show workshops in their subject area
+    // If teacher: find their record once for both subject filter and enrollment check
     let subjectFilter: string | undefined
+    let currentTeacherId: string | undefined
     if (role === 'teacher') {
       const teacher = await prisma.teacher.findUnique({ where: { userId } })
       subjectFilter = teacher?.subjects?.split(',')[0]?.trim() ?? undefined
+      currentTeacherId = teacher?.id
     }
 
+    // Build OR: available workshops (subject-filtered, future) OR already-enrolled workshops
+    const availableFilter: any = {
+      status: { in: ['open', 'full'] },
+      startDate: { gte: new Date() },
+      ...(subjectFilter ? { subject: { contains: subjectFilter } } : {}),
+    }
+    const enrolledFilter: any = currentTeacherId
+      ? { enrollments: { some: { teacherId: currentTeacherId, status: 'ENROLLED' } } }
+      : null
+
     const workshops = await prisma.cpdWorkshop.findMany({
-      where: {
-        status: 'open',
-        ...(subjectFilter ? { subject: { contains: subjectFilter } } : {}),
-        startDate: { gte: new Date() },
-      },
+      where: enrolledFilter
+        ? { OR: [availableFilter, enrolledFilter] }
+        : availableFilter,
       include: {
         enrollments: { select: { teacherId: true, status: true } },
       },
       orderBy: { startDate: 'asc' },
     })
-
-    // Tag which ones current teacher is already enrolled in
-    let currentTeacherId: string | undefined
-    if (role === 'teacher') {
-      const teacher = await prisma.teacher.findUnique({ where: { userId } })
-      currentTeacherId = teacher?.id
-    }
 
     const result = workshops.map(w => ({
       ...w,
@@ -782,6 +785,12 @@ router.post('/cpd-workshops/:workshopId/enroll', authenticate, async (req: AuthR
       create: { workshopId, teacherId: resolvedTeacherId, status: 'ENROLLED', enrolledAt: new Date() },
       update: { status: 'ENROLLED', enrolledAt: new Date(), completedAt: null, hoursAwarded: null },
     })
+
+    // Update workshop to 'full' if capacity is now reached
+    const activeCount = await prisma.cpdEnrollment.count({ where: { workshopId, status: 'ENROLLED' } })
+    if (activeCount >= workshop.maxParticipants) {
+      await prisma.cpdWorkshop.update({ where: { id: workshopId }, data: { status: 'full' } })
+    }
 
     // Credit CPD hours immediately (pre-credit for enrollment; full credit on completion)
     const preCredit = workshop.hours * 0.2 // 20% pre-credit for registering
@@ -1038,6 +1047,292 @@ router.get('/meetings', authenticate, async (req: AuthRequest, res: Response) =>
     res.json({ success: true, data: meetings })
   } catch (error) {
     console.error('GET /ems/meetings error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── TPA: Teacher Self-Assessment ──────────────────────────────────────────
+
+// PATCH /api/v1/ems/performance-evaluations/:id/self-assess
+// Allows the evaluated teacher to add a self-reflection comment before HOD submits
+router.patch('/performance-evaluations/:id/self-assess', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    if (role !== 'teacher') {
+      res.status(403).json({ success: false, message: 'Only the evaluated teacher can submit a self-assessment' }); return
+    }
+
+    const id = req.params.id as string
+    const { selfAssessment } = req.body as { selfAssessment: string }
+    if (!selfAssessment?.trim()) {
+      res.status(400).json({ success: false, message: 'selfAssessment text is required' }); return
+    }
+
+    const evaluation = await prisma.performanceEvaluation.findUnique({
+      where: { id },
+      include: { teacher: { include: { user: { select: { id: true } } } } },
+    })
+    if (!evaluation) { res.status(404).json({ success: false, message: 'Evaluation not found' }); return }
+
+    // Confirm the requesting teacher is the subject of this evaluation
+    if (evaluation.teacher.user.id !== userId) {
+      res.status(403).json({ success: false, message: 'You can only self-assess your own evaluation' }); return
+    }
+
+    if (evaluation.status !== 'draft') {
+      res.status(400).json({ success: false, message: 'Self-assessment can only be added while the evaluation is in draft' }); return
+    }
+
+    const updated = await prisma.performanceEvaluation.update({
+      where: { id },
+      data: { selfAssessment: selfAssessment.trim() },
+    })
+
+    res.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('PATCH /ems/performance-evaluations/:id/self-assess error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── TPA: Evaluation History ────────────────────────────────────────────────
+
+// GET /api/v1/ems/teachers/:id/evaluation-history
+// Returns all evaluations for a teacher sorted by year, with a trend indicator
+router.get('/teachers/:id/evaluation-history', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const teacherId = req.params.id as string
+
+    // Teachers can only view their own history
+    if (role === 'teacher') {
+      const me = await prisma.teacher.findUnique({ where: { userId } })
+      if (!me || me.id !== teacherId) {
+        res.status(403).json({ success: false, message: 'Forbidden' }); return
+      }
+    } else if (!['admin', 'manager', 'hod', 'principal'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+
+    const evaluations = await prisma.performanceEvaluation.findMany({
+      where: { teacherId },
+      orderBy: { academicYear: 'asc' },
+      select: {
+        id: true, academicYear: true,
+        teachingScore: true, professionalScore: true, conductScore: true,
+        overallScore: true, rating: true, status: true,
+        submittedAt: true, reviewedAt: true,
+      },
+    })
+
+    // Derive trend from the last two approved evaluations
+    const approved = evaluations.filter(e => e.status === 'approved' && e.overallScore != null)
+    let trend: 'improving' | 'declining' | 'stable' | 'insufficient_data' = 'insufficient_data'
+    if (approved.length >= 2) {
+      const last = approved[approved.length - 1].overallScore!
+      const prev = approved[approved.length - 2].overallScore!
+      const diff = last - prev
+      trend = diff > 2 ? 'improving' : diff < -2 ? 'declining' : 'stable'
+    }
+
+    res.json({ success: true, data: { evaluations, trend } })
+  } catch (error) {
+    console.error('GET /ems/teachers/:id/evaluation-history error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── CPD: Create Workshop ────────────────────────────────────────────────────
+
+// POST /api/v1/ems/cpd-workshops
+router.post('/cpd-workshops', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden: Admin/HOD only' }); return
+    }
+
+    const { title, provider, subject, hours, startDate, endDate, location, maxParticipants, category } = req.body as {
+      title: string; provider?: string; subject?: string; hours: number
+      startDate: string; endDate: string; location?: string; maxParticipants?: number; category?: string
+    }
+
+    if (!title || !hours || !startDate || !endDate) {
+      res.status(400).json({ success: false, message: 'title, hours, startDate, endDate are required' }); return
+    }
+
+    const workshop = await prisma.cpdWorkshop.create({
+      data: {
+        title,
+        provider: provider ?? null,
+        subject: subject ?? null,
+        hours: Number(hours),
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        location: location ?? null,
+        maxParticipants: maxParticipants ? Number(maxParticipants) : 30,
+        category: category ?? 'General',
+        status: 'open',
+      },
+    })
+
+    res.status(201).json({ success: true, data: workshop })
+  } catch (error) {
+    console.error('POST /ems/cpd-workshops error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── CPD: Withdraw ──────────────────────────────────────────────────────────
+
+// PATCH /api/v1/ems/cpd-workshops/:workshopId/withdraw
+router.patch('/cpd-workshops/:workshopId/withdraw', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    if (!['admin', 'manager', 'hod', 'principal', 'teacher'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+
+    const { workshopId } = req.params as { workshopId: string }
+    const { teacherId: bodyTeacherId } = req.body as { teacherId?: string }
+
+    let resolvedTeacherId: string
+    if (bodyTeacherId && ['admin', 'manager', 'hod', 'principal'].includes(role)) {
+      resolvedTeacherId = bodyTeacherId
+    } else {
+      const teacher = await prisma.teacher.findUnique({ where: { userId } })
+      if (!teacher) { res.status(404).json({ success: false, message: 'Teacher profile not found' }); return }
+      resolvedTeacherId = teacher.id
+    }
+
+    const enrollment = await prisma.cpdEnrollment.findUnique({
+      where: { workshopId_teacherId: { workshopId, teacherId: resolvedTeacherId } },
+    })
+    if (!enrollment || enrollment.status !== 'ENROLLED') {
+      res.status(404).json({ success: false, message: 'Active enrollment not found' }); return
+    }
+
+    const workshop = await prisma.cpdWorkshop.findUnique({ where: { id: workshopId } })
+    if (!workshop) { res.status(404).json({ success: false, message: 'Workshop not found' }); return }
+
+    // Reverse the 20% pre-credit that was awarded on enrollment
+    const preCredit = workshop.hours * 0.2
+    const teacher = await prisma.teacher.findUnique({ where: { id: resolvedTeacherId } })
+    if (teacher) {
+      await prisma.teacher.update({
+        where: { id: resolvedTeacherId },
+        data: { cpdHours: Math.max(0, teacher.cpdHours - preCredit) },
+      })
+    }
+
+    // Mark enrollment as withdrawn
+    await prisma.cpdEnrollment.update({
+      where: { workshopId_teacherId: { workshopId, teacherId: resolvedTeacherId } },
+      data: { status: 'WITHDRAWN' },
+    })
+
+    // Re-open workshop if it was full
+    if (workshop.status === 'full') {
+      const activeCount = await prisma.cpdEnrollment.count({
+        where: { workshopId, status: 'ENROLLED' },
+      })
+      if (activeCount < workshop.maxParticipants) {
+        await prisma.cpdWorkshop.update({ where: { id: workshopId }, data: { status: 'open' } })
+      }
+    }
+
+    broadcast('dashboard', 'dashboard.cpd.changed', { teacherId: resolvedTeacherId, withdrawn: true })
+
+    res.json({ success: true, message: `Withdrawn from "${workshop.title}". ${preCredit.toFixed(1)}h pre-credit reversed.` })
+  } catch (error) {
+    console.error('PATCH /ems/cpd-workshops/:id/withdraw error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── CPD: TPA-CPD Recommendations ──────────────────────────────────────────
+
+// GET /api/v1/ems/cpd-workshops/recommendations?teacherId=&basedOn=<evaluationId>
+// Returns up to 5 open workshops relevant to the teacher's lowest TPA dimension
+router.get('/cpd-workshops/recommendations', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    if (!['admin', 'manager', 'hod', 'principal', 'teacher'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+
+    const { teacherId: qTeacherId, basedOn } = req.query as { teacherId?: string; basedOn?: string }
+
+    let resolvedTeacherId: string
+    if (qTeacherId && ['admin', 'manager', 'hod', 'principal'].includes(role)) {
+      resolvedTeacherId = qTeacherId
+    } else {
+      const teacher = await prisma.teacher.findUnique({ where: { userId } })
+      if (!teacher) { res.json({ success: true, data: [] }); return }
+      resolvedTeacherId = teacher.id
+    }
+
+    // Fetch evaluation to determine lowest dimension
+    let targetCategory: string | undefined
+    let targetSubject: string | undefined
+
+    if (basedOn) {
+      const evaluation = await prisma.performanceEvaluation.findUnique({ where: { id: basedOn } })
+      if (evaluation && evaluation.teachingScore != null && evaluation.professionalScore != null && evaluation.conductScore != null) {
+        const lowestDim = (
+          [
+            { dim: 'teaching', score: evaluation.teachingScore },
+            { dim: 'professional', score: evaluation.professionalScore },
+            { dim: 'conduct', score: evaluation.conductScore },
+          ] as { dim: string; score: number }[]
+        ).sort((a, b) => a.score - b.score)[0].dim
+
+        if (lowestDim === 'teaching') {
+          // Recommend workshops matching teacher's subject
+          const teacher = await prisma.teacher.findUnique({ where: { id: resolvedTeacherId } })
+          targetSubject = teacher?.subjects?.split(',')[0]?.trim()
+        } else if (lowestDim === 'professional') {
+          targetCategory = 'Subject Knowledge'
+        } else {
+          // conduct — classroom management / ethics
+          targetCategory = 'Leadership'
+        }
+      }
+    }
+
+    // Get teacher's existing enrollments to exclude already-enrolled workshops
+    const enrolled = await prisma.cpdEnrollment.findMany({
+      where: { teacherId: resolvedTeacherId, status: 'ENROLLED' },
+      select: { workshopId: true },
+    })
+    const enrolledIds = new Set(enrolled.map(e => e.workshopId))
+
+    const workshops = await prisma.cpdWorkshop.findMany({
+      where: {
+        status: 'open',
+        startDate: { gte: new Date() },
+        ...(targetCategory ? { category: targetCategory } : {}),
+        ...(targetSubject ? { subject: { contains: targetSubject } } : {}),
+        NOT: { id: { in: Array.from(enrolledIds) } },
+      },
+      include: { enrollments: { select: { teacherId: true, status: true } } },
+      orderBy: { startDate: 'asc' },
+      take: 5,
+    })
+
+    const result = workshops.map(w => ({
+      ...w,
+      enrolledCount: w.enrollments.filter(e => e.status === 'ENROLLED').length,
+      alreadyEnrolled: false,
+      recommendationReason: targetSubject ? `Matches your subject area (${targetSubject})`
+        : targetCategory === 'Subject Knowledge' ? 'Strengthens professional knowledge'
+        : targetCategory === 'Leadership' ? 'Supports classroom management and conduct'
+        : 'Recommended for your development',
+    }))
+
+    res.json({ success: true, data: result })
+  } catch (error) {
+    console.error('GET /ems/cpd-workshops/recommendations error:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })

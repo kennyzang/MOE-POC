@@ -177,10 +177,10 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
       const [myStudents, upcomingSessions, recentGrades, gradeItemsWithCount, attendanceRecordsRaw] = await Promise.all([
         prisma.enrollment.count({ where: { courseId: { in: courseIds }, status: 'enrolled' } }),
         prisma.attendanceSession.findMany({
-          where: { courseId: { in: courseIds }, status: 'active' },
+          where: { courseId: { in: courseIds } },
           include: { course: { select: { id: true, code: true, name: true } } },
           orderBy: { date: 'desc' },
-          take: 10,
+          take: 8,
         }),
         prisma.grade.findMany({
           where: { gradeItem: { courseId: { in: courseIds } } },
