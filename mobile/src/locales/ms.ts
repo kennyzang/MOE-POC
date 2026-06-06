@@ -125,6 +125,8 @@ const ms = {
     noAnnouncements: 'Tiada pengumuman',
     viewAll: 'Lihat Semua',
     pinned: 'Disemat',
+    high: 'Tinggi',
+    normal: 'Biasa',
     urgent: 'Segera',
     detail: 'Perincian Pengumuman',
     publishedBy: 'Diterbitkan oleh',

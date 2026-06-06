@@ -125,6 +125,8 @@ const en = {
     noAnnouncements: 'No announcements',
     viewAll: 'View All',
     pinned: 'Pinned',
+    high: 'High',
+    normal: 'Normal',
     urgent: 'Urgent',
     detail: 'Announcement Detail',
     publishedBy: 'Published by',

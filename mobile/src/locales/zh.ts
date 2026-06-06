@@ -125,6 +125,8 @@ const zh = {
     noAnnouncements: '暂无公告',
     viewAll: '查看全部',
     pinned: '置顶',
+    high: '高',
+    normal: '普通',
     urgent: '紧急',
     detail: '公告详情',
     publishedBy: '发布者',
