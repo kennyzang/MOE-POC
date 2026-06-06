@@ -53,6 +53,7 @@ const zh = {
     date: '日期',
     status: '状态',
     sessionTopic: '主题',
+    giveReason: '填写原因',
   },
   student: {
     title: '学生门户',

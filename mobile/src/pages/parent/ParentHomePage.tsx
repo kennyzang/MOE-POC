@@ -37,7 +37,7 @@ export default function ParentHomePage() {
 
   return (
     <AppLayout title={t('parent.title')} showLogout>
-      <PushNotificationBanner showTest />
+      <PushNotificationBanner />
       <div className="welcome-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{

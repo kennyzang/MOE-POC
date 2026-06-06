@@ -53,6 +53,7 @@ const en = {
     date: 'Date',
     status: 'Status',
     sessionTopic: 'Topic',
+    giveReason: 'Give reason',
   },
   student: {
     title: 'Student Portal',

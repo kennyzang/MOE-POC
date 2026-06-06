@@ -113,48 +113,82 @@ export default function ParentAttendancePage() {
               <List.Item
                 key={record.id}
                 prefix={
-                  <Tag color={statusColor[record.status] ?? 'default'}>
-                    {hasReason ? `Absent – ${record.absenceReason}` : t(`attendance.${record.status}`)}
+                  <Tag color={statusColor[record.status] ?? 'default'} style={{ fontSize: 11 }}>
+                    {t(`attendance.${record.status}`)}
                   </Tag>
                 }
-                description={
-                  <span>
-                    {record.session?.course?.name ?? ''}
-                    {hasReason && record.parentNote ? (
-                      <span style={{ color: '#86909c', marginLeft: 6 }}>"{record.parentNote}"</span>
-                    ) : null}
-                    {isAbsent && !hasReason ? (
-                      <span
-                        style={{ color: '#165DFF', marginLeft: 6, fontWeight: 600, cursor: 'pointer' }}
-                        onClick={() => openReasonModal(record)}
-                      >
-                        Tap to give reason
-                      </span>
-                    ) : null}
+                extra={
+                  <span style={{ fontSize: 11, color: '#86909c', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {record.session?.date ? dayjs(record.session.date).format('DD/MM') : ''}
                   </span>
                 }
-                extra={
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    <span style={{ fontSize: 12, color: '#86909c' }}>
-                      {record.session?.date ? dayjs(record.session.date).format('DD/MM/YY') : ''}
+              >
+                <div style={{ width: '100%' }}>
+                  {/* Row 1: session topic/course */}
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#1d2129',
+                    marginBottom: 2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {record.session?.topic ?? record.session?.course?.name ?? '—'}
+                  </div>
+                  {/* Row 2: sub-info + actions */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    flexWrap: 'wrap',
+                  }}>
+                    <span style={{ fontSize: 11, color: '#86909c' }}>
+                      {record.session?.course?.code ?? ''}
                     </span>
+                    {hasReason && (
+                      <>
+                        <span style={{ fontSize: 11, color: '#86909c' }}>·</span>
+                        <span style={{
+                          fontSize: 11,
+                          color: '#FF7D00',
+                          maxWidth: 140,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {record.absenceReason}
+                        </span>
+                      </>
+                    )}
+                    {hasReason && record.parentNote && (
+                      <span style={{
+                        fontSize: 11,
+                        color: '#86909c',
+                        maxWidth: 120,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        "{record.parentNote}"
+                      </span>
+                    )}
                     {isAbsent && !hasReason && (
-                      <Button
-                        size="mini"
-                        color="primary"
-                        fill="outline"
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: '#165DFF',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
                         onClick={() => openReasonModal(record)}
                       >
-                        Reply
-                      </Button>
-                    )}
-                    {hasReason && (
-                      <Tag color="success" style={{ fontSize: 10 }}>Notified</Tag>
+                        → {t('parent.giveReason')}
+                      </span>
                     )}
                   </div>
-                }
-              >
-                {record.session?.topic ?? record.session?.course?.code ?? '—'}
+                </div>
               </List.Item>
             )
           })}

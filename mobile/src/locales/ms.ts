@@ -53,6 +53,7 @@ const ms = {
     date: 'Tarikh',
     status: 'Status',
     sessionTopic: 'Topik',
+    giveReason: 'Berikan sebab',
   },
   student: {
     title: 'Portal Pelajar',
