@@ -52,12 +52,12 @@ export default function TeacherHomePage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
             <div className="stat-card">
               <BookOpen size={20} color="#165DFF" style={{ margin: '0 auto 4px' }} />
-              <div className="stat-value" style={{ fontSize: 26 }}>{data?.myCourses ?? 0}</div>
+              <div className="stat-value" style={{ fontSize: 22 }}>{data?.myCourses ?? 0}</div>
               <div className="stat-label">{t('teacher.myCourses')}</div>
             </div>
             <div className="stat-card">
               <Users size={20} color="#00B42A" style={{ margin: '0 auto 4px' }} />
-              <div className="stat-value" style={{ fontSize: 26, color: '#00B42A' }}>
+              <div className="stat-value" style={{ fontSize: 22, color: '#00B42A' }}>
                 {data?.myStudents ?? 0}
               </div>
               <div className="stat-label">{t('teacher.myStudents')}</div>

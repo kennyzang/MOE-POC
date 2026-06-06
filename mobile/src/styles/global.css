@@ -34,13 +34,14 @@ html, body, #root {
 .stat-card {
   background: var(--color-white);
   border-radius: 12px;
-  padding: 14px 8px;
+  padding: 12px 6px;
   text-align: center;
   min-width: 0;
+  overflow: hidden;
 }
 
 .stat-value {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--color-primary);
   line-height: 1.2;
@@ -48,6 +49,7 @@ html, body, #root {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  word-break: break-all;
 }
 
 .stat-label {

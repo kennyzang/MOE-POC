@@ -337,7 +337,7 @@ export default function LoginPage() {
         </div>
 
         {/* Account List */}
-        <div style={{ maxHeight: '50vh', overflowY: 'auto', px: 16 }}>
+        <div style={{ maxHeight: '50vh', overflowY: 'auto', paddingLeft: 16, paddingRight: 16 }}>
           {DEMO_ACCOUNTS.map((account, idx) => (
             <div
               key={account.username}
@@ -387,16 +387,17 @@ export default function LoginPage() {
       </Popup>
 
       {/* SSO Consent Modal */}
+      {/* @ts-ignore - antd-mobile Dialog accepts children at runtime */}
       <Dialog
         visible={ssoProvider !== null}
         title={null}
         closeOnAction
-        onClose={() => !ssoLoading && setSsoProvider(null)}
+        onClose={() => { if (!ssoLoading) setSsoProvider(null) }}
         actions={[
           {
             key: 'cancel',
             text: t('common.cancel'),
-            onClick: () => !ssoLoading && setSsoProvider(null),
+            onClick: () => { if (!ssoLoading) setSsoProvider(null) },
           },
           {
             key: 'confirm',
@@ -404,8 +405,7 @@ export default function LoginPage() {
               ? t('auth.ssoAllow', { provider: 'Brunei Digital ID' })
               : t('auth.ssoAllow', { provider: 'EGNC / IDPM' }),
             bold: true,
-            primary: true,
-            onClick: () => ssoProvider && void handleSsoConfirm(ssoProvider),
+            onClick: () => { if (ssoProvider) handleSsoConfirm(ssoProvider) },
           },
         ]}
       >

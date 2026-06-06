@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { SpinLoading, Card, Tag } from 'antd-mobile'
-import { BookOpen, ChevronRight, List, CalendarDays, Clock, MapPin, User } from 'lucide-react'
+import { BookOpen, ChevronRight, List, CalendarDays, Clock } from 'lucide-react'
 import AppLayout from '@/components/AppLayout'
 import api from '@/lib/api'
 import type { ApiResponse, Teacher } from '@/types'
@@ -254,6 +254,29 @@ function CalendarView({ slots, onNavigate }: {
 
   const hasAnySlots = slots.length > 0
 
+  // Current time for indicator line
+  const now = new Date()
+  const currentDayOfWeek = now.getDay() // 0=Sun, so Mon=1..Fri=5
+  const todayCol = currentDayOfWeek >= 1 && currentDayOfWeek <= 5 ? currentDayOfWeek - 1 : -1
+  const currentTimeMinutes = now.getHours() * 60 + now.getMinutes()
+
+  // Calculate which period row the current time falls in
+  const currentPeriodRow = useMemo(() => {
+    if (todayCol < 0) return -1
+    const [startH, startM] = PERIODS[0]?.time.split('-')[0]?.split(':').map(Number) ?? [8, 0]
+    const [endH, endM] = PERIODS[PERIODS.length - 1]?.time?.split('-')[1]?.split(':').map(Number) ?? [15, 30]
+    const startMin = (startH ?? 8) * 60 + (startM ?? 0)
+    const endMin = (endH ?? 15) * 60 + (endM ?? 30)
+    if (currentTimeMinutes < startMin || currentTimeMinutes > endMin) return -1
+    // Find position within grid
+    const totalDuration = endMin - startMin
+    const elapsed = currentTimeMinutes - startMin
+    const rowHeight = 56 // matches gridTemplateRows
+    const headerHeight = 36
+    const positionPx = headerHeight + (elapsed / totalDuration) * (rowHeight * PERIODS.length)
+    return positionPx
+  }, [currentTimeMinutes, todayCol])
+
   return (
     <div style={{
       overflowX: 'auto', overflowY: 'visible',
@@ -264,41 +287,47 @@ function CalendarView({ slots, onNavigate }: {
           {t('teacher.noClassesOnDay', 'No classes scheduled')}
         </div>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `44px repeat(5, minmax(96px, 1fr))`,
-            gridTemplateRows: `36px repeat(${PERIODS.length}, 56px)`,
-            minWidth: 524,
-            borderRadius: 12,
-            overflow: 'hidden',
-            border: '1px solid #e8ecf1',
-            background: '#fff',
-          }}
-        >
-          {/* Corner */}
-          <div style={{
-            gridColumn: 1, gridRow: 1,
-            background: '#f5f7fa',
-            borderBottom: '1px solid #e8ecf1',
-            borderRight: '1px solid #e8ecf1',
-          }} />
-
-          {/* Day headers */}
-          {[0, 1, 2, 3, 4].map(d => (
-            <div key={`h-${d}`} style={{
-              gridColumn: d + 2, gridRow: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 700, fontSize: 11, color: '#1677ff',
+        <div style={{ position: 'relative' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `44px repeat(5, minmax(96px, 1fr))`,
+              gridTemplateRows: `36px repeat(${PERIODS.length}, 56px)`,
+              minWidth: 524,
+              borderRadius: 12,
+              overflow: 'hidden',
+              border: '1px solid #e8ecf1',
+              background: '#fff',
+            }}
+          >
+            {/* Corner */}
+            <div style={{
+              gridColumn: 1, gridRow: 1,
               background: '#f5f7fa',
-              borderBottom: '2px solid #d6e4ff',
+              borderBottom: '1px solid #e8ecf1',
               borderRight: '1px solid #e8ecf1',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-            }}>
-              {t(`teacher.${DAYS[d]}`, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][d])}
-            </div>
-          ))}
+            }} />
+
+            {/* Day headers with today highlight */}
+            {[0, 1, 2, 3, 4].map(d => {
+              const isToday = d === todayCol
+              return (
+                <div key={`h-${d}`} style={{
+                  gridColumn: d + 2, gridRow: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 700, fontSize: 11,
+                  background: isToday ? '#E6F4FF' : '#f5f7fa',
+                  borderBottom: isToday ? '2px solid #1677ff' : '2px solid #d6e4ff',
+                  borderRight: '1px solid #e8ecf1',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  color: isToday ? '#1677ff' : '#1677ff',
+                }}>
+                  {isToday && <span style={{ marginRight: 3, fontSize: 10 }}>&bull;</span>}
+                  {t(`teacher.${DAYS[d]}`, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][d])}
+                </div>
+              )
+            })}
 
           {/* Period rows */}
           {PERIODS.map((period, p) => (
@@ -332,6 +361,31 @@ function CalendarView({ slots, onNavigate }: {
 
           {courseCards}
         </div>
+
+        {/* Current time indicator line */}
+        {todayCol >= 0 && currentPeriodRow > 36 && (
+          <div style={{
+            position: 'absolute',
+            left: 44,
+            right: 0,
+            top: currentPeriodRow,
+            height: 2,
+            background: '#ff4d4f',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}>
+            <div style={{
+              position: 'absolute',
+              left: -6,
+              top: -4,
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: '#ff4d4f',
+            }} />
+          </div>
+        )}
+      </div>
       )}
     </div>
   )
@@ -344,7 +398,7 @@ type ViewMode = 'list' | 'calendar'
 export default function TeacherClassesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [viewMode, setViewMode] = useState<ViewMode>('calendar')
 
   // Fetch course assignments (used by list view)
   const { data: teacher, isLoading: loadingAssignments } = useQuery({

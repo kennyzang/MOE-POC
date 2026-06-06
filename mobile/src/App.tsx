@@ -12,6 +12,7 @@ import StudentGradesPage from '@/pages/student/StudentGradesPage'
 import TeacherHomePage from '@/pages/teacher/TeacherHomePage'
 import TeacherClassesPage from '@/pages/teacher/TeacherClassesPage'
 import TeacherAttendancePage from '@/pages/teacher/TeacherAttendancePage'
+import TeacherGradesPage from '@/pages/teacher/TeacherGradesPage'
 import AnnouncementDetailPage from '@/pages/common/AnnouncementDetailPage'
 import CourseDetailPage from '@/pages/common/CourseDetailPage'
 
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/teacher/classes" element={<Navigate to="/teacher/courses" replace />} />
         <Route path="/teacher/timetable" element={<Navigate to="/teacher/courses" replace />} />
         <Route path="/teacher/attendance" element={<RequireAuth><TeacherAttendancePage /></RequireAuth>} />
+        <Route path="/teacher/grades" element={<RequireAuth><TeacherGradesPage /></RequireAuth>} />
 
         {/* Common */}
         <Route path="/announcement/detail" element={<RequireAuth><AnnouncementDetailPage /></RequireAuth>} />

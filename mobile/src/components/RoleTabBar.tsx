@@ -1,5 +1,5 @@
 import { TabBar } from 'antd-mobile'
-import { Home, BookOpen, BarChart2, User, CalendarCheck, CalendarDays } from 'lucide-react'
+import { Home, BookOpen, BarChart2, User, CalendarCheck, CalendarDays, FileText } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +27,7 @@ export default function RoleTabBar() {
     teacher: [
       { key: '/teacher/home', title: t('teacher.home'), icon: <Home size={20} /> },
       { key: '/teacher/courses', title: t('teacher.classes'), icon: <CalendarDays size={20} /> },
+      { key: '/teacher/grades', title: t('teacher.gradesTab', 'Grades'), icon: <FileText size={20} /> },
       { key: '/teacher/attendance', title: t('teacher.attendance'), icon: <CalendarCheck size={20} /> },
     ],
   }
