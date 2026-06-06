@@ -45,6 +45,8 @@
 | 2026-05-31 15:00 | [260531-1500.md](260531-1500.md) | Scenarios 2-8完成：Principal主页→CommandCenter、Counselor案例抽屉添加View Student按钮、提交上期遗漏变更（FileAttachment模型+家长会议路由+i18n） | ~25k |
 | 2026-06-01 12:00 | [260601-1200.md](260601-1200.md) | Scenarios 2-8 全流程Playwright实测：7角色全部通过，修复counselor/hod/admissions/principal访问学生详情403 Bug | ~45k |
 | 2026-06-02 23:00 | [260602-2300.md](260602-2300.md) | Gap模块Phases 1-5完成：Leave Enhancement、Staff Attendance、Retirement Planning、Awards+Posting History、Anonymous Surveys（6新模型、7新路由、16新页面） | ~180k |
+| 2026-06-06 09:00 | [260606-0900.md](260606-0900.md) | Playwright验收7项修复：登录错误显示/HOD风险访问/学术加权平均/辅导员案例自动创建/教师履历页/DPE发通知 | ~120k |
+| 2026-06-06 10:30 | [260606-1030.md](260606-1030.md) | 移动端第二轮UI调整：教师成绩录入页面(4Tab)、课程表日历增强(今日高亮+时间线)、头部溢出修复、数字穿透修复、TS错误修复 | ~80k |
 | 2026-06-05 15:00 | [260605-1500.md](260605-1500.md) | 合并 cengyk gap-phases-6-10（被误覆盖的提交）：Registration Portal、Private Education、Reports、自动触发器等，修复3个TS错误，双端推送成功 | ~8k |
 | 2026-06-05 18:00 | [260605-1800.md](260605-1800.md) | 登录页 Demo Accounts 改版：移除色块按钮，改为 UNISSA 风格侧面板（表格点击填充字段） | ~7k |
 | 2026-06-06 09:00 | [260606-0900.md](260606-0900.md) | Fix 7 test issues: login error display, HOD at-risk access, counselor auto-case, academic standing (per-course weighted avg), postings page, DPE send circular UI | ~120k |
