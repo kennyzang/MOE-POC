@@ -155,3 +155,33 @@ export interface ApiResponse<T> {
   data: T
   message?: string
 }
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface Notification {
+  id: string
+  title: string
+  message: string
+  type: 'info' | 'warning' | 'success' | 'error'
+  link?: string
+  read: boolean
+  createdAt: string
+}
+
+export interface Announcement {
+  id: string
+  title: string
+  content: string
+  targetAudience: string
+  gradeLevel?: string
+  priority: 'normal' | 'high' | 'urgent'
+  isPinned: boolean
+  publishedAt: string
+  expiresAt?: string
+  createdAt?: string
+  author?: { displayName: string }
+}

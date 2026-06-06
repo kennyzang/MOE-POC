@@ -3,6 +3,7 @@ import { LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useTranslation } from 'react-i18next'
+import NotificationBell from './NotificationBell'
 
 interface NavHeaderProps {
   title: string
@@ -25,15 +26,18 @@ export default function NavHeader({ title, showBack = false, showLogout = false 
       onBack={showBack ? () => navigate(-1) : undefined}
       back={showBack ? t('common.back') : null}
       right={
-        showLogout ? (
-          <span
-            onClick={handleLogout}
-            style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center' }}
-            title={t('common.logout')}
-          >
-            <LogOut size={18} />
-          </span>
-        ) : null
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <NotificationBell />
+          {showLogout && (
+            <span
+              onClick={handleLogout}
+              style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center' }}
+              title={t('common.logout')}
+            >
+              <LogOut size={18} />
+            </span>
+          )}
+        </div>
       }
       style={{
         '--height': '45px',
