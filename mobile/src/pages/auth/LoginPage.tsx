@@ -145,18 +145,18 @@ export default function LoginPage() {
       </div>
 
       {/* Header */}
-      <div style={{ textAlign: 'center', padding: '20px 20px 36px', color: 'white' }}>
+      <div style={{ textAlign: 'center', padding: '12px 20px 24px', color: 'white' }}>
         <div style={{
-          width: 72, height: 72, borderRadius: 20,
+          width: 60, height: 60, borderRadius: 18,
           background: 'rgba(255,255,255,0.2)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 16px',
-          fontSize: 36,
+          margin: '0 auto 10px',
+          fontSize: 30,
         }}>
           🎓
         </div>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: 0.5 }}>{t('auth.loginTitle')}</div>
-        <div style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>{t('auth.loginSubtitle')}</div>
+        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: 0.5 }}>{t('auth.loginTitle')}</div>
+        <div style={{ fontSize: 11, opacity: 0.85, marginTop: 4 }}>{t('auth.loginSubtitle')}</div>
       </div>
 
       {/* Form card */}
@@ -164,7 +164,7 @@ export default function LoginPage() {
         flex: 1,
         background: '#f5f5f5',
         borderRadius: '24px 24px 0 0',
-        padding: '28px 20px 40px',
+        padding: '20px 20px 24px',
       }}>
         <Form
           form={form}
@@ -176,7 +176,7 @@ export default function LoginPage() {
               color="primary"
               size="large"
               loading={loading}
-              style={{ borderRadius: 12, height: 48, fontSize: 16, fontWeight: 600, marginTop: 8 }}
+              style={{ borderRadius: 12, height: 44, fontSize: 16, fontWeight: 600, marginTop: 4 }}
             >
               {t('auth.loginButton')}
             </Button>
@@ -184,10 +184,10 @@ export default function LoginPage() {
         >
           <div style={{
             background: 'white',
-            borderRadius: 16,
+            borderRadius: 14,
             overflow: 'hidden',
-            marginBottom: 16,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+            marginBottom: 14,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           }}>
             <Form.Item
               name="username"
@@ -206,32 +206,32 @@ export default function LoginPage() {
         </Form>
 
         {/* SSO Buttons */}
-        <div style={{ marginTop: 20 }}>
+        <div style={{ marginTop: 14 }}>
           <div style={{
-            textAlign: 'center', fontSize: 12, color: '#86909c',
-            marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8,
+            textAlign: 'center', fontSize: 11, color: '#86909c',
+            marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
             <span>{t('auth.orSignInWith')}</span>
             <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button
               onClick={() => { setSsoSelectedUser(''); setSsoProvider('BRUNEI_ID') }}
               style={{
-                padding: '12px',
-                borderRadius: 12,
+                padding: '10px',
+                borderRadius: 10,
                 border: '1.5px solid #FDB913',
                 background: '#FFFBE6',
                 color: '#7A5800',
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 8,
+                gap: 6,
               }}
             >
               🛡️ {t('auth.signInWithBruneiId')}
@@ -240,12 +240,12 @@ export default function LoginPage() {
             <button
               onClick={() => { setSsoSelectedUser(''); setSsoProvider('EGNC_IDPM') }}
               style={{
-                padding: '12px',
-                borderRadius: 12,
+                padding: '10px',
+                borderRadius: 10,
                 border: '1.5px solid #165DFF',
                 background: '#E6F0FF',
                 color: '#165DFF',
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
@@ -260,10 +260,10 @@ export default function LoginPage() {
         </div>
 
         {/* Demo Accounts Toggle */}
-        <div style={{ marginTop: 20 }}>
+        <div style={{ marginTop: 14 }}>
           <div style={{
-            textAlign: 'center', fontSize: 12, color: '#86909c',
-            marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8,
+            textAlign: 'center', fontSize: 11, color: '#86909c',
+            marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
             <span>{t('auth.quickAccess')}</span>
@@ -274,25 +274,25 @@ export default function LoginPage() {
             onClick={() => setDemoPopupVisible(true)}
             style={{
               width: '100%',
-              padding: '12px',
-              borderRadius: 12,
+              padding: '10px',
+              borderRadius: 10,
               border: '1.5px dashed #d9d9d9',
               background: 'white',
               color: '#8c8c8c',
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 500,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 8,
+              gap: 6,
             }}
           >
             🔑 {t('auth.showDemoAccounts')}
           </button>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: 20, color: '#86909c', fontSize: 11 }}>
+        <div style={{ textAlign: 'center', marginTop: 12, color: '#86909c', fontSize: 10 }}>
           MOE SERPS v1.0 · Ministry of Education, Brunei
         </div>
       </div>

@@ -295,7 +295,7 @@ const LoginPage = () => {
   const [ssoProvider, setSsoProvider] = useState<'BRUNEI_ID' | 'EGNC_IDPM' | null>(null)
   const [ssoLoading, setSsoLoading] = useState(false)
   const [ssoSelectedUser, setSsoSelectedUser] = useState<string>('')
-  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(true)
 
   const doLogin = async (username: string, password: string) => {
     const { data } = await api.post<LoginResponse>('/auth/login', { username, password })
