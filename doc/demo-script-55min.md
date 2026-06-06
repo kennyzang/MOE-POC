@@ -3,7 +3,7 @@
 **Date:** 10 June 2026 (School Open Day)  
 **Audience:** MOE Brunei stakeholders, school principals, IT department  
 **System URL:** http://localhost:3000  
-**Accounts needed:** admin / teacher (drsiti) / hod01 / student (adam) / parent (fatimah)  
+**Accounts needed:** admin / teacher (drsiti) / hod01 / student (student001 for Ahmad) / parent (fatimah)  
 **Start fresh:** `cd backend && npx prisma migrate reset` → Ahmad data must show HIGH RISK
 
 ---
@@ -95,7 +95,7 @@ curl http://localhost:4000/api/v1/health
 1. PC — Click **Student Information → Grades**
 2. Select a course → add/update a score for Ahmad
 3. Notification fires — bell shows new item
-4. Open new incognito tab → login as **adam / Demo@2026** (Ahmad's student account)
+4. Open new incognito tab → login as **student001 / student123** (Ahmad's student account)
 5. Navigate to **My Grades** → show grade just recorded with score
 6. Point to GPA calculation at top: "Weighted average, live from DB"
 
@@ -192,7 +192,7 @@ curl http://localhost:4000/api/v1/health
 | Principal | principal | principal123 |
 | HOD | hod01 | hod123 |
 | Teacher | drsiti | Demo@2026 |
-| Student (Ahmad) | adam | Demo@2026 |
+| Student (Ahmad) | student001 | student123 |
 | Parent | fatimah | Demo@2026 |
 
 ---

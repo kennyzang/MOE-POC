@@ -98,6 +98,12 @@ const zh = {
     recordCount: '记录数',
     active: '进行中',
     completed: '已完成',
+    startAttendance: '开始考勤',
+    selectCourse: '选择课程',
+    markAttendance: '标记考勤',
+    saveAttendance: '保存考勤',
+    attendanceSaved: '考勤已保存',
+    noStudentsEnrolled: '该课程暂无学生',
   },
   attendance: {
     present: '出席',

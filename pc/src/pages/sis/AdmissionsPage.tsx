@@ -196,6 +196,8 @@ const AdmissionsPage = () => {
   const [currentStep, setCurrentStep] = useState(0)
   const [refId] = useState(genRefId)
   const [wizardData, setWizardData] = useState<Partial<WizardFormData>>({
+    dateOfBirth: dayjs('2014-03-12'),
+    gender: 'male',
     nationality: 'Bruneian',
   })
   const [ageMismatch, setAgeMismatch] = useState<string | null>(null)
@@ -422,7 +424,11 @@ const AdmissionsPage = () => {
   // Wizard helpers
   const handleOpenWizard = () => {
     setCurrentStep(0)
-    setWizardData({ nationality: 'Bruneian' })
+    setWizardData({
+      dateOfBirth: dayjs('2014-03-12'),
+      gender: 'male',
+      nationality: 'Bruneian',
+    })
     setAgeMismatch(null)
     setSiblingLookup(null)
     form1.resetFields()
@@ -1323,7 +1329,7 @@ const AdmissionsPage = () => {
           <Form
             form={form1}
             layout="vertical"
-            initialValues={{ nationality: 'Bruneian' }}
+            initialValues={{ dateOfBirth: dayjs('2014-03-12'), gender: 'male', nationality: 'Bruneian' }}
           >
             <Row gutter={16}>
               <Col span={12}>

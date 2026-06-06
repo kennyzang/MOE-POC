@@ -98,6 +98,12 @@ const en = {
     recordCount: 'Records',
     active: 'Active',
     completed: 'Completed',
+    startAttendance: 'Start Attendance',
+    selectCourse: 'Select Course',
+    markAttendance: 'Mark Attendance',
+    saveAttendance: 'Save Attendance',
+    attendanceSaved: 'Attendance saved',
+    noStudentsEnrolled: 'No students enrolled in this course',
   },
   attendance: {
     present: 'Present',

@@ -98,6 +98,12 @@ const ms = {
     recordCount: 'Rekod',
     active: 'Aktif',
     completed: 'Selesai',
+    startAttendance: 'Mula Kehadiran',
+    selectCourse: 'Pilih Kursus',
+    markAttendance: 'Tandakan Kehadiran',
+    saveAttendance: 'Simpan Kehadiran',
+    attendanceSaved: 'Kehadiran disimpan',
+    noStudentsEnrolled: 'Tiada pelajar dalam kursus ini',
   },
   attendance: {
     present: 'Hadir',

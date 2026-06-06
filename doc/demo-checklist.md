@@ -270,10 +270,13 @@ cd mobile && npm run dev
 
 | 角色 | 用户名 | 密码 | 适合演示场景 |
 |------|--------|------|-------------|
-| admin | admin | Demo@2026 | 全功能管理视角 |
+| admin | admin | admin123 | 全功能管理视角 |
+| principal | principal | principal123 | 校长视角 |
+| hod | hod01 | hod123 | HOD 部门管理视角 |
 | manager | manager | Demo@2026 | 学校领导视角（同 admin 权限） |
 | teacher | drsiti | Demo@2026 | 教师出勤/成绩录入 |
+| student (Ahmad) | student001 | student123 | 学生查成绩/课程（高风险案例） |
 | student | adam | Demo@2026 | 学生查成绩/课程 |
 | parent | fatimah | Demo@2026 | 家长查子女信息 |
-| finance | finance | Demo@2026 | 财务报表视角 |
+| finance | finance | finance123 | 财务报表视角 |
 | admissions | admissions | Demo@2026 | 招生流程视角 |

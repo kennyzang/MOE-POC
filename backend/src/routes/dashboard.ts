@@ -131,7 +131,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
         inTraining: allTeachers.filter((t) => t.employmentStatus === 'inTraining').length,
       }
 
-      const timetableConflictList = detectTimetableConflicts(courseAssignments)
+      const timetableConflictList = detectTimetableConflicts(courseAssignments).slice(0, 3)
 
       // Build weekly attendance trend (past 8 weeks)
       const weekMap: Record<number, { total: number; present: number }> = {}
