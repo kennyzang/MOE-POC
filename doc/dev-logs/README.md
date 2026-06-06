@@ -52,3 +52,4 @@
 | 2026-06-06 09:00 | [260606-0900.md](260606-0900.md) | Fix 7 test issues: login error display, HOD at-risk access, counselor auto-case, academic standing (per-course weighted avg), postings page, DPE send circular UI | ~120k |
 | 2026-06-06 08:12 | [260606-0812.md](260606-0812.md) | 移动端功能梳理：PC/Mobile 差异分析、扩展候选方案、周末开发计划、CodeBuddy 规则迁移（.codebuddy/rules/ 7文件）、同步脚本 | ~25k |
 | 2026-06-06 08:28 | [260606-0828.md](260606-0828.md) | Mobile Day1 P1 功能实施：AI 聊天助手（SSE流式）、通知列表（30s轮询）、公告查看（三端首页卡片+详情页）、15文件变更 | ~25k |
+| 2026-06-06 14:20 | [260606-1420.md](260606-1420.md) | 移动端方案B落地：公告列表页(PullToRefresh+Skeleton)、家长消息中心(气泡UI+发送)、教师签到卡(实时时钟+Dialog确认)、4 Tab | ~80k |
