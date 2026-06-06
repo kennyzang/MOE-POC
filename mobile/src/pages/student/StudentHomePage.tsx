@@ -111,9 +111,17 @@ export default function StudentHomePage() {
           {/* Announcements Section */}
           {latestAnnos.length > 0 && (
             <>
-              <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
-                <Megaphone size={16} color="#165DFF" />
-                {t('announcements.title')}
+              <div className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Megaphone size={16} color="#165DFF" />
+                  {t('announcements.title')}
+                </span>
+                <span
+                  onClick={() => navigate('/student/announcements')}
+                  style={{ fontSize: 12, color: '#165DFF', cursor: 'pointer', fontWeight: 500 }}
+                >
+                  {t('announcements.viewAll')}
+                </span>
               </div>
               {latestAnnos.map(anno => (
                 <div

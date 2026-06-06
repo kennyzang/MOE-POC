@@ -5,6 +5,8 @@ import LoginPage from '@/pages/auth/LoginPage'
 import ParentHomePage from '@/pages/parent/ParentHomePage'
 import ParentGradesPage from '@/pages/parent/ParentGradesPage'
 import ParentAttendancePage from '@/pages/parent/ParentAttendancePage'
+import ParentMessagesPage from '@/pages/parent/ParentMessagesPage'
+import ParentMessageDetailPage from '@/pages/parent/ParentMessageDetailPage'
 import StudentHomePage from '@/pages/student/StudentHomePage'
 import StudentProfilePage from '@/pages/student/StudentProfilePage'
 import StudentCoursesPage from '@/pages/student/StudentCoursesPage'
@@ -14,6 +16,7 @@ import TeacherClassesPage from '@/pages/teacher/TeacherClassesPage'
 import TeacherAttendancePage from '@/pages/teacher/TeacherAttendancePage'
 import TeacherGradesPage from '@/pages/teacher/TeacherGradesPage'
 import AnnouncementDetailPage from '@/pages/common/AnnouncementDetailPage'
+import AnnouncementsPage from '@/pages/common/AnnouncementsPage'
 import CourseDetailPage from '@/pages/common/CourseDetailPage'
 
 const ROLE_HOME: Record<string, string> = {
@@ -45,22 +48,27 @@ export default function App() {
         <Route path="/parent/home" element={<RequireAuth><ParentHomePage /></RequireAuth>} />
         <Route path="/parent/grades" element={<RequireAuth><ParentGradesPage /></RequireAuth>} />
         <Route path="/parent/attendance" element={<RequireAuth><ParentAttendancePage /></RequireAuth>} />
+        <Route path="/parent/messages" element={<RequireAuth><ParentMessagesPage /></RequireAuth>} />
+        <Route path="/parent/messages/detail" element={<RequireAuth><ParentMessageDetailPage /></RequireAuth>} />
 
         {/* Student portal */}
         <Route path="/student/home" element={<RequireAuth><StudentHomePage /></RequireAuth>} />
         <Route path="/student/profile" element={<RequireAuth><StudentProfilePage /></RequireAuth>} />
         <Route path="/student/courses" element={<RequireAuth><StudentCoursesPage /></RequireAuth>} />
         <Route path="/student/grades" element={<RequireAuth><StudentGradesPage /></RequireAuth>} />
+        <Route path="/student/announcements" element={<RequireAuth><AnnouncementsPage /></RequireAuth>} />
 
-        {/* Teacher portal — unified courses with list/calendar views */}
+        {/* Teacher portal */}
         <Route path="/teacher/home" element={<RequireAuth><TeacherHomePage /></RequireAuth>} />
         <Route path="/teacher/courses" element={<RequireAuth><TeacherClassesPage /></RequireAuth>} />
         <Route path="/teacher/classes" element={<Navigate to="/teacher/courses" replace />} />
         <Route path="/teacher/timetable" element={<Navigate to="/teacher/courses" replace />} />
         <Route path="/teacher/attendance" element={<RequireAuth><TeacherAttendancePage /></RequireAuth>} />
         <Route path="/teacher/grades" element={<RequireAuth><TeacherGradesPage /></RequireAuth>} />
+        <Route path="/teacher/announcements" element={<RequireAuth><AnnouncementsPage /></RequireAuth>} />
 
         {/* Common */}
+        <Route path="/announcements" element={<RequireAuth><AnnouncementsPage /></RequireAuth>} />
         <Route path="/announcement/detail" element={<RequireAuth><AnnouncementDetailPage /></RequireAuth>} />
         <Route path="/course/detail" element={<RequireAuth><CourseDetailPage /></RequireAuth>} />
 

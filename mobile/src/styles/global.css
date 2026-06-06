@@ -411,3 +411,18 @@ html, body, #root {
   font-size: 11px;
   color: #c9cdd4;
 }
+
+/* ── Message Thread Card ── */
+.msg-thread-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.msg-thread-card:active {
+  background: #f5f7ff !important;
+}

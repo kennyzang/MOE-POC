@@ -1,5 +1,5 @@
 import { TabBar } from 'antd-mobile'
-import { Home, BookOpen, BarChart2, User, CalendarCheck, CalendarDays, FileText } from 'lucide-react'
+import { Home, BookOpen, BarChart2, User, CalendarCheck, CalendarDays, FileText, MessageSquare } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +17,7 @@ export default function RoleTabBar() {
       { key: '/parent/home', title: t('parent.myChildren'), icon: <Home size={20} /> },
       { key: '/parent/grades', title: t('parent.grades'), icon: <BarChart2 size={20} /> },
       { key: '/parent/attendance', title: t('parent.attendance'), icon: <CalendarCheck size={20} /> },
+      { key: '/parent/messages', title: t('messages.title'), icon: <MessageSquare size={20} /> },
     ],
     student: [
       { key: '/student/home', title: t('student.home'), icon: <Home size={20} /> },

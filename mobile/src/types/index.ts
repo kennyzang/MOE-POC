@@ -185,3 +185,42 @@ export interface Announcement {
   createdAt?: string
   author?: { displayName: string }
 }
+
+export interface DirectMessage {
+  id: string
+  threadId: string
+  senderId: string
+  content: string
+  readAt?: string
+  createdAt: string
+  sender?: { id: string; displayName: string; role: string }
+}
+
+export interface MessageThread {
+  id: string
+  subject: string
+  parentUserId: string
+  teacherUserId: string
+  studentId?: string
+  updatedAt: string
+  createdAt: string
+  parentName?: string
+  teacherName?: string
+  unreadCount?: number
+  messages?: DirectMessage[]
+}
+
+export interface StaffAttendanceRecord {
+  id: string
+  teacherId: string
+  date: string
+  checkInAt?: string | null
+  checkOutAt?: string | null
+  status: string
+  lateMinutes: number
+}
+
+export interface StaffAttendanceConfig {
+  startTime: string
+  endTime: string
+}
