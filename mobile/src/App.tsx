@@ -13,6 +13,7 @@ import TeacherHomePage from '@/pages/teacher/TeacherHomePage'
 import TeacherClassesPage from '@/pages/teacher/TeacherClassesPage'
 import TeacherAttendancePage from '@/pages/teacher/TeacherAttendancePage'
 import AnnouncementDetailPage from '@/pages/common/AnnouncementDetailPage'
+import CourseDetailPage from '@/pages/common/CourseDetailPage'
 
 const ROLE_HOME: Record<string, string> = {
   parent: '/parent/home',
@@ -50,13 +51,16 @@ export default function App() {
         <Route path="/student/courses" element={<RequireAuth><StudentCoursesPage /></RequireAuth>} />
         <Route path="/student/grades" element={<RequireAuth><StudentGradesPage /></RequireAuth>} />
 
-        {/* Teacher portal */}
+        {/* Teacher portal — unified courses with list/calendar views */}
         <Route path="/teacher/home" element={<RequireAuth><TeacherHomePage /></RequireAuth>} />
-        <Route path="/teacher/classes" element={<RequireAuth><TeacherClassesPage /></RequireAuth>} />
+        <Route path="/teacher/courses" element={<RequireAuth><TeacherClassesPage /></RequireAuth>} />
+        <Route path="/teacher/classes" element={<Navigate to="/teacher/courses" replace />} />
+        <Route path="/teacher/timetable" element={<Navigate to="/teacher/courses" replace />} />
         <Route path="/teacher/attendance" element={<RequireAuth><TeacherAttendancePage /></RequireAuth>} />
 
         {/* Common */}
         <Route path="/announcement/detail" element={<RequireAuth><AnnouncementDetailPage /></RequireAuth>} />
+        <Route path="/course/detail" element={<RequireAuth><CourseDetailPage /></RequireAuth>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

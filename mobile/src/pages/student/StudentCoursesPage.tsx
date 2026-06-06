@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { SpinLoading, Card, Tag } from 'antd-mobile'
-import { BookOpen, Clock } from 'lucide-react'
+import { BookOpen, ChevronRight } from 'lucide-react'
 import AppLayout from '@/components/AppLayout'
 import api from '@/lib/api'
 import type { ApiResponse, Student } from '@/types'
 
 export default function StudentCoursesPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   const { data: student, isLoading } = useQuery({
     queryKey: ['student-me'],
@@ -29,7 +31,11 @@ export default function StudentCoursesPage() {
         <div style={{ textAlign: 'center', color: '#86909c', padding: 40 }}>{t('student.noCourses')}</div>
       ) : (
         enrollments.map(enrollment => (
-          <Card key={enrollment.id} style={{ marginBottom: 12, borderRadius: 16 }}>
+          <Card
+            key={enrollment.id}
+            style={{ marginBottom: 12, borderRadius: 16 }}
+            onClick={() => navigate(`/course/detail?courseId=${enrollment.courseId}`)}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
@@ -37,10 +43,7 @@ export default function StudentCoursesPage() {
                 </div>
                 <Tag color="primary" fill="outline">{enrollment.course?.code}</Tag>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#86909c', fontSize: 12 }}>
-                <Clock size={12} />
-                <span>{enrollment.course?.creditHours} {t('student.creditHours')}</span>
-              </div>
+              <ChevronRight size={16} color="#c0c4cc" style={{ flexShrink: 0 }} />
             </div>
             {enrollment.course?.gradeLevel && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 13, color: '#86909c' }}>

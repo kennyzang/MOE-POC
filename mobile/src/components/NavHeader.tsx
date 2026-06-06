@@ -26,12 +26,12 @@ export default function NavHeader({ title, showBack = false, showLogout = false 
       onBack={showBack ? () => navigate(-1) : undefined}
       back={showBack ? t('common.back') : null}
       right={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <NotificationBell />
           {showLogout && (
             <span
               onClick={handleLogout}
-              style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center' }}
+              style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', paddingLeft: 4 }}
               title={t('common.logout')}
             >
               <LogOut size={18} />
@@ -42,6 +42,7 @@ export default function NavHeader({ title, showBack = false, showLogout = false 
       style={{
         '--height': '45px',
         '--border-bottom': '1px solid rgba(255,255,255,0.2)',
+        '--padding-right': '4px',
         background: 'linear-gradient(135deg, #165DFF 0%, #0E42D2 100%)',
         color: 'white',
         fontWeight: 600,

@@ -36,6 +36,7 @@ html, body, #root {
   border-radius: 12px;
   padding: 14px 8px;
   text-align: center;
+  min-width: 0;
 }
 
 .stat-value {
@@ -43,12 +44,20 @@ html, body, #root {
   font-weight: 700;
   color: var(--color-primary);
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .stat-label {
   font-size: 11px;
   color: var(--color-text-secondary);
   margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .welcome-card {
@@ -75,6 +84,11 @@ html, body, #root {
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 12px;
+  min-width: 0;
+}
+
+.stats-row > * {
+  min-width: 0;
 }
 
 .section-title {
@@ -83,6 +97,10 @@ html, body, #root {
   color: var(--color-text);
   margin-bottom: 8px;
   padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 /* === Chat Drawer === */
