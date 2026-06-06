@@ -4,6 +4,34 @@ import { authenticate, type AuthRequest } from '../middleware/auth'
 
 const router = Router()
 
+// ─── GET / — all posting records (admin/manager/principal) ──────
+
+router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'principal', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Insufficient permissions' }); return
+    }
+    const { teacherId } = req.query as { teacherId?: string }
+    const postings = await prisma.postingRecord.findMany({
+      where: teacherId ? { teacherId } : undefined,
+      orderBy: { startDate: 'desc' },
+      include: {
+        teacher: {
+          include: { user: { select: { displayName: true } } },
+        },
+      },
+    })
+    const data = postings.map(p => ({
+      ...p,
+      teacherName: p.teacher.user.displayName,
+    }))
+    res.json({ success: true, data })
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
 // ─── GET /teacher/:teacherId ──────────────────────────────────────
 
 router.get('/teacher/:teacherId', authenticate, async (req: AuthRequest, res: Response) => {

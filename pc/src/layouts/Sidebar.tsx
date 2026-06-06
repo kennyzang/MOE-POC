@@ -146,6 +146,7 @@ const Sidebar = () => {
           { key: '/ems/awards', label: t('nav.awardsRecognition', 'Awards & Recognition'), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
           { key: '/ems/surveys', label: t('nav.surveys', 'Staff Surveys'), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
           { key: '/ems/self-service', label: 'Self-Service Portal', icon: icon(UserCog2), roles: ['admin', 'manager', 'principal', 'hod', 'teacher'] },
+          { key: '/ems/postings', label: 'Postings History', roles: ['admin', 'manager', 'principal', 'hod'] },
         ],
       },
       // Attendance

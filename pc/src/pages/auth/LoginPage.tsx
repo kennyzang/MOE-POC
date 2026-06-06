@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Form, Input, Button, Typography, message, Space, Divider, Tooltip, Select, Modal, Spin, Tag } from 'antd'
-import { Lock, User, Globe, Shield, Building2, CheckCircle } from 'lucide-react'
+import { Lock, User, Globe, Shield, Building2, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useLanguageStore } from '@/stores/languageStore'
@@ -12,33 +12,58 @@ import type { LoginRequest, LoginResponse } from '@/types'
 
 const { Title, Text } = Typography
 
-const DEMO_ACCOUNTS = [
-  // ── System ──────────────────────────────────────────────────────────
+interface DemoAccount {
+  username: string
+  label: string
+  password: string
+  color: string
+  bg: string
+  school: string | null
+  authority: string | null
+  /** One-line role purpose shown beside the chip in Tier 1. */
+  hint?: string
+}
+
+// ── TIER 1 — Storyline roles (always visible, ordered by 60-min demo flow) ────
+const STORYLINE_ACCOUNTS: DemoAccount[] = [
+  { username: 'parent.siti',     label: "Parent (SMHK)",    password: 'Demo@2026',    color: '#EB2F96', bg: '#FFF0F6',  school: 'SMHK', authority: 'MOE',
+    hint: 'Applies for child admission' },
+  { username: 'admin',           label: 'Admin',            password: 'admin123',     color: '#722ED1', bg: '#F9F0FF',  school: 'SMHK', authority: 'MOE',
+    hint: 'Opens Command Center' },
+  { username: 'teacher01',       label: 'Form Teacher',     password: 'teacher123',   color: '#FA8C16', bg: '#FFF7E6',  school: 'SMHK', authority: 'MOE',
+    hint: 'Marks attendance, enters grades' },
+  { username: 'adam',            label: 'Yr 7 Student',     password: 'Demo@2026',    color: '#52C41A', bg: '#F6FFED',  school: 'SMHK', authority: 'MOE',
+    hint: 'Sees grades & risk impact' },
+  { username: 'farah',           label: 'Counselor',        password: 'Demo@2026',    color: '#D46B08', bg: '#FFF7E6',  school: 'SMHK', authority: 'MOE',
+    hint: 'Auto-receives at-risk cases' },
+  { username: 'hod01',           label: 'HOD',              password: 'hod123',       color: '#531DAB', bg: '#F9F0FF',  school: 'SMHK', authority: 'MOE',
+    hint: 'Reviews & approves requests' },
+  { username: 'principal',       label: 'Principal',        password: 'principal123', color: '#096DD9', bg: '#E6F4FF',  school: 'SMHK', authority: 'MOE',
+    hint: 'Final ratification & oversight' },
+  { username: 'dpeofficer',      label: 'DPE Officer',      password: 'Demo@2026',    color: '#13C2C2', bg: '#E6FFFB',  school: null,   authority: 'DPE',
+    hint: 'Regulates all private schools' },
+]
+
+// ── TIER 2 — Multi-authority proof (one per tenant type) ──────────────────────
+const MULTI_AUTHORITY_ACCOUNTS: DemoAccount[] = [
   { username: 'sysadmin',        label: 'System Admin',     password: 'sysadmin123',  color: '#434343', bg: '#F5F5F5',  school: null,   authority: null },
-  // ── SMHK — MOE Secondary ────────────────────────────────────────────
-  { username: 'admin',           label: 'Admin',            password: 'admin123',     color: '#722ED1', bg: '#F9F0FF',  school: 'SMHK', authority: 'MOE' },
-  { username: 'principal',       label: 'Principal',        password: 'principal123', color: '#096DD9', bg: '#E6F4FF',  school: 'SMHK', authority: 'MOE' },
-  { username: 'hod01',           label: 'HOD',              password: 'hod123',       color: '#531DAB', bg: '#F9F0FF',  school: 'SMHK', authority: 'MOE' },
-  { username: 'farah',           label: 'Counselor',        password: 'Demo@2026',    color: '#D46B08', bg: '#FFF7E6',  school: 'SMHK', authority: 'MOE' },
-  { username: 'teacher01',       label: 'Form Teacher',     password: 'teacher123',   color: '#FA8C16', bg: '#FFF7E6',  school: 'SMHK', authority: 'MOE' },
-  { username: 'adam',            label: 'Yr 7 Student',     password: 'Demo@2026',    color: '#52C41A', bg: '#F6FFED',  school: 'SMHK', authority: 'MOE' },
-  { username: 'parent.siti',     label: "Parent (SMHK)",    password: 'Demo@2026',    color: '#EB2F96', bg: '#FFF0F6',  school: 'SMHK', authority: 'MOE' },
-  // ── SRPB — MOE Primary ──────────────────────────────────────────────
-  { username: 'admin.srpb',      label: 'Primary Admin',    password: 'Demo@2026',    color: '#0958D9', bg: '#E6F4FF',  school: 'SRPB', authority: 'MOE' },
   { username: 'principal.srpb',  label: 'Primary Principal',password: 'Demo@2026',    color: '#003EB3', bg: '#F0F5FF',  school: 'SRPB', authority: 'MOE' },
+  { username: 'principal.smab',  label: 'MORA Principal',   password: 'Demo@2026',    color: '#AD4E00', bg: '#FFF2E8',  school: 'SMAB', authority: 'MORA' },
+  { username: 'admin.isb',       label: 'Private Admin',    password: 'Demo@2026',    color: '#531DAB', bg: '#F9F0FF',  school: 'ISB',  authority: 'PRIVATE' },
+]
+
+// ── TIER 3 — Additional sample accounts (hidden behind "Show more") ──────────
+const ADDITIONAL_ACCOUNTS: DemoAccount[] = [
+  { username: 'admin.srpb',      label: 'Primary Admin',    password: 'Demo@2026',    color: '#0958D9', bg: '#E6F4FF',  school: 'SRPB', authority: 'MOE' },
   { username: 'teacher.srpb2',   label: 'Primary Teacher',  password: 'Demo@2026',    color: '#1677FF', bg: '#E6F4FF',  school: 'SRPB', authority: 'MOE' },
   { username: 'parent.srpb',     label: 'Primary Parent',   password: 'Demo@2026',    color: '#C41D7F', bg: '#FFF0F6',  school: 'SRPB', authority: 'MOE' },
-  // ── SMAB — MORA Secondary ───────────────────────────────────────────
   { username: 'admin.smab',      label: 'MORA Admin',       password: 'Demo@2026',    color: '#874D00', bg: '#FFF7E6',  school: 'SMAB', authority: 'MORA' },
-  { username: 'principal.smab',  label: 'MORA Principal',   password: 'Demo@2026',    color: '#AD4E00', bg: '#FFF2E8',  school: 'SMAB', authority: 'MORA' },
   { username: 'teacher.smab1',   label: 'MORA Teacher',     password: 'Demo@2026',    color: '#D46B08', bg: '#FFF7E6',  school: 'SMAB', authority: 'MORA' },
-  // ── ISB — Private ───────────────────────────────────────────────────
-  { username: 'admin.isb',       label: 'Private Admin',    password: 'Demo@2026',    color: '#531DAB', bg: '#F9F0FF',  school: 'ISB',  authority: 'PRIVATE' },
   { username: 'teacher.isb1',    label: 'Intl Teacher',     password: 'Demo@2026',    color: '#391085', bg: '#EFE6FF',  school: 'ISB',  authority: 'PRIVATE' },
 ]
 
 const AUTHORITY_COLOR: Record<string, string> = {
-  MOE: '#165DFF', MORA: '#d48806', PRIVATE: '#722ED1',
+  MOE: '#165DFF', MORA: '#d48806', PRIVATE: '#722ED1', DPE: '#13C2C2',
 }
 
 // ─── SSO Consent Modal ────────────────────────────────────────────────────────
@@ -177,12 +202,15 @@ const LoginPage = () => {
   const [ssoProvider, setSsoProvider] = useState<'BRUNEI_ID' | 'EGNC_IDPM' | null>(null)
   const [ssoLoading, setSsoLoading] = useState(false)
   const [ssoSelectedUser, setSsoSelectedUser] = useState<string>('')
+  const [showAdditional, setShowAdditional] = useState<boolean>(false)
 
   const doLogin = async (username: string, password: string) => {
     const { data } = await api.post<LoginResponse>('/auth/login', { username, password })
     if (data.success) {
       setAuth(data.user, data.token)
       navigate(ROLE_HOME[data.user.role] ?? '/dashboard', { replace: true })
+    } else {
+      throw new Error((data as any).message || 'Invalid credentials')
     }
   }
 
@@ -241,7 +269,7 @@ const LoginPage = () => {
     >
       <Card
         style={{
-          width: 440,
+          width: 560,
           borderRadius: 12,
           boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
         }}
@@ -330,48 +358,175 @@ const LoginPage = () => {
             </Button>
           </Space>
 
-          <Divider style={{ margin: '4px 0', fontSize: 12, color: '#bfbfbf' }}>
-            Quick Access
-          </Divider>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {DEMO_ACCOUNTS.map(account => (
-              <Tooltip key={account.username} title={`${account.username}${account.school ? ` · ${account.school}` : ''}`} placement="top">
-                <Button
-                  size="small"
-                  loading={quickLoading === account.username}
-                  disabled={quickLoading !== null && quickLoading !== account.username}
-                  onClick={() => void onQuickLogin(account.username, account.password)}
-                  style={{
-                    color: account.color,
-                    background: account.bg,
-                    borderColor: account.color,
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    height: 'auto',
-                    padding: '3px 8px',
-                  }}
+          {/* ── Tier 1: Demo Storyline Roles (with hints) ──────────────── */}
+          <div>
+            <Divider style={{ margin: '4px 0 10px', fontSize: 11, color: '#bfbfbf', letterSpacing: 0.5 }}>
+              KEY ROLES
+            </Divider>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {STORYLINE_ACCOUNTS.map(account => (
+                <Tooltip
+                  key={account.username}
+                  title={`${account.username}${account.school ? ` · ${account.school}` : ''}`}
+                  placement="top"
                 >
-                  <span style={{ lineHeight: 1.3 }}>{account.label}</span>
-                  {account.authority && (
-                    <span style={{
-                      fontSize: 9,
-                      fontWeight: 700,
-                      background: AUTHORITY_COLOR[account.authority] ?? '#888',
-                      color: '#fff',
-                      borderRadius: 3,
-                      padding: '0 3px',
-                      letterSpacing: 0.2,
-                      lineHeight: 1.5,
-                    }}>
-                      {account.authority === 'PRIVATE' ? 'PVT' : account.authority}
-                    </span>
-                  )}
-                </Button>
-              </Tooltip>
-            ))}
+                  <Button
+                    loading={quickLoading === account.username}
+                    disabled={quickLoading !== null && quickLoading !== account.username}
+                    onClick={() => void onQuickLogin(account.username, account.password)}
+                    style={{
+                      color: account.color,
+                      background: account.bg,
+                      borderColor: account.color,
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      flexDirection: 'column',
+                      gap: 2,
+                      height: 'auto',
+                      padding: '6px 10px',
+                      textAlign: 'left',
+                      whiteSpace: 'normal',
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{account.label}</span>
+                      {account.authority && (
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          background: AUTHORITY_COLOR[account.authority] ?? '#888',
+                          color: '#fff',
+                          borderRadius: 3,
+                          padding: '0 4px',
+                          letterSpacing: 0.2,
+                          lineHeight: 1.6,
+                          marginLeft: 'auto',
+                        }}>
+                          {account.authority === 'PRIVATE' ? 'PVT' : account.authority}
+                        </span>
+                      )}
+                    </div>
+                    {account.hint && (
+                      <div style={{ fontSize: 10.5, color: '#8c8c8c', fontWeight: 400, lineHeight: 1.3 }}>
+                        {account.hint}
+                      </div>
+                    )}
+                  </Button>
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Tier 2: Multi-authority sample (compact row) ───────────── */}
+          <div>
+            <Divider style={{ margin: '4px 0 8px', fontSize: 11, color: '#bfbfbf', letterSpacing: 0.5 }}>
+              MULTI-AUTHORITY SAMPLE
+            </Divider>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {MULTI_AUTHORITY_ACCOUNTS.map(account => (
+                <Tooltip
+                  key={account.username}
+                  title={`${account.username}${account.school ? ` · ${account.school}` : ''}`}
+                  placement="top"
+                >
+                  <Button
+                    size="small"
+                    loading={quickLoading === account.username}
+                    disabled={quickLoading !== null && quickLoading !== account.username}
+                    onClick={() => void onQuickLogin(account.username, account.password)}
+                    style={{
+                      color: account.color,
+                      background: account.bg,
+                      borderColor: account.color,
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      height: 'auto',
+                      padding: '3px 8px',
+                    }}
+                  >
+                    <span style={{ lineHeight: 1.3 }}>{account.label}</span>
+                    {account.authority && (
+                      <span style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        background: AUTHORITY_COLOR[account.authority] ?? '#888',
+                        color: '#fff',
+                        borderRadius: 3,
+                        padding: '0 3px',
+                        letterSpacing: 0.2,
+                        lineHeight: 1.5,
+                      }}>
+                        {account.authority === 'PRIVATE' ? 'PVT' : account.authority}
+                      </span>
+                    )}
+                  </Button>
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Tier 3: Additional accounts (collapsed by default) ───── */}
+          <div>
+            <Button
+              type="link"
+              size="small"
+              onClick={() => setShowAdditional(v => !v)}
+              icon={showAdditional ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              style={{ padding: 0, fontSize: 11, color: '#8c8c8c' }}
+            >
+              {showAdditional
+                ? 'Hide additional accounts'
+                : `Show ${ADDITIONAL_ACCOUNTS.length} more accounts`}
+            </Button>
+            {showAdditional && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {ADDITIONAL_ACCOUNTS.map(account => (
+                  <Tooltip
+                    key={account.username}
+                    title={`${account.username}${account.school ? ` · ${account.school}` : ''}`}
+                    placement="top"
+                  >
+                    <Button
+                      size="small"
+                      loading={quickLoading === account.username}
+                      disabled={quickLoading !== null && quickLoading !== account.username}
+                      onClick={() => void onQuickLogin(account.username, account.password)}
+                      style={{
+                        color: account.color,
+                        background: account.bg,
+                        borderColor: account.color,
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        height: 'auto',
+                        padding: '3px 8px',
+                      }}
+                    >
+                      <span style={{ lineHeight: 1.3 }}>{account.label}</span>
+                      {account.authority && (
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          background: AUTHORITY_COLOR[account.authority] ?? '#888',
+                          color: '#fff',
+                          borderRadius: 3,
+                          padding: '0 3px',
+                          letterSpacing: 0.2,
+                          lineHeight: 1.5,
+                        }}>
+                          {account.authority === 'PRIVATE' ? 'PVT' : account.authority}
+                        </span>
+                      )}
+                    </Button>
+                  </Tooltip>
+                ))}
+              </div>
+            )}
           </div>
         </Space>
       </Card>

@@ -57,6 +57,7 @@ const LeaveBalancePage    = lazy(() => import('@/pages/ems/LeaveBalancePage'))
 const LeaveCalendarPage   = lazy(() => import('@/pages/ems/LeaveCalendarPage'))
 const LeaveReportsPage    = lazy(() => import('@/pages/ems/LeaveReportsPage'))
 const CpdWorkshopsPage    = lazy(() => import('@/pages/ems/CpdWorkshopsPage'))
+const PostingsPage        = lazy(() => import('@/pages/ems/PostingsPage'))
 
 // Attendance
 const StaffCheckInPage           = lazy(() => import('@/pages/attendance/StaffCheckInPage'))
@@ -260,6 +261,9 @@ export const router = createBrowserRouter([
 
       // Self-Service Portal
       { path: 'ems/self-service', element: r(['teacher', 'hod', 'admin', 'manager', 'principal'], <SelfServicePortalPage />) },
+
+      // Postings / Career History
+      { path: 'ems/postings', element: r(['admin', 'manager', 'principal', 'hod'], <PostingsPage />) },
 
       // Attendance
       { path: 'attendance/staff-check-in', element: r(['teacher', 'hod'], <StaffCheckInPage />) },

@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Card, Row, Col, Statistic, Tag, Typography, Spin, Empty, Table, Space, Input, Select, Tooltip, Alert } from 'antd'
+import { Card, Row, Col, Statistic, Tag, Typography, Spin, Empty, Table, Space, Input, Select, Tooltip, Alert, Button, Modal, Form, DatePicker, message } from 'antd'
 import {
   Landmark, ShieldAlert, CalendarClock, AlertTriangle, Building2, Users,
-  CheckCircle2, FileWarning, Search,
+  CheckCircle2, FileWarning, Search, Send,
 } from 'lucide-react'
 import { useState, useMemo } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 
 const { Title, Text } = Typography
@@ -68,9 +69,31 @@ function daysUntil(iso: string | null): number | null {
 
 const PrivateEdDashboardPage = () => {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [districtFilter, setDistrictFilter] = useState<string | undefined>()
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
   const [search, setSearch] = useState('')
+  const [circularOpen, setCircularOpen] = useState(false)
+  const [circularForm] = Form.useForm()
+
+  const circularMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const payload = {
+        ...values,
+        effectiveDate: values.effectiveDate?.toISOString(),
+        acknowledgementDueDate: values.acknowledgementDueDate ? values.acknowledgementDueDate.toISOString() : undefined,
+      }
+      const { data } = await api.post('/private-ed/circulars', payload)
+      return data
+    },
+    onSuccess: () => {
+      message.success('Circular issued successfully')
+      qc.invalidateQueries({ queryKey: ['priv-ed-dashboard'] })
+      setCircularOpen(false)
+      circularForm.resetFields()
+    },
+    onError: () => message.error('Failed to issue circular'),
+  })
 
   const { data: dashboard, isLoading: dashLoading } = useQuery<DashboardData>({
     queryKey: ['priv-ed-dashboard'],
@@ -194,11 +217,61 @@ const PrivateEdDashboardPage = () => {
               </Text>
             </div>
           </Space>
-          <Tag color="blue" style={{ fontSize: 12, padding: '4px 10px' }}>
-            Brunei Darussalam · MOE
-          </Tag>
+          <Space>
+            <Tag color="blue" style={{ fontSize: 12, padding: '4px 10px' }}>
+              Brunei Darussalam · MOE
+            </Tag>
+            <Button type="primary" icon={<Send size={14} />} onClick={() => setCircularOpen(true)}>
+              Send Circular
+            </Button>
+          </Space>
         </Space>
       </Card>
+
+      <Modal
+        title="Issue Compliance Circular"
+        open={circularOpen}
+        onCancel={() => { setCircularOpen(false); circularForm.resetFields() }}
+        onOk={() => circularForm.submit()}
+        confirmLoading={circularMutation.isPending}
+        okText="Issue Circular"
+        width={600}
+      >
+        <Form form={circularForm} layout="vertical" onFinish={v => circularMutation.mutate(v)}>
+          <Form.Item name="circularNumber" label="Circular Number" rules={[{ required: true, message: 'Required' }]}>
+            <Input placeholder="e.g. DPE/CIR/2026/06" />
+          </Form.Item>
+          <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Required' }]}>
+            <Input placeholder="Circular title" />
+          </Form.Item>
+          <Form.Item name="bodyMarkdown" label="Content" rules={[{ required: true, message: 'Required' }]}>
+            <Input.TextArea rows={4} placeholder="Circular body (Markdown supported)" />
+          </Form.Item>
+          <Form.Item name="effectiveDate" label="Effective Date" rules={[{ required: true, message: 'Required' }]}>
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="acknowledgementDueDate" label="Acknowledgement Due Date">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="targetScope" label="Target Scope" rules={[{ required: true, message: 'Required' }]} initialValue="ALL_PRIVATE">
+            <Select options={[
+              { value: 'ALL_PRIVATE', label: 'All private schools' },
+              { value: 'BY_DISTRICT', label: 'By district' },
+              { value: 'SPECIFIC', label: 'Specific schools' },
+            ]} />
+          </Form.Item>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, cur) => prev.targetScope !== cur.targetScope}
+          >
+            {({ getFieldValue }) => getFieldValue('targetScope') === 'BY_DISTRICT' && (
+              <Form.Item name="targetDistrict" label="District" rules={[{ required: true }]}>
+                <Select options={districtOptions.map(d => ({ value: d.value, label: d.label }))} />
+              </Form.Item>
+            )}
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {hasCritical && (
         <Alert

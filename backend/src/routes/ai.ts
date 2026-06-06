@@ -83,13 +83,29 @@ export async function recalcStudentRisk(studentDbId: string, triggerEvent: strin
     a => a.status === 'absent' && new Date(a.session.date) >= cutoff14,
   ).length
 
-  // Current grade avg (0-100 percentage)
+  // Current grade avg (0-100 percentage) — simple average for risk scoring
   const gradeScores = student.grades
     .filter(g => g.score !== null)
     .map(g => (g.score! / (g.gradeItem.maxScore || 100)) * 100)
   const currentGradeAvg = gradeScores.length > 0
     ? Math.round(gradeScores.reduce((s, v) => s + v, 0) / gradeScores.length)
     : 70
+
+  // Per-course weighted averages — use worst course for academic standing
+  const courseGradesMap = new Map<string, typeof student.grades>()
+  for (const g of student.grades.filter(g => g.score !== null)) {
+    const cid = g.gradeItem.courseId
+    if (!courseGradesMap.has(cid)) courseGradesMap.set(cid, [])
+    courseGradesMap.get(cid)!.push(g)
+  }
+  const courseAvgs: number[] = []
+  for (const courseGrades of courseGradesMap.values()) {
+    const totalWeight = courseGrades.reduce((s, g) => s + g.gradeItem.weight, 0)
+    if (totalWeight === 0) continue
+    const weightedSum = courseGrades.reduce((s, g) => s + (g.score! / (g.gradeItem.maxScore || 100)) * 100 * g.gradeItem.weight, 0)
+    courseAvgs.push(Math.round(weightedSum / totalWeight))
+  }
+  const worstCourseAvg = courseAvgs.length > 0 ? Math.min(...courseAvgs) : currentGradeAvg
 
   // Previous grade avg: use second oldest half of grades as proxy
   let previousGradeAvg: number | null = null
@@ -198,8 +214,8 @@ export async function recalcStudentRisk(studentDbId: string, triggerEvent: strin
   })
   broadcast('dashboard', 'dashboard.risk.changed', { studentsAtRisk: atRiskCount.length })
 
-  // Academic standing side-effect (fire-and-forget safe, errors logged not thrown)
-  updateAcademicStanding(studentDbId, currentGradeAvg).catch(err =>
+  // Academic standing side-effect — use worst course weighted avg for sensitivity
+  updateAcademicStanding(studentDbId, worstCourseAvg).catch(err =>
     console.error('[Standing] updateAcademicStanding failed:', err),
   )
 }
@@ -259,6 +275,22 @@ export async function updateAcademicStanding(studentDbId: string, gradeAvg: numb
       type: 'warning',
     })
     broadcast('dashboard', 'dashboard.standing.changed', { studentId: studentDbId, newStanding, gradeAvg })
+
+    // Auto-open counselor case when standing worsens to ACADEMIC_WATCH or PROBATION
+    const existingCase = await prisma.counselorCase.findFirst({
+      where: { studentId: studentDbId, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+    })
+    if (!existingCase) {
+      await prisma.counselorCase.create({
+        data: {
+          studentId: studentDbId,
+          counselorUserId: counselorUser?.id ?? null,
+          openedReason: 'AUTO_STANDING_DECLINE',
+          status: 'OPEN',
+          notes: `Academic standing declined from ${previousStanding} to ${newStanding} (avg ${gradeAvg.toFixed(1)}%).`,
+        },
+      })
+    }
   }
 }
 
@@ -388,7 +420,7 @@ router.post('/risk/recalc/:studentId', requireRole('admin', 'manager', 'principa
 })
 
 // GET /api/v1/ai/risk/students — list at-risk students (HIGH_RISK or MONITOR)
-router.get('/risk/students', requireRole('admin', 'manager', 'principal', 'counselor'), async (_req: AuthRequest, res: Response) => {
+router.get('/risk/students', requireRole('admin', 'manager', 'principal', 'counselor', 'hod'), async (_req: AuthRequest, res: Response) => {
   const latest = await prisma.riskScore.findMany({
     where: { band: { in: ['HIGH_RISK', 'MONITOR'] } },
     orderBy: { computedAt: 'desc' },
@@ -402,15 +434,15 @@ router.get('/risk/students', requireRole('admin', 'manager', 'principal', 'couns
   res.json({ success: true, data: latest })
 })
 
-// GET /api/v1/ai/risk-report/:gradeLevel  (principal/admin only)
-router.get('/risk-report/:gradeLevel', requireRole('admin', 'manager', 'principal'), async (req: AuthRequest, res: Response) => {
+// GET /api/v1/ai/risk-report/:gradeLevel
+router.get('/risk-report/:gradeLevel', requireRole('admin', 'manager', 'principal', 'hod', 'counselor'), async (req: AuthRequest, res: Response) => {
   const gradeLevel = String(req.params.gradeLevel)
   const results = await computeRiskForGrade(gradeLevel)
   res.json({ success: true, data: results })
 })
 
 // GET /api/v1/ai/risk-grades  – list available grade levels
-router.get('/risk-grades', requireRole('admin', 'manager', 'principal'), async (_req, res: Response) => {
+router.get('/risk-grades', requireRole('admin', 'manager', 'principal', 'hod', 'counselor'), async (_req, res: Response) => {
   const grades = await prisma.student.findMany({
     where: { enrollmentStatus: 'enrolled', gradeLevel: { not: null } },
     select: { gradeLevel: true },

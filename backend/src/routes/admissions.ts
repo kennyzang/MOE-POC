@@ -730,6 +730,7 @@ router.post(
         data: {
           applicationId: application.id,
           applicationNumber: appNumber,
+          gradeApplied: application.gradeApplied,   // echo back so client can confirm age→grade calc
           eligibilityScore: score,
           eligibilityBreakdown: breakdown,
           hasSiblingPriority: application.hasSiblingPriority,
