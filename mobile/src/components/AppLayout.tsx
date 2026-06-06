@@ -1,5 +1,6 @@
 import NavHeader from './NavHeader'
 import RoleTabBar from './RoleTabBar'
+import ChatDrawer from './ChatDrawer'
 
 interface AppLayoutProps {
   title: string
@@ -14,6 +15,7 @@ export default function AppLayout({ title, showBack, showLogout, children }: App
       <NavHeader title={title} showBack={showBack} showLogout={showLogout} />
       <div className="page-content">{children}</div>
       <RoleTabBar />
+      <ChatDrawer />
     </div>
   )
 }

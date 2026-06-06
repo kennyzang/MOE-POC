@@ -89,7 +89,7 @@ export default function InventoryPage() {
   const [locationFilter, setLocationFilter] = useState('')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const handleSearch = (v: string) => {
     setSearch(v)
     clearTimeout(searchTimer.current)

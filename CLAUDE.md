@@ -53,6 +53,7 @@ moe-poc-claude/
 5. **Dashboard/statistics numbers MUST come from DB queries** — no hardcoded fake data
 6. **PC and mobile are separate projects** — no responsive design mixing
 7. **Styles must be easy to modify** — use CSS Modules + CSS variables, not deep SCSS nesting
+8. **Always run `npm run build` before committing** — dev server skips type checking; Docker CI does not (see Build Consistency Rules below)
 
 ## Code Style
 - Follow `.prettierrc` and `.eslintrc.cjs`
@@ -72,7 +73,7 @@ Before marking any feature as complete:
 2. Switch between at least 2 different role accounts to verify data isolation
 3. Verify form validations show inline error messages
 4. Check all text goes through i18n (grep for hardcoded strings)
-5. Run `npx tsc --noEmit` to catch TypeScript errors
+5. Run `cd pc && npm run build` to catch TypeScript + bundler errors (NOT just `tsc --noEmit` — build includes vite which catches more issues)
 6. For workflow features: verify the full state machine (every status transition)
 7. For dashboards: add/remove data in another module, verify numbers update
 
@@ -112,12 +113,37 @@ git diff --cached | grep -iE "(password|secret|api.?key|token|auth)\s*[=:]\s*\S{
 3. `git push --force` 覆盖两个远端
 4. 通知相关服务提供商（如 GitGuardian 告警）
 
+## Build Consistency Rules (血的教训 — Docker vs 本地环境不一致)
+
+**根本原因**：`npm run dev` 不做完整类型检查，Docker 构建用 `tsc -b && vite build` 会报错。
+
+### 安装依赖
+```bash
+npm ci        # ✅ 严格按 lock 文件，和 Docker 一致
+npm install   # ❌ 可能更新 lock、装到新版本
+```
+
+### 每次 commit 前必须
+```bash
+cd pc && npm run build   # 完整构建，等同于 Docker 里的行为
+```
+已配置 pre-push hook（`.git/hooks/pre-push`）自动执行，**不要用 `--no-verify` 绕过**。
+
+### 新增/升级依赖时
+- `pc/.npmrc` 已设置 `save-exact=true`，`npm install <pkg>` 会自动写入精确版本（无 `^`）
+- 升级后必须在本地跑 `npm run build` 验证无类型错误，再提交 lock 文件
+
+### 常见类型错误模式（已踩过的坑）
+- **Recharts `Tooltip formatter`**：参数类型是 `ValueType | undefined`，不是 `number`。用 `(v) => [(v as number).toFixed(1), 'label']`
+- **Lucide React 图标**：此版本只接受 `size` 和 `className`，不接受 `style` 或 `color`。需要着色时用 `<span style={{ color: '...' }}><Icon /></span>` 包裹
+- **AxiosHeaders**：`response.headers['content-type']` 类型宽，需 `as string` 转型
+
 ## Git Rules
 - Never commit: `.env`, `*.key`, `*.pem`, `*.mp4`, `node_modules/`, `*.db`, `screenshots/`
-- Two remotes, push both every time:
+- Two remotes, push both every time (优先 github，origin 内网需 VPN 可后补):
   ```bash
-  git push origin master
   git push github master
+  git push origin master
   ```
 
 ## End-of-Conversation Checklist (MUST DO)

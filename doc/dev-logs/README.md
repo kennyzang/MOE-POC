@@ -45,3 +45,7 @@
 | 2026-05-31 15:00 | [260531-1500.md](260531-1500.md) | Scenarios 2-8完成：Principal主页→CommandCenter、Counselor案例抽屉添加View Student按钮、提交上期遗漏变更（FileAttachment模型+家长会议路由+i18n） | ~25k |
 | 2026-06-01 12:00 | [260601-1200.md](260601-1200.md) | Scenarios 2-8 全流程Playwright实测：7角色全部通过，修复counselor/hod/admissions/principal访问学生详情403 Bug | ~45k |
 | 2026-06-02 23:00 | [260602-2300.md](260602-2300.md) | Gap模块Phases 1-5完成：Leave Enhancement、Staff Attendance、Retirement Planning、Awards+Posting History、Anonymous Surveys（6新模型、7新路由、16新页面） | ~180k |
+| 2026-06-05 15:00 | [260605-1500.md](260605-1500.md) | 合并 cengyk gap-phases-6-10（被误覆盖的提交）：Registration Portal、Private Education、Reports、自动触发器等，修复3个TS错误，双端推送成功 | ~8k |
+| 2026-06-05 18:00 | [260605-1800.md](260605-1800.md) | 登录页 Demo Accounts 改版：移除色块按钮，改为 UNISSA 风格侧面板（表格点击填充字段） | ~7k |
+| 2026-06-06 08:12 | [260606-0812.md](260606-0812.md) | 移动端功能梳理：PC/Mobile 差异分析、扩展候选方案、周末开发计划、CodeBuddy 规则迁移（.codebuddy/rules/ 7文件）、同步脚本 | ~25k |
+| 2026-06-06 08:28 | [260606-0828.md](260606-0828.md) | Mobile Day1 P1 功能实施：AI 聊天助手（SSE流式）、通知列表（30s轮询）、公告查看（三端首页卡片+详情页）、15文件变更 | ~25k |

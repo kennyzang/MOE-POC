@@ -1,16 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SpinLoading, List, Tag } from 'antd-mobile'
-import { BookOpen, Users } from 'lucide-react'
+import { BookOpen, Users, Megaphone, Pin } from 'lucide-react'
 import dayjs from 'dayjs'
+import { useNavigate } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout'
 import PushNotificationBanner from '@/components/PushNotificationBanner'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/lib/api'
-import type { ApiResponse, TeacherDashboardStats } from '@/types'
+import type { ApiResponse, TeacherDashboardStats, Announcement } from '@/types'
 
 export default function TeacherHomePage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
 
   const { data, isLoading } = useQuery({
@@ -20,6 +22,16 @@ export default function TeacherHomePage() {
       return data.data
     },
   })
+
+  const { data: announcements } = useQuery({
+    queryKey: ['announcements'],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<Announcement[]>>('/announcements')
+      return data.data ?? []
+    },
+  })
+
+  const latestAnnos = (announcements ?? []).slice(0, 3)
 
   return (
     <AppLayout title={t('teacher.title')} showLogout>
@@ -73,6 +85,37 @@ export default function TeacherHomePage() {
                   </List.Item>
                 ))}
               </List>
+            </>
+          )}
+
+          {/* Announcements Section */}
+          {latestAnnos.length > 0 && (
+            <>
+              <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
+                <Megaphone size={16} color="#165DFF" />
+                {t('announcements.title')}
+              </div>
+              {latestAnnos.map(anno => (
+                <div
+                  key={anno.id}
+                  className={`anno-card ${anno.priority === 'urgent' ? 'anno-card-urgent' : anno.isPinned ? 'anno-card-pinned' : ''}`}
+                  onClick={() => navigate(`/announcement/detail?id=${anno.id}`)}
+                >
+                  <div className="anno-card-title">
+                    {anno.isPinned && <Pin size={12} color="#FF7D00" />}
+                    {anno.priority === 'urgent' && (
+                      <Tag color="danger" fill="outline" style={{ fontSize: 10, padding: '0 4px' }}>
+                        {t('announcements.urgent')}
+                      </Tag>
+                    )}
+                    {anno.title}
+                  </div>
+                  <div className="anno-card-content">{anno.content}</div>
+                  <div className="anno-card-footer">
+                    <span>{dayjs(anno.publishedAt).format('DD MMM')}</span>
+                  </div>
+                </div>
+              ))}
             </>
           )}
         </>

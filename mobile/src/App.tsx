@@ -12,6 +12,7 @@ import StudentGradesPage from '@/pages/student/StudentGradesPage'
 import TeacherHomePage from '@/pages/teacher/TeacherHomePage'
 import TeacherClassesPage from '@/pages/teacher/TeacherClassesPage'
 import TeacherAttendancePage from '@/pages/teacher/TeacherAttendancePage'
+import AnnouncementDetailPage from '@/pages/common/AnnouncementDetailPage'
 
 const ROLE_HOME: Record<string, string> = {
   parent: '/parent/home',
@@ -53,6 +54,9 @@ export default function App() {
         <Route path="/teacher/home" element={<RequireAuth><TeacherHomePage /></RequireAuth>} />
         <Route path="/teacher/classes" element={<RequireAuth><TeacherClassesPage /></RequireAuth>} />
         <Route path="/teacher/attendance" element={<RequireAuth><TeacherAttendancePage /></RequireAuth>} />
+
+        {/* Common */}
+        <Route path="/announcement/detail" element={<RequireAuth><AnnouncementDetailPage /></RequireAuth>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

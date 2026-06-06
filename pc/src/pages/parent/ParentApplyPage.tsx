@@ -696,7 +696,7 @@ const ParentApplyPage = () => {
                   <Descriptions.Item label={t('admissions.previousAcademicAvg')}>
                     {reviewData.previousAcademicAvg != null ? `${String(reviewData.previousAcademicAvg)}%` : '—'}
                   </Descriptions.Item>
-                  {reviewData.medicalConditions && (
+                  {Boolean(reviewData.medicalConditions) && (
                     <Descriptions.Item label={t('admissions.medicalConditions')} span={2}>
                       {String(reviewData.medicalConditions)}
                     </Descriptions.Item>

@@ -8,7 +8,7 @@ export async function downloadFile(apiPath: string, filename?: string): Promise<
   // Strip /api/v1 prefix — the api instance already has baseURL: '/api/v1'
   const path = apiPath.replace(/^\/api\/v1/, '')
   const response = await api.get(path, { responseType: 'blob' })
-  const blob = new Blob([response.data], { type: response.headers['content-type'] ?? 'application/octet-stream' })
+  const blob = new Blob([response.data], { type: (response.headers['content-type'] as string) ?? 'application/octet-stream' })
 
   // Derive filename from Content-Disposition if not provided
   const disposition = response.headers['content-disposition'] ?? ''

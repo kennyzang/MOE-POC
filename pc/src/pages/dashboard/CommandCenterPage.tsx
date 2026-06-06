@@ -208,16 +208,16 @@ export default function CommandCenterPage() {
               >
                 <div className={styles.kpiHeader}>
                   <div className={styles.kpiIconWrap} style={{ background: widget.bg }}>
-                    <IconComp size={20} style={{ color: widget.color }} />
+                    <span style={{ color: widget.color, display: 'flex' }}><IconComp size={20} /></span>
                   </div>
                   <Space size={4}>
                     {(isWarning || isCritical) && (
                       <Tooltip title={isCritical ? t('commandCenter.criticalLevel') : t('commandCenter.warningLevel')}>
-                        <AlertTriangle size={16} color={isCritical ? '#F5222D' : '#FA8C16'} />
+                        <span style={{ color: isCritical ? '#F5222D' : '#FA8C16', display: 'flex' }}><AlertTriangle size={16} /></span>
                       </Tooltip>
                     )}
                     {widget.navTo && (
-                      <ArrowRight size={14} color="#bbb" />
+                      <span style={{ color: '#bbb', display: 'flex' }}><ArrowRight size={14} /></span>
                     )}
                   </Space>
                 </div>

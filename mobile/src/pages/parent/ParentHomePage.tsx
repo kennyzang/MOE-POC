@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SpinLoading, Card, Button, Tag } from 'antd-mobile'
-import { Users } from 'lucide-react'
+import { Users, Megaphone, Pin } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import dayjs from 'dayjs'
 import AppLayout from '@/components/AppLayout'
 import PushNotificationBanner from '@/components/PushNotificationBanner'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/lib/api'
-import type { ApiResponse, ParentDashboardStats } from '@/types'
+import type { ApiResponse, ParentDashboardStats, Announcement } from '@/types'
 
 export default function ParentHomePage() {
   const { t } = useTranslation()
@@ -23,6 +24,16 @@ export default function ParentHomePage() {
   })
 
   const children = data?.children ?? []
+
+  const { data: announcements } = useQuery({
+    queryKey: ['announcements'],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<Announcement[]>>('/announcements')
+      return data.data ?? []
+    },
+  })
+
+  const latestAnnos = (announcements ?? []).slice(0, 3)
 
   return (
     <AppLayout title={t('parent.title')} showLogout>
@@ -105,6 +116,37 @@ export default function ParentHomePage() {
             </div>
           </Card>
         ))
+      )}
+
+      {/* Announcements Section */}
+      {latestAnnos.length > 0 && (
+        <>
+          <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Megaphone size={16} color="#165DFF" />
+            {t('announcements.title')}
+          </div>
+          {latestAnnos.map(anno => (
+            <div
+              key={anno.id}
+              className={`anno-card ${anno.priority === 'urgent' ? 'anno-card-urgent' : anno.isPinned ? 'anno-card-pinned' : ''}`}
+              onClick={() => navigate(`/announcement/detail?id=${anno.id}`)}
+            >
+              <div className="anno-card-title">
+                {anno.isPinned && <Pin size={12} color="#FF7D00" />}
+                {anno.priority === 'urgent' && (
+                  <Tag color="danger" fill="outline" style={{ fontSize: 10, padding: '0 4px' }}>
+                    {t('announcements.urgent')}
+                  </Tag>
+                )}
+                {anno.title}
+              </div>
+              <div className="anno-card-content">{anno.content}</div>
+              <div className="anno-card-footer">
+                <span>{dayjs(anno.publishedAt).format('DD MMM')}</span>
+              </div>
+            </div>
+          ))}
+        </>
       )}
     </AppLayout>
   )
