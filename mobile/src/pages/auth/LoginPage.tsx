@@ -11,24 +11,13 @@ type Language = 'en' | 'zh' | 'ms'
 type Authority = 'MOE' | 'MORA' | 'PRIVATE' | null
 
 const DEMO_ACCOUNTS = [
-  { username: 'sysadmin',        label: 'System Admin',      labelZh: '系统管理员',   labelMs: 'Admin Sistem',     password: 'sysadmin123',  school: null,   authority: null as Authority },
+  // ── Core roles (SMHK) ───────────────────────────────────────────────
   { username: 'admin',           label: 'Admin',              labelZh: '管理员',       labelMs: 'Admin',           password: 'admin123',     school: 'SMHK', authority: 'MOE' as Authority },
   { username: 'principal',       label: 'Principal',          labelZh: '校长',         labelMs: 'Pengetua',       password: 'principal123', school: 'SMHK', authority: 'MOE' as Authority },
   { username: 'hod01',           label: 'HOD',                labelZh: '部门主管',     labelMs: 'Ketua Bidang',  password: 'hod123',       school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'farah',           label: 'Counselor',          labelZh: '辅导员',       labelMs: 'Kaunselor',     password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' as Authority },
   { username: 'teacher01',       label: 'Form Teacher',       labelZh: '班主任',       labelMs: 'Guru Tingkatan',password: 'teacher123',   school: 'SMHK', authority: 'MOE' as Authority },
   { username: 'student001',      label: 'Yr 7 Student',       labelZh: '七年级学生',   labelMs: 'Pelajar Tahun 7',password: 'student123',  school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'adam',            label: 'Student',            labelZh: '学生',         labelMs: 'Pelajar',       password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'parent.siti',     label: 'Parent (SMHK)',      labelZh: '家长(SMHK)',   labelMs: 'Ibu Bapa (SMHK)',password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'admin.srpb',      label: 'Primary Admin',      labelZh: '小学管理员',   labelMs: 'Admin Sekolah Rendah', password: 'Demo@2026', school: 'SRPB', authority: 'MOE' as Authority },
-  { username: 'principal.srpb',  label: 'Primary Principal',  labelZh: '小学校长',     labelMs: 'Pengetua SR',    password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' as Authority },
-  { username: 'teacher.srpb2',   label: 'Primary Teacher',    labelZh: '小学教师',     labelMs: 'Guru SR',        password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' as Authority },
-  { username: 'parent.srpb',     label: 'Primary Parent',     labelZh: '小学家长',     labelMs: 'Ibu Bapa SR',    password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' as Authority },
-  { username: 'admin.smab',      label: 'MORA Admin',         labelZh: '宗教局管理员', labelMs: 'Admin MORA',    password: 'Demo@2026',    school: 'SMAB', authority: 'MORA' as Authority },
-  { username: 'principal.smab',  label: 'MORA Principal',     labelZh: '宗教局校长',   labelMs: 'Pengetua MORA', password: 'Demo@2026',    school: 'SMAB', authority: 'MORA' as Authority },
-  { username: 'teacher.smab1',   label: 'MORA Teacher',       labelZh: '宗教局教师',   labelMs: 'Guru MORA',     password: 'Demo@2026',    school: 'SMAB', authority: 'MORA' as Authority },
-  { username: 'admin.isb',       label: 'Private Admin',      labelZh: '私立学校管理员',labelMs: 'Admin Swasta',  password: 'Demo@2026',    school: 'ISB',  authority: 'PRIVATE' as Authority },
-  { username: 'teacher.isb1',    label: 'Intl Teacher',       labelZh: '国际教师',     labelMs: 'Guru Antarabangsa', password: 'Demo@2026', school: 'ISB',  authority: 'PRIVATE' as Authority },
+  { username: 'parent.siti',     label: 'Parent',             labelZh: '家长',         labelMs: 'Ibu Bapa',      password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' as Authority },
 ]
 
 const AUTHORITY_COLOR: Record<string, string> = {
