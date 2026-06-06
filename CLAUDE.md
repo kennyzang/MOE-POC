@@ -138,13 +138,40 @@ cd pc && npm run build   # 完整构建，等同于 Docker 里的行为
 - **Lucide React 图标**：此版本只接受 `size` 和 `className`，不接受 `style` 或 `color`。需要着色时用 `<span style={{ color: '...' }}><Icon /></span>` 包裹
 - **AxiosHeaders**：`response.headers['content-type']` 类型宽，需 `as string` 转型
 
-## Git Rules
+## Git Rules（两人协作 · 单分支 master）
+
+### 基本原则
+- **单分支 `master`**，不建功能分支
+- **开发前必须拉取最新代码**，避免 push 时冲突
+- **push 前再次拉取**，确认无新提交
+
+### 每次开发的标准流程
+```bash
+# ① 开发前：拉取最新代码（变基模式，不产生多余合并提交）
+git pull --rebase origin master
+
+# ② 开发、commit...
+
+# ③ push 前：再拉一次（别人可能在你开发期间推了代码）
+git pull --rebase origin master
+# 如果有冲突 → 解决冲突 → git add . → git rebase --continue
+
+# ④ 推送到两个远端
+git push github master
+git push origin master          # 内网需 VPN，可后补
+```
+
+### Commit 规范
+- 格式：`<type>(<scope>): <subject>`
+- type: `feat` / `fix` / `refactor` / `docs` / `style` / `chore` / `test`
+- 示例：`feat(attendance): add daily check-in page`
+
+### 禁止提交的文件
 - Never commit: `.env`, `*.key`, `*.pem`, `*.mp4`, `node_modules/`, `*.db`, `screenshots/`
-- Two remotes, push both every time (优先 github，origin 内网需 VPN 可后补):
-  ```bash
-  git push github master
-  git push origin master
-  ```
+
+### 冲突处理
+- `git pull --rebase` 出现冲突时，解决冲突文件 → `git add .` → `git rebase --continue`
+- 解决后**必须跑一次 `npm run build`** 确认编译通过再 push
 
 ## End-of-Conversation Checklist (MUST DO)
 Before ending each conversation, you MUST complete these steps in order:
