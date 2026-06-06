@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Form, Input, Button, Toast } from 'antd-mobile'
+import { Form, Input, Button, Toast, Popup, Tag, Dialog } from 'antd-mobile'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
@@ -8,34 +8,98 @@ import api from '@/lib/api'
 import type { LoginResponse } from '@/types'
 
 type Language = 'en' | 'zh' | 'ms'
+type Authority = 'MOE' | 'MORA' | 'PRIVATE' | null
 
 const DEMO_ACCOUNTS = [
-  { username: 'fatimah', label: 'Parent',  labelZh: '家长', labelMs: 'Ibu Bapa', color: '#00B42A' },
-  { username: 'adam',    label: 'Student', labelZh: '学生', labelMs: 'Pelajar',  color: '#165DFF' },
-  { username: 'drsiti',  label: 'Teacher', labelZh: '教师', labelMs: 'Guru',     color: '#FF7D00' },
+  { username: 'sysadmin',        label: 'System Admin',      labelZh: '系统管理员',   labelMs: 'Admin Sistem',     password: 'sysadmin123',  school: null,   authority: null as Authority },
+  { username: 'admin',           label: 'Admin',              labelZh: '管理员',       labelMs: 'Admin',           password: 'admin123',     school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'principal',       label: 'Principal',          labelZh: '校长',         labelMs: 'Pengetua',       password: 'principal123', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'hod01',           label: 'HOD',                labelZh: '部门主管',     labelMs: 'Ketua Bidang',  password: 'hod123',       school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'farah',           label: 'Counselor',          labelZh: '辅导员',       labelMs: 'Kaunselor',     password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'teacher01',       label: 'Form Teacher',       labelZh: '班主任',       labelMs: 'Guru Tingkatan',password: 'teacher123',   school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'student001',      label: 'Yr 7 Student',       labelZh: '七年级学生',   labelMs: 'Pelajar Tahun 7',password: 'student123',  school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'adam',            label: 'Student',            labelZh: '学生',         labelMs: 'Pelajar',       password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'parent.siti',     label: 'Parent (SMHK)',      labelZh: '家长(SMHK)',   labelMs: 'Ibu Bapa (SMHK)',password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'admin.srpb',      label: 'Primary Admin',      labelZh: '小学管理员',   labelMs: 'Admin Sekolah Rendah', password: 'Demo@2026', school: 'SRPB', authority: 'MOE' as Authority },
+  { username: 'principal.srpb',  label: 'Primary Principal',  labelZh: '小学校长',     labelMs: 'Pengetua SR',    password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' as Authority },
+  { username: 'teacher.srpb2',   label: 'Primary Teacher',    labelZh: '小学教师',     labelMs: 'Guru SR',        password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' as Authority },
+  { username: 'parent.srpb',     label: 'Primary Parent',     labelZh: '小学家长',     labelMs: 'Ibu Bapa SR',    password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' as Authority },
+  { username: 'admin.smab',      label: 'MORA Admin',         labelZh: '宗教局管理员', labelMs: 'Admin MORA',    password: 'Demo@2026',    school: 'SMAB', authority: 'MORA' as Authority },
+  { username: 'principal.smab',  label: 'MORA Principal',     labelZh: '宗教局校长',   labelMs: 'Pengetua MORA', password: 'Demo@2026',    school: 'SMAB', authority: 'MORA' as Authority },
+  { username: 'teacher.smab1',   label: 'MORA Teacher',       labelZh: '宗教局教师',   labelMs: 'Guru MORA',     password: 'Demo@2026',    school: 'SMAB', authority: 'MORA' as Authority },
+  { username: 'admin.isb',       label: 'Private Admin',      labelZh: '私立学校管理员',labelMs: 'Admin Swasta',  password: 'Demo@2026',    school: 'ISB',  authority: 'PRIVATE' as Authority },
+  { username: 'teacher.isb1',    label: 'Intl Teacher',       labelZh: '国际教师',     labelMs: 'Guru Antarabangsa', password: 'Demo@2026', school: 'ISB',  authority: 'PRIVATE' as Authority },
 ]
+
+const AUTHORITY_COLOR: Record<string, string> = {
+  MOE: '#165DFF', MORA: '#d48806', PRIVATE: '#722ED1',
+}
+
+const AUTHORITY_BG: Record<string, string> = {
+  MOE: '#E6F0FF', MORA: '#FFF7E6', PRIVATE: '#F9F0FF',
+}
+
+function maskPassword(pw: string) {
+  return pw.length <= 4 ? '••••' : pw.slice(0, 6) + '…'
+}
 
 export default function LoginPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const { language, setLanguage } = useLanguageStore()
+  const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
-  const [quickLoading, setQuickLoading] = useState<string | null>(null)
+  const [demoPopupVisible, setDemoPopupVisible] = useState(false)
+  const [ssoProvider, setSsoProvider] = useState<'BRUNEI_ID' | 'EGNC_IDPM' | null>(null)
+  const [ssoLoading, setSsoLoading] = useState(false)
+  const [ssoSelectedUser, setSsoSelectedUser] = useState('')
 
-  const handleLogin = async (values: { username: string; password: string }) => {
-    setLoading(true)
+  const doLogin = async (username: string, password: string) => {
+    const { data } = await api.post<LoginResponse>('/auth/login', { username, password })
+    if (data.success) {
+      setAuth(data.user, data.token)
+      const roleHome: Record<string, string> = {
+        admin: '/teacher/home', manager: '/teacher/home',
+        teacher: '/teacher/home', student: '/student/home', parent: '/parent/home',
+        finance: '/teacher/home', admissions: '/teacher/home',
+      }
+      navigate(roleHome[data.user.role] ?? '/student/home', { replace: true })
+    } else {
+      throw new Error((data as any).message || 'Invalid credentials')
+    }
+  }
+
+  const handleSsoConfirm = async (provider: 'BRUNEI_ID' | 'EGNC_IDPM') => {
+    const accounts = provider === 'BRUNEI_ID'
+      ? ['admin', 'principal', 'teacher01', 'adam']
+      : ['admin', 'principal', 'hod01', 'farah']
+    const username = ssoSelectedUser || accounts[0] || 'admin'
+    const endpoint = provider === 'BRUNEI_ID' ? '/auth/brunei-id/callback' : '/auth/egnc-idpm/callback'
+
+    setSsoLoading(true)
     try {
-      const { data } = await api.post<LoginResponse>('/auth/login', values)
+      const { data } = await api.post<LoginResponse>(endpoint, { mockUsername: username })
       if (data.success) {
+        setSsoProvider(null)
+        setSsoLoading(false)
         setAuth(data.user, data.token)
         const roleHome: Record<string, string> = {
-          parent: '/parent/home',
-          student: '/student/home',
-          teacher: '/teacher/home',
+          admin: '/teacher/home', manager: '/teacher/home',
+          teacher: '/teacher/home', student: '/student/home', parent: '/parent/home',
         }
-        navigate(roleHome[data.user.role] ?? '/', { replace: true })
+        navigate(roleHome[data.user.role] ?? '/student/home', { replace: true })
       }
+    } catch {
+      setSsoLoading(false)
+      Toast.show({ content: t('auth.loginError'), icon: 'fail', duration: 2000 })
+    }
+  }
+
+  const onFinish = async (values: { username: string; password: string }) => {
+    setLoading(true)
+    try {
+      await doLogin(values.username, values.password)
     } catch {
       Toast.show({ content: t('auth.loginError'), icon: 'fail', duration: 2000 })
     } finally {
@@ -43,25 +107,13 @@ export default function LoginPage() {
     }
   }
 
-  const handleQuickLogin = async (username: string) => {
-    setQuickLoading(username)
-    try {
-      const { data } = await api.post<LoginResponse>('/auth/login', { username, password: 'Demo@2026' })
-      if (data.success) {
-        setAuth(data.user, data.token)
-        const roleHome: Record<string, string> = {
-          parent: '/parent/home', student: '/student/home', teacher: '/teacher/home',
-        }
-        navigate(roleHome[data.user.role] ?? '/', { replace: true })
-      }
-    } catch {
-      Toast.show({ content: t('auth.loginError'), icon: 'fail', duration: 2000 })
-    } finally {
-      setQuickLoading(null)
-    }
+  const handleFillAccount = (account: typeof DEMO_ACCOUNTS[0]) => {
+    form.setFieldsValue({ username: account.username, password: account.password })
+    setDemoPopupVisible(false)
+    Toast.show({ content: t('auth.accountFilled'), icon: 'success', duration: 1000 })
   }
 
-  const getLangLabel = (account: typeof DEMO_ACCOUNTS[0]) => {
+  const getLabel = (account: typeof DEMO_ACCOUNTS[0]) => {
     if (language === 'zh') return account.labelZh
     if (language === 'ms') return account.labelMs
     return account.label
@@ -87,7 +139,7 @@ export default function LoginPage() {
             key={l.code}
             onClick={() => { setLanguage(l.code); void i18n.changeLanguage(l.code) }}
             style={{
-              padding: '4px 12px',
+              padding: '4px 14px',
               borderRadius: 20,
               border: 'none',
               cursor: 'pointer',
@@ -95,6 +147,7 @@ export default function LoginPage() {
               fontWeight: language === l.code ? 700 : 400,
               background: language === l.code ? 'white' : 'rgba(255,255,255,0.3)',
               color: language === l.code ? '#165DFF' : 'white',
+              transition: 'all 0.2s',
             }}
           >
             {l.label}
@@ -125,7 +178,8 @@ export default function LoginPage() {
         padding: '28px 20px 40px',
       }}>
         <Form
-          onFinish={values => void handleLogin(values as { username: string; password: string })}
+          form={form}
+          onFinish={values => void onFinish(values as { username: string; password: string })}
           footer={
             <Button
               block
@@ -162,46 +216,282 @@ export default function LoginPage() {
           </div>
         </Form>
 
-        {/* Quick login demo accounts */}
-        <div style={{ marginTop: 24 }}>
+        {/* SSO Buttons */}
+        <div style={{ marginTop: 20 }}>
           <div style={{
             textAlign: 'center', fontSize: 12, color: '#86909c',
-            marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8,
+            marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
-            <span>Demo</span>
+            <span>{t('auth.orSignInWith')}</span>
             <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {DEMO_ACCOUNTS.map(account => (
-              <button
-                key={account.username}
-                onClick={() => void handleQuickLogin(account.username)}
-                disabled={quickLoading !== null}
-                style={{
-                  flex: 1,
-                  padding: '10px 4px',
-                  borderRadius: 10,
-                  border: `1.5px solid ${account.color}`,
-                  background: quickLoading === account.username ? account.color : `${account.color}12`,
-                  color: quickLoading === account.username ? 'white' : account.color,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: quickLoading !== null ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.15s',
-                  opacity: quickLoading !== null && quickLoading !== account.username ? 0.5 : 1,
-                }}
-              >
-                {quickLoading === account.username ? '...' : getLangLabel(account)}
-              </button>
-            ))}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              onClick={() => { setSsoSelectedUser(''); setSsoProvider('BRUNEI_ID') }}
+              style={{
+                padding: '12px',
+                borderRadius: 12,
+                border: '1.5px solid #FDB913',
+                background: '#FFFBE6',
+                color: '#7A5800',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              🛡️ {t('auth.signInWithBruneiId')}
+            </button>
+
+            <button
+              onClick={() => { setSsoSelectedUser(''); setSsoProvider('EGNC_IDPM') }}
+              style={{
+                padding: '12px',
+                borderRadius: 12,
+                border: '1.5px solid #165DFF',
+                background: '#E6F0FF',
+                color: '#165DFF',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              🏛️ {t('auth.signInWithEgnc')}
+            </button>
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: 20, color: '#86909c', fontSize: 12 }}>
-          MOE SERPS v0.1 · Ministry of Education, Brunei
+        {/* Demo Accounts Toggle */}
+        <div style={{ marginTop: 20 }}>
+          <div style={{
+            textAlign: 'center', fontSize: 12, color: '#86909c',
+            marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
+            <span>{t('auth.quickAccess')}</span>
+            <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
+          </div>
+
+          <button
+            onClick={() => setDemoPopupVisible(true)}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: 12,
+              border: '1.5px dashed #d9d9d9',
+              background: 'white',
+              color: '#8c8c8c',
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            🔑 {t('auth.showDemoAccounts')}
+          </button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 20, color: '#86909c', fontSize: 11 }}>
+          MOE SERPS v1.0 · Ministry of Education, Brunei
         </div>
       </div>
+
+      {/* Demo Accounts Popup */}
+      <Popup
+        visible={demoPopupVisible}
+        onMaskClick={() => setDemoPopupVisible(false)}
+        position='bottom'
+        bodyStyle={{
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          maxHeight: '70vh',
+          padding: '16px 0 24px',
+        }}
+      >
+        <div style={{ padding: '0 16px 12px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 4,
+          }}>
+            <span style={{ fontWeight: 600, fontSize: 16 }}>🔑 {t('auth.demoAccounts')}</span>
+            <button
+              onClick={() => setDemoPopupVisible(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: 20,
+                cursor: 'pointer',
+                color: '#8c8c8c',
+                padding: '4px',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>
+            {t('auth.clickToFill')}
+          </div>
+        </div>
+
+        {/* Account List */}
+        <div style={{ maxHeight: '50vh', overflowY: 'auto', px: 16 }}>
+          {DEMO_ACCOUNTS.map((account, idx) => (
+            <div
+              key={account.username}
+              onClick={() => handleFillAccount(account)}
+              style={{
+                padding: '12px 16px',
+                borderBottom: idx < DEMO_ACCOUNTS.length - 1 ? '1px solid #f5f5f5' : 'none',
+                cursor: 'pointer',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#f5f8ff')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#262626' }}>
+                      {getLabel(account)}
+                    </span>
+                    {account.authority && (
+                      <Tag
+                        style={{
+                          fontSize: 10,
+                          lineHeight: '16px',
+                          padding: '0 4px',
+                          margin: 0,
+                          border: 'none',
+                          color: AUTHORITY_COLOR[account.authority],
+                          background: AUTHORITY_BG[account.authority],
+                          fontWeight: 700,
+                        }}
+                      >
+                        {account.authority === 'PRIVATE' ? 'PVT' : account.authority}
+                      </Tag>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 12 }}>
+                    <span style={{ color: '#595959', fontFamily: 'monospace' }}>{account.username}</span>
+                    <span style={{ color: '#8c8c8c', fontFamily: 'monospace' }}>{maskPassword(account.password)}</span>
+                  </div>
+                </div>
+                <div style={{ color: '#bfbfbf', fontSize: 16 }}>›</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Popup>
+
+      {/* SSO Consent Modal */}
+      <Dialog
+        visible={ssoProvider !== null}
+        title={null}
+        closeOnAction
+        onClose={() => !ssoLoading && setSsoProvider(null)}
+        actions={[
+          {
+            key: 'cancel',
+            text: t('common.cancel'),
+            onClick: () => !ssoLoading && setSsoProvider(null),
+          },
+          {
+            key: 'confirm',
+            text: ssoProvider === 'BRUNEI_ID'
+              ? t('auth.ssoAllow', { provider: 'Brunei Digital ID' })
+              : t('auth.ssoAllow', { provider: 'EGNC / IDPM' }),
+            bold: true,
+            primary: true,
+            onClick: () => ssoProvider && void handleSsoConfirm(ssoProvider),
+          },
+        ]}
+      >
+        {ssoProvider && (
+          <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+            <div style={{
+              background: ssoProvider === 'BRUNEI_ID' ? '#FFF8E6' : '#E6F0FF',
+              border: `2px solid ${ssoProvider === 'BRUNEI_ID' ? '#FDB913' : '#165DFF'}`,
+              borderRadius: 12,
+              padding: '20px 24px',
+              marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>
+                {ssoProvider === 'BRUNEI_ID' ? '🛡️' : '🏛️'}
+              </div>
+              <Tag color={ssoProvider === 'BRUNEI_ID' ? 'gold' : 'blue'} style={{ marginBottom: 8 }}>
+                {ssoProvider === 'BRUNEI_ID' ? 'id.gov.bn' : 'egnc.gov.bn'}
+              </Tag>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>
+                {ssoProvider === 'BRUNEI_ID' ? 'Brunei Digital ID' : 'EGNC / IDPM'}
+              </div>
+              <div style={{ fontSize: 13, color: '#555' }}>
+                {t('auth.ssoConsentMessage', { app: 'MOE SERPS' })}
+              </div>
+            </div>
+
+            {!ssoLoading && (
+              <div style={{ marginBottom: 16, textAlign: 'left' }}>
+                <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>
+                  {t('auth.ssoSelectDemoAccount')}
+                </div>
+                <select
+                  value={ssoSelectedUser || (ssoProvider === 'BRUNEI_ID' ? 'admin' : 'admin')}
+                  onChange={e => setSsoSelectedUser(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #d9d9d9',
+                    fontSize: 14,
+                  }}
+                >
+                  {(ssoProvider === 'BRUNEI_ID'
+                    ? [
+                        { username: 'admin', label: 'Admin (SMHK)' },
+                        { username: 'principal', label: 'Principal (SMHK)' },
+                        { username: 'teacher01', label: 'Teacher (SMHK)' },
+                        { username: 'adam', label: 'Student (SMHK)' },
+                      ]
+                    : [
+                        { username: 'admin', label: 'Admin (SMHK)' },
+                        { username: 'principal', label: 'Principal (SMHK)' },
+                        { username: 'hod01', label: 'HOD (SMHK)' },
+                        { username: 'farah', label: 'Counselor (SMHK)' },
+                      ]
+                  ).map(opt => (
+                    <option key={opt.username} value={opt.username}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {ssoLoading && (
+              <div style={{ padding: '16px 0' }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+                <div style={{ color: '#8c8c8c', fontSize: 13 }}>
+                  {t('auth.ssoRedirecting', {
+                    provider: ssoProvider === 'BRUNEI_ID' ? 'Brunei Digital ID' : 'EGNC / IDPM',
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Dialog>
     </div>
   )
 }
