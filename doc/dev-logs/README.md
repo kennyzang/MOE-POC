@@ -47,3 +47,4 @@
 | 2026-06-02 23:00 | [260602-2300.md](260602-2300.md) | Gap模块Phases 1-5完成：Leave Enhancement、Staff Attendance、Retirement Planning、Awards+Posting History、Anonymous Surveys（6新模型、7新路由、16新页面） | ~180k |
 | 2026-06-05 15:00 | [260605-1500.md](260605-1500.md) | 合并 cengyk gap-phases-6-10（被误覆盖的提交）：Registration Portal、Private Education、Reports、自动触发器等，修复3个TS错误，双端推送成功 | ~8k |
 | 2026-06-05 18:00 | [260605-1800.md](260605-1800.md) | 登录页 Demo Accounts 改版：移除色块按钮，改为 UNISSA 风格侧面板（表格点击填充字段） | ~7k |
+| 2026-06-06 08:12 | [260606-0812.md](260606-0812.md) | 移动端功能梳理：PC/Mobile 差异分析、扩展候选方案、周末开发计划、CodeBuddy 规则迁移（.codebuddy/rules/ 7文件）、同步脚本 | ~25k |
