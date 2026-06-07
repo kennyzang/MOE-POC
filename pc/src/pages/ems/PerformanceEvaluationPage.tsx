@@ -864,7 +864,7 @@ const PerformanceEvaluationPage = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="academicYear" tick={{ fontSize: 11 }} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                    <RechartTooltip formatter={(v: number) => [`${v.toFixed(1)}`, 'Score']} />
+                    <RechartTooltip formatter={(v) => [`${(v as number).toFixed(1)}`, 'Score']} />
                     <Line
                       type="monotone"
                       dataKey="overallScore"

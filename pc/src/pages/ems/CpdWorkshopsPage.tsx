@@ -253,7 +253,7 @@ const CpdWorkshopsPage = () => {
                 <BarChart data={categoryHours} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
                   <XAxis type="number" tick={{ fontSize: 11 }} />
                   <YAxis type="category" dataKey="category" tick={{ fontSize: 11 }} width={110} />
-                  <RechartTooltip formatter={(v: number) => [`${v}h`, 'Pre-credited hours']} />
+                  <RechartTooltip formatter={(v) => [`${v}h`, 'Pre-credited hours']} />
                   <Bar dataKey="hours" radius={[0, 4, 4, 0]}>
                     {categoryHours.map(entry => (
                       <Cell key={entry.category} fill={CATEGORY_COLORS[entry.category] ?? '#8C8C8C'} />
