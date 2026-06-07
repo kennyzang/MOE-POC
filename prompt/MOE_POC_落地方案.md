@@ -291,7 +291,7 @@ mobile/（H5方案）
 - API 使用 MSW 或简单的 mock 函数
 
 ## 复用原则
-- 基线项目路径：/Users/xiex/Documents/GIT/OVERSEABU/unissa-poc
+- 基线项目路径：../OVERSEABU/unissa-poc（与 moe-poc-claude 同级目录）
 - 核心代码复用，但需适配 K-12 场景
 - 不要照搬 UNISSA 的 SCSS 方案
 ```

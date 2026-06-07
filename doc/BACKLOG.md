@@ -2,7 +2,7 @@
 
 > **演示日期**：2026-06-10（距今约 12 天）  
 > **最后更新**：2026-05-29（今日更新）  
-> **项目入口**：`/Users/xiex/Documents/GIT/moe-poc-claude`  
+> **项目入口**：`<project-root>`（git 仓库根目录）
 > **启动命令**：`./start.sh`（backend:4000 / pc:3000 / mobile:5173）
 
 ---
@@ -64,7 +64,7 @@
 ### 启动系统（复制粘贴运行）
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude
+cd <project-root>
 ./start.sh
 # 然后打开 http://localhost:3000
 ```

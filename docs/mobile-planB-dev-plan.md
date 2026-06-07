@@ -318,5 +318,65 @@ Day 4 (6/9 周二)
 
 ---
 
-> **文档状态**: 已确认，可执行  
-> **更新记录**: 2026-06-06 初版
+---
+
+## 完成进度追踪（每次对话更新）
+
+> 最后更新: 2026-06-06
+
+### 功能完成状态
+
+| # | 功能 | 状态 | 完成条件 |
+|---|------|------|---------|
+| 1 | 公告列表页（AnnouncementsPage） | ✅ **完成** | 路由已接入，AnnouncementsPage.tsx 已创建 |
+| 2 | 通知列表铃铛（NotificationBell） | ✅ **完成** | NotificationBell.tsx 已创建，已接入 NavHeader（所有页面顶栏均可见） |
+| 3 | AI 聊天助手（ChatFAB/ChatDrawer） | ✅ **完成** | ChatDrawer.tsx 已创建并接入 AppLayout |
+| 4 | 家长消息中心（Parent Messages） | ✅ **完成** | 列表页+详情页已创建，TabBar 已加消息 Tab，API 联通，气泡样式完整 |
+| 5 | 教师签到/签退（Teacher Check-In） | ✅ **完成** | TeacherHomePage 已集成打卡卡片 + API 联通 |
+
+### 待办事项（按优先级）
+
+```
+P0 - 演示前必须完成:
+✅ 功能2: NotificationBell 已接入 NavHeader（所有页面顶栏均可见）
+✅ 截图验收完成（2026-06-06）:
+    ✅ 教师首页（铃铛+签到区域+公告+AI FAB）
+    ✅ 通知弹窗（Bell icon + Popup 列表）
+    ✅ /teacher/announcements（置顶图钉、HIGH Tag、摘要截断）
+    ✅ AI 聊天（空状态机器人+预设问题+输入框）
+    ✅ /parent/messages（头像首字母、消息摘要、Messages Tab）
+    ✅ /parent/messages/detail（气泡样式、跨天日期、输入框）
+✅ 移动端 build 编译无报错
+
+□ P0 剩余: 全链路演示彩排 — 教师打卡 → PC 管理员仪表盘数字变化
+
+P1 - 提升质量:
+□ 全部功能: 切换 zh/en/ms 语言，确认无漏译字符串
+□ 功能4: 消息详情进入后自动标已读（PATCH /messages/threads/:id/read）
+
+P2 - 锦上添花:
+□ 功能3: 预设问题按角色区分（学生/家长/教师 不同问题）
+□ 功能2: 60s 轮询铃铛角标未读数（检查 notificationStore 是否已实现）
+```
+
+### 各功能快速验收命令
+
+```bash
+# 启动移动端开发服务器
+cd <project-root>/mobile && npm run dev
+
+# 验收路由清单
+# 功能1: http://localhost:5175/student/announcements
+# 功能1: http://localhost:5175/teacher/announcements
+# 功能4: http://localhost:5175/parent/messages
+# 教师签到: 登录 drsiti → 首页顶部打卡卡片
+# 通知铃铛: 任意登录 → 顶栏右上角 Bell 图标
+
+# TypeScript 编译检查
+cd <project-root>/mobile && npm run build
+```
+
+---
+
+> **文档状态**: ✅ 代码完成 + Playwright 截图验收通过（2026-06-06）· 剩余: 演示彩排 + i18n 检查  
+> **更新记录**: 2026-06-06 初版 | 2026-06-06 补充完成进度追踪 + 验收待办 | 2026-06-06 Playwright 验收全部通过

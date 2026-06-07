@@ -3,7 +3,7 @@
 > **演示日期**：2026-06-10 09:00  
 > **演示脚本**：`doc/MOE_SERPS_POC_Demo_v2_EN.xlsx`（55 分钟版）  
 > **开发模式**：AI 自主开发，每完成一个 Stage 提交验收  
-> **UNISSA 参考**：`/Users/xiex/Documents/GIT/OVERSEABU/unissa-poc`（AI 服务 + PWA 配置直接复用）
+> **UNISSA 参考**：`../OVERSEABU/unissa-poc`（AI 服务 + PWA 配置直接复用）
 
 ---
 

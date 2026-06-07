@@ -43,7 +43,7 @@
 - [ ] **Step 1: Install nodemailer in backend**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend
+cd <project-root>/backend
 npm install nodemailer
 npm install --save-dev @types/nodemailer
 ```
@@ -66,7 +66,7 @@ SMTP_FROM=MOE SERPS <<your-smtp-user>>
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude
+cd <project-root>
 git add backend/package.json backend/package-lock.json
 git commit -m "chore(backend): add nodemailer dependency"
 ```
@@ -274,7 +274,7 @@ app.use('/api/v1/notifications', notificationRoutes)
 - [ ] **Step 3: Verify TypeScript compiles**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend
+cd <project-root>/backend
 npx tsc --noEmit
 ```
 
@@ -283,7 +283,7 @@ Expected: no errors.
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude
+cd <project-root>
 git add backend/src/routes/notifications.ts backend/src/index.ts
 git commit -m "feat(notifications): add REST API for notifications"
 ```
@@ -340,7 +340,7 @@ After the `const upserted = await Promise.all(...)` block and before `res.json(.
 - [ ] **Step 3: TypeScript check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend && npx tsc --noEmit
+cd <project-root>/backend && npx tsc --noEmit
 ```
 
 Expected: no errors.
@@ -348,7 +348,7 @@ Expected: no errors.
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude
+cd <project-root>
 git add backend/src/routes/attendance.ts
 git commit -m "feat(notifications): notify on attendance absence"
 ```
@@ -404,7 +404,7 @@ Find the POST / handler's `res.json({ success: true, data: grade })` line and re
 - [ ] **Step 3: TypeScript check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend && npx tsc --noEmit
+cd <project-root>/backend && npx tsc --noEmit
 ```
 
 - [ ] **Step 4: Commit**
@@ -452,7 +452,7 @@ After the admission is updated in the database (after the `prisma.admission.upda
 - [ ] **Step 3: TypeScript check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend && npx tsc --noEmit
+cd <project-root>/backend && npx tsc --noEmit
 ```
 
 - [ ] **Step 4: Commit**
@@ -507,7 +507,7 @@ After `const updated = await prisma.performanceEvaluation.update(...)` and befor
 - [ ] **Step 3: TypeScript check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend && npx tsc --noEmit
+cd <project-root>/backend && npx tsc --noEmit
 ```
 
 - [ ] **Step 4: Commit**
@@ -549,7 +549,7 @@ Before `res.status(201).json({ success: true, data: booking })`, add:
 - [ ] **Step 3: TypeScript check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend && npx tsc --noEmit
+cd <project-root>/backend && npx tsc --noEmit
 ```
 
 - [ ] **Step 4: Commit**
@@ -643,7 +643,7 @@ router.post(
 - [ ] **Step 3: TypeScript check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend && npx tsc --noEmit
+cd <project-root>/backend && npx tsc --noEmit
 ```
 
 - [ ] **Step 4: Commit**
@@ -706,13 +706,13 @@ In the `notifications` section (add it as a new top-level key after `nav`):
 - [ ] **Step 4: TypeScript check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/pc && npx tsc --noEmit
+cd <project-root>/pc && npx tsc --noEmit
 ```
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude
+cd <project-root>
 git add pc/src/locales/
 git commit -m "feat(notifications): add i18n keys for notification UI"
 ```
@@ -812,13 +812,13 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 - [ ] **Step 2: TypeScript check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/pc && npx tsc --noEmit
+cd <project-root>/pc && npx tsc --noEmit
 ```
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude
+cd <project-root>
 git add pc/src/stores/notificationStore.ts
 git commit -m "feat(notifications): add Zustand notificationStore with 30s polling"
 ```
@@ -961,7 +961,7 @@ export default NotificationBell
 - [ ] **Step 2: Check dayjs is available**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/pc && grep -r "dayjs" package.json
+cd <project-root>/pc && grep -r "dayjs" package.json
 ```
 
 If not present, install it:
@@ -978,7 +978,7 @@ npx tsc --noEmit
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude
+cd <project-root>
 git add pc/src/components/NotificationBell/
 git commit -m "feat(notifications): NotificationBell component (badge + popover)"
 ```
@@ -1032,13 +1032,13 @@ With:
 - [ ] **Step 3: TypeScript check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/pc && npx tsc --noEmit
+cd <project-root>/pc && npx tsc --noEmit
 ```
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude
+cd <project-root>
 git add pc/src/layouts/Navbar.tsx
 git commit -m "feat(notifications): add NotificationBell to Navbar"
 ```
@@ -1050,7 +1050,7 @@ git commit -m "feat(notifications): add NotificationBell to Navbar"
 - [ ] **Step 1: TypeScript check — backend**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend && npx tsc --noEmit
+cd <project-root>/backend && npx tsc --noEmit
 ```
 
 Expected: 0 errors.
@@ -1058,7 +1058,7 @@ Expected: 0 errors.
 - [ ] **Step 2: TypeScript check — frontend**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/pc && npx tsc --noEmit
+cd <project-root>/pc && npx tsc --noEmit
 ```
 
 Expected: 0 errors.
@@ -1066,7 +1066,7 @@ Expected: 0 errors.
 - [ ] **Step 3: Start backend + test unread-count endpoint**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/backend && npm run dev &
+cd <project-root>/backend && npm run dev &
 sleep 3
 # Login to get a token, then:
 curl -s -X POST http://localhost:4000/api/v1/auth/login \
@@ -1086,7 +1086,7 @@ Expected: `{"success": true, "data": {"count": 0}}`
 - [ ] **Step 4: Start frontend + visual check**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude/pc && npm run dev &
+cd <project-root>/pc && npm run dev &
 ```
 
 Open browser at `http://localhost:3000`, login as `admin / Demo@2026`.
@@ -1095,7 +1095,7 @@ Verify: Bell icon visible in Navbar, badge shows 0, clicking bell shows empty "N
 - [ ] **Step 5: Final commit + push**
 
 ```bash
-cd /Users/xiex/Documents/GIT/moe-poc-claude
+cd <project-root>
 git push origin master
 git push github master
 ```

@@ -2,7 +2,7 @@
 
 ## Project Overview
 Ministry of Education (Brunei) School Enterprise Resource Planning System POC.
-Based on UNISSA-POC (`/Users/xiex/Documents/GIT/OVERSEABU/unissa-poc`), adapted for K-12 schools.
+Based on UNISSA-POC (`../OVERSEABU/unissa-poc`), adapted for K-12 schools.
 
 ## Tech Stack
 - **PC Frontend**: React 18 + Vite + TypeScript + Ant Design 5.x
