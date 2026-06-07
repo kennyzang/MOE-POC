@@ -95,7 +95,7 @@ const StudentTranscriptPage = () => {
   const handlePrint = () => {
     const content = document.getElementById('transcript-body')
     if (!content) return
-    const win = window.open('', '_blank', 'width=900,height=1100')
+    const win = window.open('', '_blank', 'width=960,height=1100')
     if (!win) return
     win.document.write(`
       <html>
@@ -103,7 +103,24 @@ const StudentTranscriptPage = () => {
           <title>Academic Transcript — ${transcript?.student.displayName ?? ''}</title>
           <style>
             * { box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; padding: 40px; color: #222; margin: 0; font-size: 12px; }
+            body { font-family: Arial, sans-serif; padding: 0; color: #222; margin: 0; font-size: 12px; }
+            #preview-bar {
+              position: sticky; top: 0; z-index: 999;
+              background: #165DFF; color: #fff;
+              display: flex; align-items: center; justify-content: space-between;
+              padding: 10px 24px; box-shadow: 0 2px 8px rgba(0,0,0,.2);
+            }
+            #preview-bar span { font-size: 13px; font-weight: 600; }
+            #preview-bar .actions { display: flex; gap: 10px; }
+            #preview-bar button {
+              padding: 6px 18px; border-radius: 4px; border: none;
+              font-size: 13px; font-weight: 600; cursor: pointer;
+            }
+            #preview-bar .btn-print { background: #fff; color: #165DFF; }
+            #preview-bar .btn-print:hover { background: #e6f0ff; }
+            #preview-bar .btn-close { background: transparent; color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.4); }
+            #preview-bar .btn-close:hover { background: rgba(255,255,255,.1); }
+            #doc { padding: 32px 40px; max-width: 900px; margin: 0 auto; }
             h1 { font-size: 20px; margin: 0 0 2px; }
             h2 { font-size: 13px; color: #165DFF; margin: 16px 0 6px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
             table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 11px; }
@@ -111,34 +128,39 @@ const StudentTranscriptPage = () => {
             td { padding: 5px 8px; border: 1px solid #eee; vertical-align: top; }
             tr:nth-child(even) td { background: #fafafa; }
             .header { border-bottom: 3px solid #165DFF; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
-            .school-name { font-size: 18px; font-weight: 700; color: #165DFF; }
-            .doc-title { font-size: 16px; font-weight: 700; text-align: right; }
             .kpi-row { display: flex; gap: 32px; margin: 8px 0 16px; }
-            .kpi { }
             .kpi .label { font-size: 10px; color: #888; text-transform: uppercase; }
             .kpi .val { font-size: 20px; font-weight: 700; }
             .row2 { display: flex; gap: 24px; }
             .box { flex: 1; border: 1px solid #eee; border-radius: 4px; padding: 10px 14px; }
             .box h3 { font-size: 12px; margin: 0 0 8px; color: #165DFF; }
             .footer { margin-top: 40px; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 10px; text-align: center; }
-            .sig { margin-top: 48px; display: flex; justify-content: flex-end; }
-            .sig-block { text-align: center; }
-            .sig-line { border-top: 1px solid #333; width: 200px; margin-bottom: 4px; padding-top: 4px; font-size: 11px; }
+            @media print {
+              #preview-bar { display: none !important; }
+              #doc { padding: 0; }
+            }
           </style>
         </head>
         <body>
-          ${content.innerHTML}
-          <div class="footer">
-            This is a computer-generated official academic transcript. Alterations are not permitted.<br/>
-            Generated: ${dayjs(transcript?.generatedAt).format('DD MMM YYYY HH:mm')} · MOE SERPS — Ministry of Education, Brunei Darussalam
+          <div id="preview-bar">
+            <span>Preview — Academic Transcript · ${transcript?.student.displayName ?? ''}</span>
+            <div class="actions">
+              <button class="btn-close" onclick="window.close()">Close</button>
+              <button class="btn-print" onclick="window.print()">Print / Save as PDF</button>
+            </div>
+          </div>
+          <div id="doc">
+            ${content.innerHTML}
+            <div class="footer">
+              This is a computer-generated official academic transcript. Alterations are not permitted.<br/>
+              Generated: ${dayjs(transcript?.generatedAt).format('DD MMM YYYY HH:mm')} · MOE SERPS — Ministry of Education, Brunei Darussalam
+            </div>
           </div>
         </body>
       </html>
     `)
     win.document.close()
     win.focus()
-    win.print()
-    win.close()
   }
 
   if (isLoading || (isSelfView && !meStudent && user?.role === 'student')) {

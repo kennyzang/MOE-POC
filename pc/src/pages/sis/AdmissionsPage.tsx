@@ -45,6 +45,7 @@ import {
   FileX2,
   MailQuestion,
   ExternalLink,
+  UserCheck,
 } from 'lucide-react'
 import FileUploader from '../../components/FileUploader'
 import FileList from '../../components/FileList'
@@ -317,6 +318,24 @@ const AdmissionsPage = () => {
     },
   })
 
+  const [enrollResult, setEnrollResult] = useState<{ studentId: string; allocatedClass: { name: string } } | null>(null)
+
+  const enrollMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.post(`/admissions/applications/${id}/accept-offer`, {})
+      return data
+    },
+    onSuccess: (data) => {
+      setEnrollResult(data.data)
+      message.success(t('admissions.enrollSuccess', { defaultValue: 'Student enrolled in SIS successfully.' }))
+      queryClient.invalidateQueries({ queryKey: ['admissions'] })
+      queryClient.invalidateQueries({ queryKey: ['admissions-pipeline'] })
+    },
+    onError: () => {
+      message.error(t('admissions.enrollError', { defaultValue: 'Enrolment failed. Please try again.' }))
+    },
+  })
+
   // Detail query — loads documents + eligibility flags when modal opens
   const { data: admissionDetail, refetch: refetchDetail } = useQuery<AdmissionDetail>({
     queryKey: ['admission-detail', selectedAdmission?.id],
@@ -381,6 +400,7 @@ const AdmissionsPage = () => {
     setDetailOpen(true)
     setActionType(null)
     setRemarks('')
+    setEnrollResult(null)
   }
 
   const handleConfirmAction = () => {
@@ -1195,6 +1215,54 @@ const AdmissionsPage = () => {
                   {t('admissions.reject')}
                 </Button>
               </Space>
+            )}
+
+            {/* Enroll in SIS — shown when offer is accepted or admission accepted */}
+            {(selectedAdmission?.status === 'accepted' || selectedAdmission?.status === 'offer_issued') && !enrollResult && (
+              <Card size="small" style={{ marginTop: 12, borderColor: '#52c41a' }}>
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                  <span style={{ fontSize: 13, color: '#52c41a', fontWeight: 600 }}>
+                    {t('admissions.readyToEnroll', { defaultValue: 'Admission accepted — ready to enrol in SIS' })}
+                  </span>
+                  <Button
+                    type="primary"
+                    icon={<UserCheck size={16} />}
+                    loading={enrollMutation.isPending}
+                    onClick={() => {
+                      if (!selectedAdmission) return
+                      Modal.confirm({
+                        title: t('admissions.enrollConfirmTitle', { defaultValue: 'Enrol Student in SIS?' }),
+                        content: t('admissions.enrollConfirmContent', {
+                          name: selectedAdmission.applicantName,
+                          defaultValue: `This will create a student record for ${selectedAdmission.applicantName} in the Student Information System and generate login credentials.`,
+                        }),
+                        okText: t('admissions.enrollConfirmOk', { defaultValue: 'Enrol Now' }),
+                        onOk: () => enrollMutation.mutate(selectedAdmission.id),
+                      })
+                    }}
+                  >
+                    {t('admissions.enrollInSIS', { defaultValue: 'Enrol in SIS' })}
+                  </Button>
+                </Space>
+              </Card>
+            )}
+
+            {/* Already enrolled */}
+            {(selectedAdmission?.status === 'offer_accepted' || enrollResult) && (
+              <Alert
+                type="success"
+                showIcon
+                style={{ marginTop: 12 }}
+                message={
+                  enrollResult
+                    ? t('admissions.enrolledSuccess', {
+                        studentId: enrollResult.studentId,
+                        class: enrollResult.allocatedClass.name,
+                        defaultValue: `Enrolled: Student ID ${enrollResult.studentId} · Class ${enrollResult.allocatedClass.name}`,
+                      })
+                    : t('admissions.alreadyEnrolled', { defaultValue: 'Student is already enrolled in SIS.' })
+                }
+              />
             )}
 
             {actionType && (

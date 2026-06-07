@@ -45,7 +45,7 @@ export const ADMISSION_TRANSITIONS: TransitionMap = {
   documents_required:   ['under_review', 'rejected'],
   offer_issued:         ['offer_accepted', 'rejected'],
   offer_accepted:       [],
-  accepted:             [],
+  accepted:             ['offer_accepted'],
   rejected:             [],
   waitlisted:           [],
 }

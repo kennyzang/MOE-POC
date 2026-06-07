@@ -1298,7 +1298,7 @@ async function main() {
 
   const ahmadStudentRecord = await prisma.student.findFirst({ where: { userId: adamUser.id } })
   const teacher01ForHw = await prisma.teacher.findFirst({ where: { userId: teacher01User.id } })
-  const year7Courses = await prisma.course.findMany({ where: { gradeLevel: 'Year 7', semester: '2026-S1' }, select: { id: true, name: true, code: true } })
+  const year7Courses = await prisma.course.findMany({ where: { gradeLevel: 'Year 7' }, select: { id: true, name: true, code: true } })
 
   if (ahmadStudentRecord && teacher01ForHw && year7Courses.length > 0) {
     const hwTemplates = [
@@ -2647,24 +2647,21 @@ async function main() {
   })
 
   const assetsData = [
-    // Furniture (5)
+    // Furniture (4) — index 0-3
     { assetTag: 'FUR-2023-0001', name: 'Student Desk (Set of 10)', categoryId: catFurniture.id, location: 'Classroom 7A', condition: 'Good', purchaseDate: new Date('2023-01-15'), value: 1200.0 },
-    { assetTag: 'FUR-2023-0002', name: 'Teacher Desk', categoryId: catFurniture.id, location: 'Classroom 7A', condition: 'Good', purchaseDate: new Date('2023-01-15'), value: 380.0 },
-    { assetTag: 'FUR-2021-0003', name: 'Whiteboard (3m×1.2m)', categoryId: catFurniture.id, location: 'Classroom 8B', condition: 'Fair', purchaseDate: new Date('2021-08-01'), value: 450.0 },
-    { assetTag: 'FUR-2019-0004', name: 'Library Bookshelf (6-tier)', categoryId: catFurniture.id, location: 'Library', condition: 'Fair', purchaseDate: new Date('2019-03-10'), value: 320.0 },
-    { assetTag: 'FUR-2018-0005', name: 'Principal Office Chair', categoryId: catFurniture.id, location: 'Principal Office', condition: 'Poor', purchaseDate: new Date('2018-06-01'), value: 250.0 },
-    // IT Equipment (6)
-    { assetTag: 'IT-2024-0001', name: 'Dell Optiplex Desktop PC', categoryId: catIT.id, location: 'ICT Lab', condition: 'Good', purchaseDate: new Date('2024-02-01'), value: 1800.0 },
-    { assetTag: 'IT-2024-0002', name: 'Dell Optiplex Desktop PC', categoryId: catIT.id, location: 'ICT Lab', condition: 'Good', purchaseDate: new Date('2024-02-01'), value: 1800.0 },
-    { assetTag: 'IT-2022-0003', name: 'Epson Projector EB-X49', categoryId: catIT.id, location: 'Classroom 9A', condition: 'Good', purchaseDate: new Date('2022-08-15'), value: 950.0 },
-    { assetTag: 'IT-2022-0004', name: 'Epson Projector EB-X49', categoryId: catIT.id, location: 'Classroom 10B', condition: 'Fair', purchaseDate: new Date('2022-08-15'), value: 950.0 },
-    { assetTag: 'IT-2020-0005', name: 'Canon Printer MF445dw', categoryId: catIT.id, location: 'Admin Office', condition: 'Good', purchaseDate: new Date('2020-11-01'), value: 620.0 },
-    { assetTag: 'IT-2019-0006', name: 'Samsung Smart TV 55"', categoryId: catIT.id, location: 'Staff Room', condition: 'Good', purchaseDate: new Date('2019-07-20'), value: 1100.0 },
-    // Sports Equipment (4)
-    { assetTag: 'SPT-2023-0001', name: 'Football (Size 5) ×10', categoryId: catSports.id, location: 'Sports Storeroom', condition: 'Good', purchaseDate: new Date('2023-09-01'), value: 300.0 },
-    { assetTag: 'SPT-2023-0002', name: 'Badminton Racket Set ×20', categoryId: catSports.id, location: 'Sports Storeroom', condition: 'Good', purchaseDate: new Date('2023-09-01'), value: 480.0 },
-    { assetTag: 'SPT-2021-0003', name: 'Basketball Hoop (portable)', categoryId: catSports.id, location: 'Gymnasium', condition: 'Fair', purchaseDate: new Date('2021-04-15'), value: 350.0 },
-    { assetTag: 'SPT-2017-0004', name: 'High Jump Mat', categoryId: catSports.id, location: 'Sports Field', condition: 'Poor', purchaseDate: new Date('2017-01-10'), value: 600.0 },
+    { assetTag: 'FUR-2021-0002', name: 'Whiteboard (3m×1.2m)', categoryId: catFurniture.id, location: 'Classroom 8B', condition: 'Fair', purchaseDate: new Date('2021-08-01'), value: 450.0 },
+    { assetTag: 'FUR-2019-0003', name: 'Library Bookshelf (6-tier)', categoryId: catFurniture.id, location: 'Library', condition: 'Fair', purchaseDate: new Date('2019-03-10'), value: 320.0 },
+    { assetTag: 'FUR-2018-0004', name: 'Principal Office Chair', categoryId: catFurniture.id, location: 'Principal Office', condition: 'Poor', purchaseDate: new Date('2018-06-01'), value: 250.0 },
+    // IT Equipment (4) — index 4-7
+    { assetTag: 'IT-2024-0005', name: 'Dell Optiplex Desktop PC', categoryId: catIT.id, location: 'ICT Lab', condition: 'Good', purchaseDate: new Date('2024-02-01'), value: 1800.0 },
+    { assetTag: 'IT-2022-0006', name: 'Epson Projector EB-X49', categoryId: catIT.id, location: 'Classroom 9A', condition: 'Good', purchaseDate: new Date('2022-08-15'), value: 950.0 },
+    { assetTag: 'IT-2022-0007', name: 'Epson Projector EB-X49', categoryId: catIT.id, location: 'Classroom 10B', condition: 'Fair', purchaseDate: new Date('2022-08-15'), value: 950.0 },
+    { assetTag: 'IT-2019-0008', name: 'Samsung Smart TV 55"', categoryId: catIT.id, location: 'Staff Room', condition: 'Good', purchaseDate: new Date('2019-07-20'), value: 1100.0 },
+    // Sports Equipment (4) — index 8-11
+    { assetTag: 'SPT-2023-0009', name: 'Football (Size 5) ×10', categoryId: catSports.id, location: 'Sports Storeroom', condition: 'Good', purchaseDate: new Date('2023-09-01'), value: 300.0 },
+    { assetTag: 'SPT-2023-0010', name: 'Badminton Racket Set ×20', categoryId: catSports.id, location: 'Sports Storeroom', condition: 'Good', purchaseDate: new Date('2023-09-01'), value: 480.0 },
+    { assetTag: 'SPT-2021-0011', name: 'Basketball Hoop (portable)', categoryId: catSports.id, location: 'Gymnasium', condition: 'Fair', purchaseDate: new Date('2021-04-15'), value: 350.0 },
+    { assetTag: 'SPT-2017-0012', name: 'High Jump Mat', categoryId: catSports.id, location: 'Sports Field', condition: 'Poor', purchaseDate: new Date('2017-01-10'), value: 600.0 },
   ]
 
   const createdAssets: { id: string }[] = []
@@ -2677,7 +2674,7 @@ async function main() {
   await prisma.assetMaintenanceLog.createMany({
     data: [
       {
-        assetId: createdAssets[4].id, // Principal Office Chair
+        assetId: createdAssets[3].id, // Principal Office Chair
         date: daysAgo(90),
         type: 'Repair',
         cost: 45.0,
@@ -2685,7 +2682,7 @@ async function main() {
         notes: 'Replaced gas lift cylinder. Chair still showing wear on armrests.',
       },
       {
-        assetId: createdAssets[5].id, // Dell PC #1
+        assetId: createdAssets[4].id, // Dell Optiplex Desktop PC
         date: daysAgo(30),
         type: 'Service',
         cost: 0,
@@ -2693,7 +2690,7 @@ async function main() {
         notes: 'Annual OS update and disk cleanup. RAM upgraded from 8GB to 16GB.',
       },
       {
-        assetId: createdAssets[8].id, // Projector #2
+        assetId: createdAssets[6].id, // Epson Projector 10B
         date: daysAgo(14),
         type: 'Repair',
         cost: 120.0,
@@ -2701,7 +2698,7 @@ async function main() {
         notes: 'Lamp replacement. Projector now operational. Previous lamp ran 3,200 hours.',
       },
       {
-        assetId: createdAssets[14].id, // High Jump Mat
+        assetId: createdAssets[11].id, // High Jump Mat
         date: daysAgo(7),
         type: 'Inspection',
         cost: 0,
@@ -2995,7 +2992,7 @@ async function main() {
     },
   })
 
-  // B: Faizal — HOD_APPROVED medical leave (currently on leave)
+  // B: Faizal — PRINCIPAL_APPROVED medical leave (currently on leave)
   await prisma.leaveApplication.create({
     data: {
       teacherId: faizal.id,
@@ -3005,10 +3002,13 @@ async function main() {
       daysRequested: 5,
       reason: 'Hospitalisation — respiratory infection',
       documentUrl: '/uploads/leave/faizal_mc_2026.pdf',
-      status: 'HOD_APPROVED',
+      status: 'PRINCIPAL_APPROVED',
       hodApproverId: hodUser.id,
       hodApprovedAt: daysAgo(3),
       hodRemarks: 'Approved. Wishing a speedy recovery. Ridwan to cover Year 7 English.',
+      principalApproverId: principalUser.id,
+      principalApprovedAt: daysAgo(2),
+      principalRemarks: 'Approved. Medical certificate attached.',
     },
   })
 
@@ -3188,6 +3188,32 @@ async function main() {
     try {
       await prisma.staffAttendanceRecord.create({ data: { teacherId: faizal.id, date: staffDay(r.day), checkInAt: r.inTime ? staffTime(r.day, r.inTime) : null, checkOutAt: r.outTime ? staffTime(r.day, r.outTime) : null, status: r.status, lateMinutes: r.late, notes: r.notes ?? null } })
     } catch (_) { /* skip */ }
+  }
+
+  // ── 4b. Today's staff check-ins (day 0) ──────────────────────────────────────
+  // Dr. Siti, Aminah, Ridwan, Hassan, Zuraidah are present today
+  // Faizal is absent (on approved medical leave)
+  for (const [teacherId, inTime, outTime, status, lateMin, notes] of [
+    [drsiti.id,   '07:28', '16:30', 'PRESENT', 0,  null],
+    [teacher01.id,'07:30', '16:00', 'PRESENT', 0,  null],
+    [ridwan.id,   '08:10', '16:00', 'LATE',    40, 'No reason given'],
+    [hassan.id,   '07:30', '16:00', 'PRESENT', 0,  null],
+    [zuraidah.id, '07:25', '16:30', 'PRESENT', 0,  null],
+    [faizal.id,   null,    null,    'ABSENT',  0,  'Approved medical leave'],
+  ] as [string, string|null, string|null, string, number, string|null][]) {
+    try {
+      await prisma.staffAttendanceRecord.create({
+        data: {
+          teacherId,
+          date: staffDay(0),
+          checkInAt:  inTime  ? staffTime(0, inTime)  : null,
+          checkOutAt: outTime ? staffTime(0, outTime) : null,
+          status,
+          lateMinutes: lateMin,
+          notes,
+        },
+      })
+    } catch (_) { /* skip duplicate */ }
   }
 
   // ── 5. Retirement Application (Dr. Siti — voluntary early at 51) ──────────

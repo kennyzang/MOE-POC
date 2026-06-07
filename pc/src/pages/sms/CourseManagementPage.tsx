@@ -313,7 +313,7 @@ const CourseManagementPage = () => {
         confirmLoading={createMutation.isPending || updateMutation.isPending}
         okText={t('common.confirm')}
         cancelText={t('common.cancel')}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item

@@ -468,7 +468,7 @@ export default function InventoryPage() {
         confirmLoading={addAssetMutation.isPending || updateAssetMutation.isPending}
         okText={editingAsset ? t('common.save') : t('common.submit')}
         width={600}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={assetForm} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>
@@ -545,7 +545,7 @@ export default function InventoryPage() {
         open={drawerOpen}
         onClose={() => { setDrawerOpen(false); setSelectedAssetId(null); setShowAddMaint(false) }}
         width={780}
-        destroyOnClose
+        destroyOnHidden
       >
         {!assetDetail || detailLoading ? null : (
           <div>

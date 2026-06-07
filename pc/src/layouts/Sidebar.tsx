@@ -317,7 +317,7 @@ const Sidebar = () => {
       },
       // Settings
       {
-        key: '/settings',
+        key: '/settings-group',
         label: t('nav.settings'),
         icon: icon(Settings),
         roles: ['admin'],
@@ -365,7 +365,7 @@ const Sidebar = () => {
   const openKeys = useMemo(() => {
     const path = location.pathname
     return filteredItems
-      .filter(item => item.children && path.startsWith(item.key))
+      .filter(item => item.children && item.children.some(c => path === c.key || path.startsWith(c.key + '/')))
       .map(item => item.key)
   }, [location.pathname, filteredItems])
 

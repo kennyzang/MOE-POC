@@ -221,7 +221,7 @@ function SsoConsentModal({ provider, onConfirm, onCancel, loading }: SsoConsentM
       footer={null}
       width={400}
       closable={!loading}
-      maskClosable={!loading}
+      mask={{ closable: !loading }}
       title={null}
     >
       {cfg && (

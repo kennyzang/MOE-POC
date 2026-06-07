@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   Card, Table, Tag, Button, Modal, Form, Input, Select, Switch,
   DatePicker, Space, Typography, Popconfirm, Spin, Empty, Drawer,
-  Progress, List, Rate, Statistic, Row, Col, Divider, Badge,
+  Progress, List, Rate, Statistic, Row, Col, Divider, Badge, message,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
@@ -495,11 +495,17 @@ export default function SurveysAdminPage() {
               size="small"
               type="primary"
               icon={<Play size={12} />}
-              onClick={() => Modal.confirm({
-                title: t('surveys.activateConfirm', 'Activate this survey?'),
-                content: t('surveys.activateContent', 'Staff will be able to respond once activated.'),
-                onOk: () => statusMutation.mutate({ id: r.id, status: 'ACTIVE' }),
-              })}
+              onClick={() => {
+                if (r._count.questions === 0) {
+                  message.warning(t('surveys.noQuestionsWarning', 'Please add at least one question before activating.'))
+                  return
+                }
+                Modal.confirm({
+                  title: t('surveys.activateConfirm', 'Activate this survey?'),
+                  content: t('surveys.activateContent', 'Staff will be able to respond once activated.'),
+                  onOk: () => statusMutation.mutate({ id: r.id, status: 'ACTIVE' }),
+                })
+              }}
             >
               {t('surveys.activate', 'Activate')}
             </Button>

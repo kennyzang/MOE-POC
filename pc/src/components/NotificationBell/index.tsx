@@ -116,7 +116,7 @@ const NotificationBell = () => {
       onOpenChange={handleOpen}
       placement="bottomRight"
       arrow={false}
-      overlayInnerStyle={{ padding: '12px 16px', width: 392 }}
+      styles={{ root: { padding: '12px 16px', width: 392 } }}
     >
       <Badge count={unreadCount} size="small" offset={[-2, 2]}>
         <Button

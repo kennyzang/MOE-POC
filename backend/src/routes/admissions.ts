@@ -199,7 +199,7 @@ router.get(
   requireRole('admin', 'manager', 'admissions'),
   async (_req: AuthRequest, res: Response) => {
     try {
-      const statuses = ['draft', 'pending', 'submitted', 'under_review', 'offer_issued', 'offer_accepted', 'rejected', 'waitlisted']
+      const statuses = ['draft', 'pending', 'submitted', 'under_review', 'offer_issued', 'accepted', 'offer_accepted', 'rejected', 'waitlisted']
       const counts = await Promise.all(
         statuses.map((s) => prisma.admission.count({ where: { status: s } })),
       )
@@ -208,7 +208,7 @@ router.get(
         return acc
       }, {})
       const total = counts.reduce((a, b) => a + b, 0)
-      const accepted = pipeline['offer_accepted'] ?? 0
+      const accepted = (pipeline['accepted'] ?? 0) + (pipeline['offer_accepted'] ?? 0)
       const acceptanceRate = total > 0 ? Math.round((accepted / total) * 10000) / 100 : 0
       const scored = await prisma.admission.findMany({
         where: { status: { notIn: ['draft'] }, eligibilityScore: { not: null } },
