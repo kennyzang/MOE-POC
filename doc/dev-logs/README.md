@@ -55,3 +55,4 @@
 | 2026-06-06 14:20 | [260606-1420.md](260606-1420.md) | 移动端方案B落地：公告列表页(PullToRefresh+Skeleton)、家长消息中心(气泡UI+发送)、教师签到卡(实时时钟+Dialog确认)、4 Tab | ~80k |
 | 2026-06-07 15:30 | [260607-1530.md](260607-1530.md) | 教师移动端功能补全：消息页面(线程列表+聊天详情+回复)、个人资料页(头像卡片+统计+课程分配)、公告Tab入口(5Tab)、i18n 18键 | ~33k |
 | 2026-06-07 17:00 | [260607-1700.md](260607-1700.md) | 移动端Phase2完成：Parent Fees页面(概览+发票+支付)、Teacher Assignments(列表+FAB)、Student Assignments(状态排序)、Parent/Student Announcements Tab入口、i18n +26键 | ~40k |
+| 2026-06-07 18:00 | [260607-1800.md](260607-1800.md) | 移动端Phase3完成：Student Behavior(加分/扣分筛选Tab)、Student Report Card(学期选择+GPA卡片)、Teacher Attendance History(月份导航+统计)，i18n +20键 | ~35k |
