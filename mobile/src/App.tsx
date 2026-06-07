@@ -15,6 +15,8 @@ import TeacherHomePage from '@/pages/teacher/TeacherHomePage'
 import TeacherClassesPage from '@/pages/teacher/TeacherClassesPage'
 import TeacherAttendancePage from '@/pages/teacher/TeacherAttendancePage'
 import TeacherGradesPage from '@/pages/teacher/TeacherGradesPage'
+import TeacherMessagesPage from '@/pages/teacher/TeacherMessagesPage'
+import TeacherProfilePage from '@/pages/teacher/TeacherProfilePage'
 import AnnouncementDetailPage from '@/pages/common/AnnouncementDetailPage'
 import AnnouncementsPage from '@/pages/common/AnnouncementsPage'
 import CourseDetailPage from '@/pages/common/CourseDetailPage'
@@ -66,6 +68,8 @@ export default function App() {
         <Route path="/teacher/attendance" element={<RequireAuth><TeacherAttendancePage /></RequireAuth>} />
         <Route path="/teacher/grades" element={<RequireAuth><TeacherGradesPage /></RequireAuth>} />
         <Route path="/teacher/announcements" element={<RequireAuth><AnnouncementsPage /></RequireAuth>} />
+        <Route path="/teacher/messages" element={<RequireAuth><TeacherMessagesPage /></RequireAuth>} />
+        <Route path="/teacher/profile" element={<RequireAuth><TeacherProfilePage /></RequireAuth>} />
 
         {/* Common */}
         <Route path="/announcements" element={<RequireAuth><AnnouncementsPage /></RequireAuth>} />

@@ -32,6 +32,7 @@ export interface CourseAssignment {
   semester?: string
   schedule?: string
   course?: Course
+  _count?: { enrollments: number }
 }
 
 export interface Enrollment {
