@@ -24,6 +24,8 @@ const DEMO_ACCOUNTS = [
   { username: 'student001',      label: 'Yr 7 Student (Ahmad)', password: 'student123',  school: 'SMHK', authority: 'MOE' },
   { username: 'adam',            label: 'Yr 7 Student',       password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
   { username: 'parent.siti',     label: 'Parent (SMHK)',      password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
+  // ── SMHK — Additional Student (Yr 10) ───────────────────────────────
+  { username: 'nadia_y10',       label: 'Yr 10 Student',      password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
   // ── SRPB — MOE Primary ──────────────────────────────────────────────
   { username: 'admin.srpb',      label: 'Primary Admin',      password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' },
   { username: 'principal.srpb',  label: 'Primary Principal',  password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' },

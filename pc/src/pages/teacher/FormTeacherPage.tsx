@@ -80,6 +80,14 @@ const FormTeacherPage = () => {
     },
   })
 
+  const { data: myCourses = [] } = useQuery({
+    queryKey: ['teacher-my-courses'],
+    queryFn: async () => {
+      const { data } = await api.get('/courses')
+      return (data.data as { id: string; code: string; name: string; gradeLevel: string }[]) ?? []
+    },
+  })
+
   const postNoticeMutation = useMutation({
     mutationFn: async (values: Record<string, unknown>) => {
       const gradeLevel = data?.roster?.gradeLevel
@@ -112,13 +120,29 @@ const FormTeacherPage = () => {
 
   const rollCallMutation = useMutation({
     mutationFn: async () => {
-      await new Promise((r) => setTimeout(r, 500))
+      const formRoster = data?.roster
+      const formStudents = data?.students ?? []
+      const formCourse = myCourses.find(c => c.gradeLevel === formRoster?.gradeLevel) ?? myCourses[0]
+      if (!formCourse) throw new Error('No course found for roll call')
+      const { data: sessionData } = await api.post('/attendance/sessions', {
+        courseId: formCourse.id,
+        date: rollCallDate.format('YYYY-MM-DD'),
+        topic: `Daily Roll Call — ${formRoster?.className ?? 'Form Class'}`,
+      })
+      const sessionId = sessionData.data.id
+      const records = formStudents.map((s) => ({
+        studentId: s.id,
+        status: rollCallMap[s.id] ?? 'present',
+      }))
+      await api.post('/attendance/records', { sessionId, records })
     },
     onSuccess: () => {
-      message.success(`Roll call recorded for ${rollCallDate.format('DD/MM/YYYY')}`)
+      message.success(`Roll call submitted for ${rollCallDate.format('DD/MM/YYYY')}`)
       setRollCallOpen(false)
       setRollCallMap({})
+      void queryClient.invalidateQueries({ queryKey: ['teacher-recent-sessions'] })
     },
+    onError: () => message.error('Failed to submit roll call. Please try again.'),
   })
 
   if (isLoading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
@@ -139,6 +163,8 @@ const FormTeacherPage = () => {
   const { roster, students, summary } = data
   const atRiskCount = students.filter((s) => s.academicStanding !== 'GOOD_STANDING').length
 
+  const classParam = `className=${encodeURIComponent(roster.className)}&gradeLevel=${encodeURIComponent(roster.gradeLevel)}`
+
   const KPI_CARDS = [
     {
       title: 'Total Students',
@@ -146,7 +172,7 @@ const FormTeacherPage = () => {
       icon: <Users size={18} />,
       color: '#1677ff',
       bg: '#e6f4ff',
-      navTo: '/sis/students',
+      navTo: `/sis/students?${classParam}`,
       suffix: undefined as string | undefined,
     },
     {
@@ -164,7 +190,7 @@ const FormTeacherPage = () => {
       icon: <TrendingDown size={18} />,
       color: atRiskCount > 0 ? '#f5222d' : '#52c41a',
       bg: atRiskCount > 0 ? '#fff1f0' : '#f6ffed',
-      navTo: '/dashboard/at-risk',
+      navTo: `/sis/students?${classParam}`,
       suffix: undefined,
     },
     {
@@ -173,7 +199,7 @@ const FormTeacherPage = () => {
       icon: <Award size={18} />,
       color: summary.netBehavior >= 0 ? '#52c41a' : '#f5222d',
       bg: summary.netBehavior >= 0 ? '#f6ffed' : '#fff1f0',
-      navTo: '/sis/behavior',
+      navTo: `/sis/students?${classParam}`,
       suffix: undefined,
     },
   ]
@@ -337,7 +363,8 @@ const FormTeacherPage = () => {
                 renderItem={(session: AttendanceSession) => (
                   <List.Item
                     style={{ cursor: 'pointer', padding: '8px 0' }}
-                    onClick={() => navigate(`/sis/attendance`)}
+                    onClick={() => navigate(`/sis/attendance?courseId=${session.course?.id ?? ''}`)}
+
                   >
                     <List.Item.Meta
                       avatar={

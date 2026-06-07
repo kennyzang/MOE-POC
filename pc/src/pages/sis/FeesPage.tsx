@@ -56,7 +56,7 @@ export default function FeesPage() {
       qc.invalidateQueries({ queryKey: ['fee-invoices'] })
       qc.invalidateQueries({ queryKey: ['command-center'] })
     },
-    onError: () => message.error('Payment failed'),
+    onError: () => message.error('Failed to record payment'),
   })
 
   const overdueCheckMutation = useMutation({
@@ -166,19 +166,20 @@ export default function FeesPage() {
       key: 'action',
       render: (_: unknown, row: FeeInvoice) =>
         row.status !== 'paid' ? (
-          <Button
-            size="small"
-            type="primary"
-            icon={<DollarSign size={12} />}
-            loading={payMutation.isPending}
-            onClick={() => payMutation.mutate(row.id)}
-          >
-            Simulate Payment
-          </Button>
+          <Tooltip title="Record a cash / cheque payment collected at the school office. Online payments are processed through the Parent Portal.">
+            <Button
+              size="small"
+              icon={<DollarSign size={12} />}
+              loading={payMutation.isPending}
+              onClick={() => payMutation.mutate(row.id)}
+            >
+              Record Payment
+            </Button>
+          </Tooltip>
         ) : (
           <Text type="secondary" style={{ fontSize: 12 }}>Paid {row.paidAt ? new Date(row.paidAt).toLocaleDateString() : ''}</Text>
         ),
-      width: 160,
+      width: 180,
     },
   ]
 
@@ -219,6 +220,15 @@ export default function FeesPage() {
           </Col>
         ))}
       </Row>
+
+      <Alert
+        type="info"
+        showIcon
+        closable
+        style={{ marginBottom: 16 }}
+        message="Payment Workflow"
+        description="Parents pay online via the Parent Portal (credit/debit card, FPX, or bank transfer). Use 'Record Payment' only for cash or cheque payments collected at the school office."
+      />
 
       {summary.overdueCount > 0 && (
         <Alert

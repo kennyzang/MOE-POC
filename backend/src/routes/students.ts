@@ -32,6 +32,37 @@ router.get(
         ]
       }
 
+      // Teacher: scope to own form class + students enrolled in their courses
+      if (req.user!.role === 'teacher') {
+        const teacher = await prisma.teacher.findUnique({
+          where: { userId: req.user!.userId },
+          include: { courseAssignments: { select: { courseId: true } } },
+        })
+        if (teacher) {
+          const courseIds = teacher.courseAssignments.map((a) => a.courseId)
+          const formRoster = await prisma.classRoster.findFirst({
+            where: { formTeacherId: teacher.id },
+            select: { className: true, gradeLevel: true },
+          })
+          const formClassIds: string[] = []
+          if (formRoster) {
+            const fc = await prisma.student.findMany({
+              where: { className: formRoster.className, gradeLevel: formRoster.gradeLevel, enrollmentStatus: 'enrolled' },
+              select: { id: true },
+            })
+            formClassIds.push(...fc.map((s) => s.id))
+          }
+          const enrolled = await prisma.enrollment.findMany({
+            where: { courseId: { in: courseIds }, status: 'enrolled' },
+            select: { studentId: true },
+          })
+          const allowed = [...new Set([...formClassIds, ...enrolled.map((e) => e.studentId)])]
+          if (allowed.length > 0) {
+            where.id = { in: allowed }
+          }
+        }
+      }
+
       const students = await prisma.student.findMany({
         where,
         include: {

@@ -22,6 +22,7 @@ import api from '../../lib/api'
 import type { Student } from '../../types'
 import { useSchoolConfig } from '../../hooks/useSchoolConfig'
 import { useAuthStore } from '../../stores/authStore'
+import { useLocation } from 'react-router-dom'
 
 const STANDING_CONFIG: Record<string, { color: string; label: string }> = {
   GOOD_STANDING: { color: 'success', label: 'Good Standing' },
@@ -44,10 +45,14 @@ const StudentDirectoryPage = () => {
   const { user } = useAuthStore()
   const isSysAdmin = user?.systemAdmin === true
   const schoolConfig = useSchoolConfig()
+  const location = useLocation()
+
+  // Read initial filters from URL params (e.g. when navigating from KPI cards)
+  const initParams = new URLSearchParams(location.search)
 
   const [search, setSearch] = useState('')
-  const [gradeLevel, setGradeLevel] = useState<string>('')
-  const [className, setClassName] = useState<string>('')
+  const [gradeLevel, setGradeLevel] = useState<string>(initParams.get('gradeLevel') ?? '')
+  const [className, setClassName] = useState<string>(initParams.get('className') ?? '')
   const [status, setStatus] = useState<string>('')
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('')
 

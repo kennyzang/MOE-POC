@@ -685,6 +685,18 @@ async function main() {
     })
   }
 
+  // ─── Enroll bulk 7A students in MATH701 and SCI701 ────────────────────────
+  // This gives the form teacher's mark modal all 31 students (not just 3 named ones)
+  if (y7aExtraIds.length > 0) {
+    const bulkEnrollData = y7aExtraIds.flatMap((sid) => [
+      { studentId: sid, courseId: mathCourse.id, semester: '2026-S1' },
+      { studentId: sid, courseId: sciCourse.id, semester: '2026-S1' },
+    ])
+    for (const enr of bulkEnrollData) {
+      await prisma.enrollment.create({ data: enr })
+    }
+  }
+
   // ─── Grade Items for Ahmad (4-week declining trend, Math = Week 1 score 78) ─
 
   const ahmadCourseOrder = [mathCourse, sciCourse, engCourse, mibCourse, icCourse]
@@ -813,6 +825,50 @@ async function main() {
           },
         })
         snIdx++
+      }
+    }
+  }
+
+  // ─── Add attendance records for bulk 7A students in existing sessions ─────
+  // Now that bulk students are enrolled in MATH701 and SCI701, add realistic
+  // attendance records for each existing session so that session totals reflect
+  // the full class size.
+  if (y7aExtraIds.length > 0) {
+    const bulkStatuses = ['present', 'present', 'present', 'present', 'present', 'present', 'late', 'absent']
+    const math701Sessions = await prisma.attendanceSession.findMany({
+      where: { courseId: mathCourse.id, status: 'completed' },
+      orderBy: { date: 'asc' },
+    })
+    for (let si = 0; si < math701Sessions.length; si++) {
+      const sess = math701Sessions[si]
+      for (let i = 0; i < y7aExtraIds.length; i++) {
+        const st = bulkStatuses[(i + si * 3) % bulkStatuses.length]
+        await prisma.attendanceRecord.create({
+          data: {
+            sessionId: sess.id,
+            studentId: y7aExtraIds[i],
+            status: st,
+            checkedInAt: st !== 'absent' ? new Date(sess.date) : null,
+          },
+        })
+      }
+    }
+    const sci701Sessions = await prisma.attendanceSession.findMany({
+      where: { courseId: sciCourse.id, status: 'completed' },
+      orderBy: { date: 'asc' },
+    })
+    for (let si = 0; si < sci701Sessions.length; si++) {
+      const sess = sci701Sessions[si]
+      for (let i = 0; i < y7aExtraIds.length; i++) {
+        const st = bulkStatuses[(i + si * 5) % bulkStatuses.length]
+        await prisma.attendanceRecord.create({
+          data: {
+            sessionId: sess.id,
+            studentId: y7aExtraIds[i],
+            status: st,
+            checkedInAt: st !== 'absent' ? new Date(sess.date) : null,
+          },
+        })
       }
     }
   }
@@ -2441,6 +2497,75 @@ async function main() {
   }
 
   console.log(`  PSR exam seeded: ${srpbYear6Students.length} candidates × ${psrSubjects.length} subjects = ${srpbYear6Students.length * psrSubjects.length} rows`)
+
+  // ─── Exam Management (O-Level & Year-End at SMHK) ────────────────────────
+  const smhkYear11Students = await prisma.student.findMany({
+    where: { schoolId: smhk.id, gradeLevel: 'Year 11', enrollmentStatus: 'enrolled' },
+    select: { id: true },
+    take: 30,
+  })
+  const smhkYear7Students = await prisma.student.findMany({
+    where: { schoolId: smhk.id, gradeLevel: 'Year 7', enrollmentStatus: 'enrolled' },
+    select: { id: true },
+    take: 30,
+  })
+  const oLevelExam = await prisma.exam.create({
+    data: {
+      schoolId: smhk.id,
+      examType: 'O_LEVEL',
+      year: 2026,
+      examDate: new Date('2026-07-06T08:00:00'),
+      venue: 'SMHK Main Examination Hall',
+      status: 'upcoming',
+    },
+  })
+  const oLevelSubjects = ['ENG', 'MAL', 'MATH', 'PHY', 'CHEM', 'BIO']
+  let oSeat = 1
+  for (const stu of smhkYear11Students) {
+    for (const sub of oLevelSubjects) {
+      try {
+        await prisma.examCandidate.create({
+          data: {
+            examId: oLevelExam.id,
+            studentId: stu.id,
+            subjectCode: sub,
+            seatNumber: `B${String(oSeat).padStart(3, '0')}`,
+            status: 'registered',
+          },
+        })
+        oSeat++
+      } catch (_) { /* skip duplicates */ }
+    }
+  }
+  const semExam = await prisma.exam.create({
+    data: {
+      schoolId: smhk.id,
+      examType: 'O_LEVEL',
+      year: 2026,
+      examDate: new Date('2026-09-07T08:00:00'),
+      venue: 'SMHK Classrooms',
+      status: 'upcoming',
+    },
+  })
+  const semSubjects = ['MATH', 'ENG', 'SCI']
+  let sSeat = 1
+  for (const stu of smhkYear7Students) {
+    for (const sub of semSubjects) {
+      try {
+        await prisma.examCandidate.create({
+          data: {
+            examId: semExam.id,
+            studentId: stu.id,
+            subjectCode: sub,
+            seatNumber: `C${String(sSeat).padStart(3, '0')}`,
+            status: 'registered',
+          },
+        })
+        sSeat++
+      } catch (_) { /* skip duplicates */ }
+    }
+  }
+  console.log(`  SMHK exams seeded: O-Level (${smhkYear11Students.length} Year 11 × ${oLevelSubjects.length} subjects), Semester (${smhkYear7Students.length} Year 7 × ${semSubjects.length} subjects)`)
 
   // ─── SEN / Special Education ─────────────────────────────────────────────
   console.log('Seeding SEN data...')

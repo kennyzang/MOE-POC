@@ -27,6 +27,18 @@ router.get(
         ]
       }
 
+      // Teacher: scope to only their assigned courses
+      if (req.user!.role === 'teacher') {
+        const teacher = await prisma.teacher.findUnique({
+          where: { userId: req.user!.userId },
+          select: { courseAssignments: { select: { courseId: true } } },
+        })
+        if (teacher) {
+          const assignedIds = teacher.courseAssignments.map((a) => a.courseId)
+          where.id = { in: assignedIds }
+        }
+      }
+
       const courses = await prisma.course.findMany({
         where,
         include: {

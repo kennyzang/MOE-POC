@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Table,
   Select,
@@ -25,6 +25,7 @@ import dayjs from 'dayjs'
 import api from '../../lib/api'
 import type { Course, AttendanceSession, AttendanceRecord, Enrollment } from '../../types'
 import { useAuthStore } from '../../stores/authStore'
+import { useLocation } from 'react-router-dom'
 
 const { Title } = Typography
 
@@ -39,15 +40,21 @@ const AttendanceTrackingPage = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
+  const location = useLocation()
   const canEdit = ['admin', 'manager', 'teacher'].includes(user?.role ?? '')
   const canViewSchoolWide = ['admin', 'manager', 'principal'].includes(user?.role ?? '')
   const todayDateStr = dayjs().format('YYYY-MM-DD')
 
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('')
+  // Read URL params: courseId pre-selects course, sessionId auto-opens mark modal
+  const urlParams = new URLSearchParams(location.search)
+  const urlCourseId = urlParams.get('courseId') ?? ''
+  const urlSessionId = urlParams.get('sessionId') ?? ''
+
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(urlCourseId)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [createModalOpen, setCreateModalOpen] = useState(false)
-  const [markModalOpen, setMarkModalOpen] = useState(false)
-  const [activeSessionId, setActiveSessionId] = useState<string>('')
+  const [markModalOpen, setMarkModalOpen] = useState(!!urlSessionId)
+  const [activeSessionId, setActiveSessionId] = useState<string>(urlSessionId)
 
   // Create session form state
   const [newSessionDate, setNewSessionDate] = useState<dayjs.Dayjs | null>(null)
@@ -184,12 +191,10 @@ const AttendanceTrackingPage = () => {
   }
 
   // Pre-populate attendance map: existing records take priority; new sessions default all to "present"
-  useMemo(() => {
+  useEffect(() => {
     if (!markModalOpen || enrollments.length === 0) return
     const map: Record<string, string> = {}
-    // Default all enrolled students to "present"
     enrollments.forEach((e) => { map[e.studentId] = 'present' })
-    // Override with saved records if any
     existingRecords.forEach((r) => { map[r.studentId] = r.status })
     setAttendanceMap(map)
   }, [existingRecords, enrollments, markModalOpen])
