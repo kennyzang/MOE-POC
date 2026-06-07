@@ -17,12 +17,14 @@ export default function RoleTabBar() {
       { key: '/parent/home', title: t('parent.myChildren'), icon: <Home size={20} /> },
       { key: '/parent/grades', title: t('parent.grades'), icon: <BarChart2 size={20} /> },
       { key: '/parent/attendance', title: t('parent.attendance'), icon: <CalendarCheck size={20} /> },
+      { key: '/parent/announcements', title: t('announcements.title'), icon: <Megaphone size={20} /> },
       { key: '/parent/messages', title: t('messages.title'), icon: <MessageSquare size={20} /> },
     ],
     student: [
       { key: '/student/home', title: t('student.home'), icon: <Home size={20} /> },
       { key: '/student/courses', title: t('student.courses'), icon: <BookOpen size={20} /> },
       { key: '/student/grades', title: t('student.grades'), icon: <BarChart2 size={20} /> },
+      { key: '/student/announcements', title: t('announcements.title'), icon: <Megaphone size={20} /> },
       { key: '/student/profile', title: t('student.profile'), icon: <User size={20} /> },
     ],
     teacher: [

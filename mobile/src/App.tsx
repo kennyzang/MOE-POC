@@ -17,6 +17,9 @@ import TeacherAttendancePage from '@/pages/teacher/TeacherAttendancePage'
 import TeacherGradesPage from '@/pages/teacher/TeacherGradesPage'
 import TeacherMessagesPage from '@/pages/teacher/TeacherMessagesPage'
 import TeacherProfilePage from '@/pages/teacher/TeacherProfilePage'
+import TeacherAssignmentsPage from '@/pages/teacher/TeacherAssignmentsPage'
+import ParentFeesPage from '@/pages/parent/ParentFeesPage'
+import StudentAssignmentsPage from '@/pages/student/StudentAssignmentsPage'
 import AnnouncementDetailPage from '@/pages/common/AnnouncementDetailPage'
 import AnnouncementsPage from '@/pages/common/AnnouncementsPage'
 import CourseDetailPage from '@/pages/common/CourseDetailPage'
@@ -52,6 +55,7 @@ export default function App() {
         <Route path="/parent/attendance" element={<RequireAuth><ParentAttendancePage /></RequireAuth>} />
         <Route path="/parent/messages" element={<RequireAuth><ParentMessagesPage /></RequireAuth>} />
         <Route path="/parent/messages/detail" element={<RequireAuth><ParentMessageDetailPage /></RequireAuth>} />
+        <Route path="/parent/fees" element={<RequireAuth><ParentFeesPage /></RequireAuth>} />
 
         {/* Student portal */}
         <Route path="/student/home" element={<RequireAuth><StudentHomePage /></RequireAuth>} />
@@ -59,6 +63,7 @@ export default function App() {
         <Route path="/student/courses" element={<RequireAuth><StudentCoursesPage /></RequireAuth>} />
         <Route path="/student/grades" element={<RequireAuth><StudentGradesPage /></RequireAuth>} />
         <Route path="/student/announcements" element={<RequireAuth><AnnouncementsPage /></RequireAuth>} />
+        <Route path="/student/assignments" element={<RequireAuth><StudentAssignmentsPage /></RequireAuth>} />
 
         {/* Teacher portal */}
         <Route path="/teacher/home" element={<RequireAuth><TeacherHomePage /></RequireAuth>} />
@@ -70,6 +75,7 @@ export default function App() {
         <Route path="/teacher/announcements" element={<RequireAuth><AnnouncementsPage /></RequireAuth>} />
         <Route path="/teacher/messages" element={<RequireAuth><TeacherMessagesPage /></RequireAuth>} />
         <Route path="/teacher/profile" element={<RequireAuth><TeacherProfilePage /></RequireAuth>} />
+        <Route path="/teacher/assignments" element={<RequireAuth><TeacherAssignmentsPage /></RequireAuth>} />
 
         {/* Common */}
         <Route path="/announcements" element={<RequireAuth><AnnouncementsPage /></RequireAuth>} />
