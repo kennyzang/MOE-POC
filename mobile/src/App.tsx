@@ -23,6 +23,10 @@ import ParentFeesPage from '@/pages/parent/ParentFeesPage'
 import ParentHomeworkPage from '@/pages/parent/ParentHomeworkPage'
 import ParentBehaviorPage from '@/pages/parent/ParentBehaviorPage'
 import ParentMeetingsPage from '@/pages/parent/ParentMeetingsPage'
+import ParentConsentFormsPage from '@/pages/parent/ParentConsentFormsPage'
+import ParentContactDirectoryPage from '@/pages/parent/ParentContactDirectoryPage'
+import ParentCommHistoryPage from '@/pages/parent/ParentCommHistoryPage'
+import ParentApplyPage from '@/pages/parent/ParentApplyPage'
 import StudentAssignmentsPage from '@/pages/student/StudentAssignmentsPage'
 import StudentBehaviorPage from '@/pages/student/StudentBehaviorPage'
 import StudentReportCardPage from '@/pages/student/StudentReportCardPage'
@@ -65,6 +69,10 @@ export default function App() {
         <Route path="/parent/homework" element={<RequireAuth><ParentHomeworkPage /></RequireAuth>} />
         <Route path="/parent/behavior" element={<RequireAuth><ParentBehaviorPage /></RequireAuth>} />
         <Route path="/parent/meetings" element={<RequireAuth><ParentMeetingsPage /></RequireAuth>} />
+        <Route path="/parent/consent-forms" element={<RequireAuth><ParentConsentFormsPage /></RequireAuth>} />
+        <Route path="/parent/contact-directory" element={<RequireAuth><ParentContactDirectoryPage /></RequireAuth>} />
+        <Route path="/parent/comm-history" element={<RequireAuth><ParentCommHistoryPage /></RequireAuth>} />
+        <Route path="/parent/apply" element={<RequireAuth><ParentApplyPage /></RequireAuth>} />
 
         {/* Student portal */}
         <Route path="/student/home" element={<RequireAuth><StudentHomePage /></RequireAuth>} />
