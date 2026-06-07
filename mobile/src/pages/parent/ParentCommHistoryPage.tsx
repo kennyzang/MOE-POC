@@ -82,10 +82,10 @@ export default function ParentCommHistoryPage() {
           style={{ '--title-font-size': '12px' } as React.CSSProperties}
         >
           <Tabs.Tab key="all" title={`${t('parent.allEvents')} (${events.length})`} />
-          <Tabs.Tab key="message" title={`${TYPE_CONFIG.message.labelKey} (${typeCounts.message})`} />
-          <Tabs.Tab key="announcement" title={`${TYPE_CONFIG.announcement.labelKey} (${typeCounts.announcement})`} />
-          <Tabs.Tab key="consent" title={`${TYPE_CONFIG.consent.labelKey} (${typeCounts.consent})`} />
-          <Tabs.Tab key="meeting" title={`${TYPE_CONFIG.meeting.labelKey} (${typeCounts.meeting})`} />
+          <Tabs.Tab key="message" title={`${t(TYPE_CONFIG.message.labelKey)} (${typeCounts.message})`} />
+          <Tabs.Tab key="announcement" title={`${t(TYPE_CONFIG.announcement.labelKey)} (${typeCounts.announcement})`} />
+          <Tabs.Tab key="consent" title={`${t(TYPE_CONFIG.consent.labelKey)} (${typeCounts.consent})`} />
+          <Tabs.Tab key="meeting" title={`${t(TYPE_CONFIG.meeting.labelKey)} (${typeCounts.meeting})`} />
         </Tabs>
 
         {isLoading ? (
