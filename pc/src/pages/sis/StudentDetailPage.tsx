@@ -719,9 +719,17 @@ export default function StudentDetailPage() {
             </Space>
           </Col>
           <Col>
-            <Tag color={student.enrollmentStatus === 'enrolled' ? 'green' : 'orange'} style={{ fontSize: 13 }}>
-              {student.enrollmentStatus}
-            </Tag>
+            <Space>
+              <Button
+                icon={<GraduationCap size={14} />}
+                onClick={() => navigate(`/sis/students/${id}/transcript`)}
+              >
+                Transcript
+              </Button>
+              <Tag color={student.enrollmentStatus === 'enrolled' ? 'green' : 'orange'} style={{ fontSize: 13 }}>
+                {student.enrollmentStatus}
+              </Tag>
+            </Space>
           </Col>
         </Row>
       </Card>

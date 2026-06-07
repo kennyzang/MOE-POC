@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Card, Select, Typography, Space, Table, Tag, Divider, Button, Spin, Row, Col, Statistic } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { FileText, Printer } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { FileText, Printer, ScrollText } from 'lucide-react'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -42,6 +43,7 @@ const SEMESTERS = ['2026-S1', '2026-S2', '2025-S1', '2025-S2']
 
 const StudentReportCardPage = () => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { user } = useAuthStore()
   const [semester] = useState(SEMESTERS[0])
 
@@ -126,9 +128,14 @@ const StudentReportCardPage = () => {
             <FileText size={22} style={{ color: '#165DFF' }} />
             <Title level={4} style={{ margin: 0 }}>Report Card</Title>
           </Space>
-          <Button icon={<Printer size={14} />} onClick={handlePrint} type="primary">
-            Download / Print PDF
-          </Button>
+          <Space>
+            <Button icon={<ScrollText size={14} />} onClick={() => navigate('/student/transcript')}>
+              {t('transcript.title', { defaultValue: 'Official Transcript' })}
+            </Button>
+            <Button icon={<Printer size={14} />} onClick={handlePrint} type="primary">
+              Download / Print PDF
+            </Button>
+          </Space>
         </div>
       </Card>
 

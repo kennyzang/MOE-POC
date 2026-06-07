@@ -315,6 +315,9 @@ const ParentChildrenPage = () => {
                       <Button block icon={<Phone size={14} />} onClick={() => setContactChild(child)}>
                         {t('parentPortal.contactTeacher', { defaultValue: 'Contact Teachers' })}
                       </Button>
+                      <Button block onClick={() => navigate(`/parent/transcript/${child.id}`)}>
+                        {t('transcript.title', { defaultValue: 'Academic Transcript' })}
+                      </Button>
                     </Space>
                   </Card>
                 </Col>

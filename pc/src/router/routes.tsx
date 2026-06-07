@@ -151,6 +151,9 @@ const StudentAnnouncementsPage = lazy(() => import('@/pages/student/StudentAnnou
 const StudentBehaviorPage = lazy(() => import('@/pages/student/StudentBehaviorPage'))
 const StudentReportCardPage = lazy(() => import('@/pages/student/StudentReportCardPage'))
 
+// Transcript
+const StudentTranscriptPage = lazy(() => import('@/pages/sis/StudentTranscriptPage'))
+
 // Admin/SIS additions
 const AnnouncementsAdminPage = lazy(() => import('@/pages/sis/AnnouncementsAdminPage'))
 const BehaviorPage = lazy(() => import('@/pages/sis/BehaviorPage'))
@@ -346,6 +349,11 @@ export const router = createBrowserRouter([
       { path: 'student/behavior', element: r(['student'], <StudentBehaviorPage />) },
       { path: 'student/report-card', element: r(['student'], <StudentReportCardPage />) },
 
+      // Transcript
+      { path: 'sis/students/:id/transcript', element: r(['admin', 'manager', 'teacher', 'counselor', 'principal', 'hod', 'admissions'], <StudentTranscriptPage />) },
+      { path: 'student/transcript', element: r(['student'], <StudentTranscriptPage />) },
+      { path: 'parent/transcript/:id', element: r(['parent'], <StudentTranscriptPage />) },
+
       // SIS/Admin additions
       { path: 'sis/announcements', element: r(['admin', 'manager', 'principal', 'hod', 'teacher'], <AnnouncementsAdminPage />) },
       { path: 'sis/behavior', element: r(['admin', 'manager', 'principal', 'hod', 'counselor'], <BehaviorPage />) },
@@ -362,6 +370,13 @@ export const router = createBrowserRouter([
       // Settings
       { path: 'settings', element: r(['admin'], <SettingsPage />) },
       { path: 'admin/settings/thresholds', element: r(['admin'], <ThresholdsPage />) },
+
+      // Legacy route redirects
+      { path: 'risk/students', element: <Navigate to="/dashboard/at-risk" replace /> },
+      { path: 'sms/conflict-detection', element: <Navigate to="/sms/timetable-conflicts" replace /> },
+      { path: 'ems/attendance', element: <Navigate to="/attendance/staff-dashboard" replace /> },
+      { path: 'attendance/staff', element: <Navigate to="/attendance/staff-dashboard" replace /> },
+      { path: 'sis/sen', element: <Navigate to="/sen/students" replace /> },
     ],
   },
   { path: '/unauthorized', element: wrap(<UnauthorizedPage />) },

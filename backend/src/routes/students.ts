@@ -378,6 +378,180 @@ router.get('/me/assignments', authenticate, requireRole('student'), async (req: 
   }
 })
 
+// ─── Transcript helpers ─────────────────────────────────────────────────────
+
+function scoreToLetter(avg: number | null): string {
+  if (avg === null) return '-'
+  if (avg >= 90) return 'A+'
+  if (avg >= 80) return 'A'
+  if (avg >= 70) return 'B'
+  if (avg >= 60) return 'C'
+  if (avg >= 50) return 'D'
+  return 'F'
+}
+
+function letterToGPA(letter: string): number {
+  const map: Record<string, number> = {
+    'A+': 4.0, 'A': 4.0, 'B': 3.0, 'C': 2.0, 'D': 1.0, 'F': 0.0, '-': 0.0,
+  }
+  return map[letter] ?? 0.0
+}
+
+// GET /students/:id/transcript — full academic transcript (staff + student self + parent child)
+router.get('/:id/transcript', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const targetId = req.params.id as string
+
+    // Access control
+    if (role === 'student') {
+      const me = await prisma.student.findUnique({ where: { userId }, select: { id: true } })
+      if (!me || me.id !== targetId) {
+        res.status(403).json({ success: false, message: 'Forbidden' }); return
+      }
+    } else if (role === 'parent') {
+      const parent = await prisma.parent.findUnique({
+        where: { userId }, include: { childLinks: { select: { studentId: true } } },
+      })
+      const childIds = parent?.childLinks.map((l) => l.studentId) ?? []
+      if (!childIds.includes(targetId)) {
+        res.status(403).json({ success: false, message: 'Forbidden' }); return
+      }
+    } else if (!['admin', 'manager', 'principal', 'hod', 'teacher', 'counselor', 'admissions'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+
+    const student = await prisma.student.findUnique({
+      where: { id: targetId },
+      include: {
+        user: { select: { displayName: true, email: true } },
+        enrollments: {
+          where: { status: { not: 'dropped' } },
+          include: {
+            course: {
+              include: {
+                gradeItems: {
+                  include: { grades: { where: { studentId: targetId }, select: { score: true, letterGrade: true, gradedAt: true } } },
+                  orderBy: { dueDate: 'asc' },
+                },
+                assignments: { select: { semester: true }, take: 1 },
+              },
+            },
+          },
+          orderBy: { enrolledAt: 'asc' },
+        },
+        attendances: {
+          include: { session: { select: { courseId: true, date: true } } },
+        },
+        standingHistory: { orderBy: { createdAt: 'desc' }, take: 5 },
+      },
+    })
+
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student not found' }); return
+    }
+
+    // Behavior
+    const behaviors = await prisma.behaviorRecord.findMany({ where: { studentId: targetId } })
+    const merits   = behaviors.filter((b) => b.type === 'merit').reduce((s, b) => s + b.points, 0)
+    const demerits = behaviors.filter((b) => b.type === 'demerit').reduce((s, b) => s + Math.abs(b.points), 0)
+
+    // Per-course computation
+    const courses = student.enrollments.map((e) => {
+      const c = e.course
+      let totalWeight = 0, weightedSum = 0
+      const gradeItems = c.gradeItems.map((gi) => {
+        const g = gi.grades[0] ?? null
+        if (g?.score != null) {
+          weightedSum += (g.score / gi.maxScore) * 100 * gi.weight
+          totalWeight += gi.weight
+        }
+        return {
+          id: gi.id,
+          name: gi.name,
+          type: gi.type,
+          maxScore: gi.maxScore,
+          weight: gi.weight,
+          score: g?.score ?? null,
+          letterGrade: g?.letterGrade ?? null,
+          percentage: g?.score != null ? Math.round((g.score / gi.maxScore) * 1000) / 10 : null,
+          dueDate: gi.dueDate,
+          gradedAt: g?.gradedAt ?? null,
+        }
+      })
+      const courseAverage = totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 10) / 10 : null
+      const letterGrade = scoreToLetter(courseAverage)
+
+      const courseAtts = student.attendances.filter((a) => a.session.courseId === c.id)
+      const attRate = courseAtts.length > 0
+        ? Math.round((courseAtts.filter((a) => a.status === 'present' || a.status === 'late').length / courseAtts.length) * 1000) / 10
+        : null
+
+      return {
+        courseId: c.id,
+        courseCode: c.code,
+        courseName: c.name,
+        gradeLevel: c.gradeLevel,
+        creditHours: c.creditHours,
+        semester: e.semester ?? c.assignments[0]?.semester ?? '2026-S1',
+        enrollmentStatus: e.status,
+        courseAverage,
+        letterGrade,
+        gpaPoints: letterToGPA(letterGrade),
+        courseAttendanceRate: attRate,
+        gradeItems,
+      }
+    })
+
+    // Cumulative GPA (credit-hour weighted)
+    let totalCredits = 0, gpaSum = 0
+    for (const c of courses.filter((c) => c.courseAverage !== null)) {
+      gpaSum += c.gpaPoints * (c.creditHours || 3)
+      totalCredits += c.creditHours || 3
+    }
+    const cumulativeGPA = totalCredits > 0 ? Math.round((gpaSum / totalCredits) * 100) / 100 : null
+
+    // Attendance totals
+    const atts = student.attendances
+    const attPresent = atts.filter((a) => a.status === 'present').length
+    const attLate    = atts.filter((a) => a.status === 'late').length
+    const attAbsent  = atts.filter((a) => a.status === 'absent').length
+    const attExcused = atts.filter((a) => a.status === 'excused').length
+    const attTotal   = atts.length
+    const attRate    = attTotal > 0 ? Math.round(((attPresent + attLate) / attTotal) * 1000) / 10 : 0
+
+    res.json({
+      success: true,
+      data: {
+        student: {
+          id: student.id,
+          studentId: student.studentId,
+          displayName: student.user.displayName,
+          email: student.user.email,
+          gradeLevel: student.gradeLevel,
+          className: student.className,
+          enrollmentStatus: student.enrollmentStatus,
+          academicStanding: student.academicStanding,
+          academicStandingUpdatedAt: student.academicStandingUpdatedAt,
+        },
+        courses,
+        cumulativeGPA,
+        totalCreditHours: totalCredits,
+        attendance: {
+          total: attTotal, present: attPresent, late: attLate,
+          absent: attAbsent, excused: attExcused, rate: attRate,
+        },
+        conduct: { merits, demerits, netPoints: merits - demerits },
+        standingHistory: student.standingHistory,
+        generatedAt: new Date().toISOString(),
+      },
+    })
+  } catch (error) {
+    console.error('GET /students/:id/transcript error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
 // GET /students/me/behavior — own behavior records
 router.get('/me/behavior', authenticate, requireRole('student'), async (req: AuthRequest, res: Response) => {
   try {
