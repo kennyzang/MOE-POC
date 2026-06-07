@@ -20,6 +20,9 @@ import TeacherProfilePage from '@/pages/teacher/TeacherProfilePage'
 import TeacherAssignmentsPage from '@/pages/teacher/TeacherAssignmentsPage'
 import TeacherAttendanceHistoryPage from '@/pages/teacher/TeacherAttendanceHistoryPage'
 import ParentFeesPage from '@/pages/parent/ParentFeesPage'
+import ParentHomeworkPage from '@/pages/parent/ParentHomeworkPage'
+import ParentBehaviorPage from '@/pages/parent/ParentBehaviorPage'
+import ParentMeetingsPage from '@/pages/parent/ParentMeetingsPage'
 import StudentAssignmentsPage from '@/pages/student/StudentAssignmentsPage'
 import StudentBehaviorPage from '@/pages/student/StudentBehaviorPage'
 import StudentReportCardPage from '@/pages/student/StudentReportCardPage'
@@ -59,6 +62,9 @@ export default function App() {
         <Route path="/parent/messages" element={<RequireAuth><ParentMessagesPage /></RequireAuth>} />
         <Route path="/parent/messages/detail" element={<RequireAuth><ParentMessageDetailPage /></RequireAuth>} />
         <Route path="/parent/fees" element={<RequireAuth><ParentFeesPage /></RequireAuth>} />
+        <Route path="/parent/homework" element={<RequireAuth><ParentHomeworkPage /></RequireAuth>} />
+        <Route path="/parent/behavior" element={<RequireAuth><ParentBehaviorPage /></RequireAuth>} />
+        <Route path="/parent/meetings" element={<RequireAuth><ParentMeetingsPage /></RequireAuth>} />
 
         {/* Student portal */}
         <Route path="/student/home" element={<RequireAuth><StudentHomePage /></RequireAuth>} />
