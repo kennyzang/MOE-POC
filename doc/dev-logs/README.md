@@ -57,3 +57,4 @@
 | 2026-06-07 17:00 | [260607-1700.md](260607-1700.md) | 移动端Phase2完成：Parent Fees页面(概览+发票+支付)、Teacher Assignments(列表+FAB)、Student Assignments(状态排序)、Parent/Student Announcements Tab入口、i18n +26键 | ~40k |
 | 2026-06-07 18:00 | [260607-1800.md](260607-1800.md) | 移动端Phase3完成：Student Behavior(加分/扣分筛选Tab)、Student Report Card(学期选择+GPA卡片)、Teacher Attendance History(月份导航+统计)，i18n +20键 | ~35k |
 | 2026-06-07 18:20 | [260607-1820.md](260607-1820.md) | 成绩单跨角色数据一致性验证；修复StudentReportCardPage 403 bug(改用transcript endpoint)；添加打印预览窗口(transcript+reportcard)；Admissions SIS Enrol CTA；seed修复 | ~45k |
+| 2026-06-07 19:30 | [260607-1930.md](260607-1930.md) | 修复9个Form Teacher问题：教师可见性后端作用域(/students+/courses)、点名持久化、考勤深链接、KPI卡片导航、成绩/作业学生计数、缺席记录验证 | ~80k |
