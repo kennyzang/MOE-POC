@@ -29,8 +29,10 @@ router.get(
       if (courseId) where.courseId = courseId
       if (status) where.status = status
       if (date) {
-        const d = new Date(date)
-        const nextDay = new Date(d)
+        // Append T00:00:00 (no Z) so JS parses as local midnight, matching
+        // the command-center's setHours(0,0,0,0) boundary.
+        const d = new Date(date + 'T00:00:00')
+        const nextDay = new Date(date + 'T00:00:00')
         nextDay.setDate(nextDay.getDate() + 1)
         where.date = { gte: d, lt: nextDay }
       }

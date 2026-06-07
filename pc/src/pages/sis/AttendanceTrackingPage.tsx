@@ -40,6 +40,8 @@ const AttendanceTrackingPage = () => {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
   const canEdit = ['admin', 'manager', 'teacher'].includes(user?.role ?? '')
+  const canViewSchoolWide = ['admin', 'manager', 'principal'].includes(user?.role ?? '')
+  const todayDateStr = dayjs().format('YYYY-MM-DD')
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -93,6 +95,25 @@ const AttendanceTrackingPage = () => {
     },
     enabled: !!activeSessionId && markModalOpen,
   })
+
+  // Today's school-wide overview (admin/principal/manager, no course selected)
+  const { data: todaySessions = [], isLoading: todayLoading } = useQuery({
+    queryKey: ['attendance-today-overview', todayDateStr],
+    queryFn: async () => {
+      const { data } = await api.get(`/attendance/sessions?date=${todayDateStr}`)
+      return data.data as AttendanceSession[]
+    },
+    enabled: canViewSchoolWide && !selectedCourseId,
+  })
+
+  const todayOverviewStats = useMemo(() => {
+    const present = todaySessions.reduce((sum, s) => sum + (s.presentCount ?? 0), 0)
+    const late = todaySessions.reduce((sum, s) => sum + (s.lateCount ?? 0), 0)
+    const total = todaySessions.reduce((sum, s) => sum + (s._count?.records ?? 0), 0)
+    const absent = Math.max(0, total - present - late)
+    const rate = total > 0 ? Math.round((present / total) * 1000) / 10 : 0
+    return { present, late, absent, total, rate }
+  }, [todaySessions])
 
   // ─── Mutations ────────────────────────────────────────────────
 
@@ -257,6 +278,145 @@ const AttendanceTrackingPage = () => {
           )}
         </Col>
       </Row>
+
+      {/* Today's School-wide Overview — visible when admin/principal lands here from KPI Center */}
+      {canViewSchoolWide && !selectedCourseId && (
+        <Card
+          size="small"
+          style={{ marginBottom: 16 }}
+          title={
+            <Space>
+              <CalendarCheck size={16} />
+              <span>
+                {t('attendance.todayOverview', { defaultValue: "Today's School-wide Attendance" })} — {todayDateStr}
+              </span>
+            </Space>
+          }
+        >
+          <Row gutter={[16, 12]} style={{ marginBottom: 16 }}>
+            <Col xs={12} sm={6}>
+              <Statistic
+                title={t('attendance.overallRate', { defaultValue: 'Overall Rate' })}
+                value={todayOverviewStats.total > 0 ? todayOverviewStats.rate : '-'}
+                suffix={todayOverviewStats.total > 0 ? '%' : ''}
+                precision={todayOverviewStats.total > 0 ? 1 : undefined}
+                valueStyle={{
+                  color:
+                    todayOverviewStats.total === 0
+                      ? undefined
+                      : todayOverviewStats.rate >= 90
+                        ? '#52c41a'
+                        : todayOverviewStats.rate >= 80
+                          ? '#fa8c16'
+                          : '#ff4d4f',
+                  fontSize: 24,
+                }}
+              />
+            </Col>
+            <Col xs={12} sm={6}>
+              <Statistic
+                title={t('attendance.present', { defaultValue: 'Present' })}
+                value={todayOverviewStats.present}
+                valueStyle={{ color: '#52c41a', fontSize: 24 }}
+              />
+            </Col>
+            <Col xs={12} sm={6}>
+              <Statistic
+                title={t('attendance.late', { defaultValue: 'Late' })}
+                value={todayOverviewStats.late}
+                valueStyle={{ color: '#fa8c16', fontSize: 24 }}
+              />
+            </Col>
+            <Col xs={12} sm={6}>
+              <Statistic
+                title={t('attendance.absent', { defaultValue: 'Absent' })}
+                value={todayOverviewStats.absent}
+                valueStyle={{ color: '#ff4d4f', fontSize: 24 }}
+              />
+            </Col>
+          </Row>
+          <Table<AttendanceSession>
+            rowKey="id"
+            dataSource={todaySessions}
+            loading={todayLoading}
+            size="small"
+            pagination={false}
+            locale={{
+              emptyText: t('attendance.noSessionsToday', {
+                defaultValue: 'No attendance sessions recorded today.',
+              }),
+            }}
+            columns={[
+              {
+                title: t('attendance.course', { defaultValue: 'Course' }),
+                key: 'course',
+                render: (_, record) =>
+                  record.course ? `${record.course.code} — ${record.course.name}` : '-',
+              },
+              {
+                title: t('attendance.topic'),
+                dataIndex: 'topic',
+                key: 'topic',
+                render: (v: string) => v || '-',
+              },
+              {
+                title: t('common.total'),
+                key: 'total',
+                width: 70,
+                render: (_, record) => record._count?.records ?? 0,
+              },
+              {
+                title: t('attendance.present', { defaultValue: 'Present' }),
+                key: 'present',
+                width: 80,
+                render: (_, record) => (
+                  <span style={{ color: '#52c41a' }}>{record.presentCount ?? 0}</span>
+                ),
+              },
+              {
+                title: t('attendance.late', { defaultValue: 'Late' }),
+                key: 'late',
+                width: 70,
+                render: (_, record) => (
+                  <span style={{ color: '#fa8c16' }}>{record.lateCount ?? 0}</span>
+                ),
+              },
+              {
+                title: t('attendance.absent', { defaultValue: 'Absent' }),
+                key: 'absent',
+                width: 80,
+                render: (_, record) => {
+                  const total = record._count?.records ?? 0
+                  const present = record.presentCount ?? 0
+                  const late = record.lateCount ?? 0
+                  return <span style={{ color: '#ff4d4f' }}>{Math.max(0, total - present - late)}</span>
+                },
+              },
+              {
+                title: t('attendance.presentRate'),
+                key: 'rate',
+                width: 80,
+                render: (_, record) => {
+                  const total = record._count?.records ?? 0
+                  const present = record.presentCount ?? 0
+                  const late = record.lateCount ?? 0
+                  if (total === 0) return '-'
+                  const rate = Math.round((present / total) * 1000) / 10
+                  return (
+                    <span
+                      style={{
+                        color: rate >= 90 ? '#52c41a' : rate >= 80 ? '#fa8c16' : '#ff4d4f',
+                      }}
+                    >
+                      {rate.toFixed(1)}%
+                    </span>
+                  )
+                },
+              },
+            ]}
+          />
+        </Card>
+      )}
 
       {/* Filters */}
       <Card size="small" style={{ marginBottom: 16 }}>
