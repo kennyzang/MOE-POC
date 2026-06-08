@@ -123,6 +123,7 @@ router.get('/performance-evaluations', authenticate, async (req: AuthRequest, re
 })
 
 // POST /api/v1/ems/performance-evaluations
+// HOD initiates — selects teacher + academic year. Status starts at pending_self_assessment.
 router.post('/performance-evaluations', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { role, userId } = req.user!
@@ -132,34 +133,20 @@ router.post('/performance-evaluations', authenticate, async (req: AuthRequest, r
       return
     }
 
-    const { teacherId, academicYear, teachingScore, professionalScore, conductScore, comments } = req.body
+    const { teacherId, academicYear, comments } = req.body
 
     if (!teacherId || !academicYear) {
       res.status(400).json({ success: false, message: 'teacherId and academicYear are required' })
       return
     }
 
-    // Verify teacher exists
-    const teacher = await prisma.teacher.findUnique({ where: { id: teacherId } })
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: teacherId },
+      include: { user: { select: { id: true, displayName: true, username: true } } },
+    })
     if (!teacher) {
       res.status(404).json({ success: false, message: 'Teacher not found' })
       return
-    }
-
-    let overallScore: number | undefined
-    let rating: string | undefined
-
-    if (
-      teachingScore !== undefined &&
-      professionalScore !== undefined &&
-      conductScore !== undefined
-    ) {
-      overallScore = calcOverallScore(
-        Number(teachingScore),
-        Number(professionalScore),
-        Number(conductScore)
-      )
-      rating = calcRating(overallScore)
     }
 
     const evaluation = await prisma.performanceEvaluation.create({
@@ -167,21 +154,20 @@ router.post('/performance-evaluations', authenticate, async (req: AuthRequest, r
         teacherId,
         academicYear,
         evaluatorId: userId,
-        teachingScore: teachingScore !== undefined ? Number(teachingScore) : undefined,
-        professionalScore: professionalScore !== undefined ? Number(professionalScore) : undefined,
-        conductScore: conductScore !== undefined ? Number(conductScore) : undefined,
-        overallScore,
-        rating,
-        comments,
-        status: 'draft',
+        comments: comments ?? null,
+        status: 'pending_self_assessment',
       },
       include: {
-        teacher: {
-          include: {
-            user: { select: { id: true, displayName: true, username: true } },
-          },
-        },
+        teacher: { include: { user: { select: { id: true, displayName: true, username: true } } } },
       },
+    })
+
+    // Notify teacher: fill in your self-assessment
+    await send({
+      userId: teacher.user.id,
+      title: 'Performance Evaluation — Self-Assessment Required',
+      message: `Your HOD has initiated a performance evaluation for ${academicYear}. Please complete your self-assessment and upload supporting evidence.`,
+      type: 'info',
     })
 
     res.status(201).json({ success: true, data: evaluation })
@@ -191,7 +177,78 @@ router.post('/performance-evaluations', authenticate, async (req: AuthRequest, r
   }
 })
 
+// PATCH /api/v1/ems/performance-evaluations/:id/teacher-submit
+// Teacher submits their self-assessment (scores + text). Status: pending_self_assessment → self_assessment_submitted
+router.patch('/performance-evaluations/:id/teacher-submit', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    if (role !== 'teacher') {
+      res.status(403).json({ success: false, message: 'Forbidden: teacher only' }); return
+    }
+    const id = req.params.id as string
+    const {
+      selfAssessment,
+      selfAssessmentTeachingScore,
+      selfAssessmentProfessionalScore,
+      selfAssessmentConductScore,
+    } = req.body
+
+    if (!selfAssessment?.trim()) {
+      res.status(400).json({ success: false, message: 'selfAssessment text is required' }); return
+    }
+    if (
+      selfAssessmentTeachingScore === undefined ||
+      selfAssessmentProfessionalScore === undefined ||
+      selfAssessmentConductScore === undefined
+    ) {
+      res.status(400).json({ success: false, message: 'All three self-assessed dimension scores are required' }); return
+    }
+
+    const evaluation = await prisma.performanceEvaluation.findUnique({
+      where: { id },
+      include: { teacher: { include: { user: { select: { id: true } } } } },
+    })
+    if (!evaluation) { res.status(404).json({ success: false, message: 'Evaluation not found' }); return }
+    if (evaluation.teacher.user.id !== userId) {
+      res.status(403).json({ success: false, message: 'You can only submit your own self-assessment' }); return
+    }
+    if (evaluation.status !== 'pending_self_assessment') {
+      res.status(400).json({ success: false, message: 'Self-assessment can only be submitted when status is pending_self_assessment' }); return
+    }
+
+    const updated = await (prisma.performanceEvaluation as any).update({
+      where: { id },
+      data: {
+        selfAssessment: selfAssessment.trim(),
+        selfAssessmentTeachingScore: Number(selfAssessmentTeachingScore),
+        selfAssessmentProfessionalScore: Number(selfAssessmentProfessionalScore),
+        selfAssessmentConductScore: Number(selfAssessmentConductScore),
+        selfAssessmentSubmittedAt: new Date(),
+        status: 'self_assessment_submitted',
+      },
+      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
+    })
+
+    // Notify HOD: teacher has submitted self-assessment
+    const evaluator = await prisma.user.findUnique({ where: { id: evaluation.evaluatorId }, select: { id: true } })
+    if (evaluator) {
+      await send({
+        userId: evaluator.id,
+        title: 'Self-Assessment Submitted',
+        message: `${(updated as any).teacher.user.displayName} has completed their self-assessment for ${(updated as any).academicYear}. Please review and fill in your evaluation scores.`,
+        type: 'info',
+      })
+    }
+
+    res.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('PATCH /ems/performance-evaluations/:id/teacher-submit error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
 // PATCH /api/v1/ems/performance-evaluations/:id/submit
+// HOD fills in their scores and submits for principal review. Status: self_assessment_submitted → submitted
 router.patch('/performance-evaluations/:id/submit', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { role } = req.user!
@@ -202,49 +259,66 @@ router.patch('/performance-evaluations/:id/submit', authenticate, async (req: Au
       return
     }
 
-    const evaluation = await prisma.performanceEvaluation.findUnique({ where: { id } })
+    const { teachingScore, professionalScore, conductScore, comments } = req.body
+
+    const evaluation = await prisma.performanceEvaluation.findUnique({
+      where: { id },
+      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
+    })
     if (!evaluation) {
       res.status(404).json({ success: false, message: 'Evaluation not found' })
       return
     }
 
-    if (evaluation.status !== 'draft') {
-      res.status(400).json({ success: false, message: 'Only draft evaluations can be submitted' })
+    if (!['draft', 'self_assessment_submitted'].includes(evaluation.status)) {
+      res.status(400).json({ success: false, message: 'Evaluation cannot be submitted in its current state' })
       return
     }
+
+    // Scores are required when submitting for review
+    if (teachingScore === undefined || professionalScore === undefined || conductScore === undefined) {
+      res.status(400).json({ success: false, message: 'All three evaluation scores are required to submit for principal review' })
+      return
+    }
+
+    const ts = Number(teachingScore)
+    const ps = Number(professionalScore)
+    const cs = Number(conductScore)
+    const overallScore = calcOverallScore(ts, ps, cs)
+    const rating = calcRating(overallScore)
 
     const updated = await prisma.performanceEvaluation.update({
       where: { id },
       data: {
+        teachingScore: ts,
+        professionalScore: ps,
+        conductScore: cs,
+        overallScore,
+        rating,
+        comments: comments ?? evaluation.comments,
         status: 'submitted',
         submittedAt: new Date(),
       },
-      include: {
-        teacher: {
-          include: {
-            user: { select: { id: true, displayName: true, username: true } },
-          },
-        },
-      },
+      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
     })
 
     // Notify evaluated teacher
     await send({
       userId: updated.teacher.user.id,
-      title: 'Performance Evaluation Submitted',
-      message: `Your performance evaluation for ${updated.academicYear} has been submitted for review.`,
+      title: 'Performance Evaluation Submitted for Review',
+      message: `Your performance evaluation for ${updated.academicYear} has been reviewed by your HOD and submitted to the principal.`,
       type: 'info',
     })
-    // Notify managers
-    const managers = await prisma.user.findMany({
-      where: { role: 'manager' },
+    // Notify principals
+    const principals = await prisma.user.findMany({
+      where: { role: { in: ['principal', 'admin'] } },
       select: { id: true },
     })
     await sendMany(
-      managers.map(m => m.id),
+      principals.map(p => p.id),
       {
-        title: 'Performance Evaluation Submitted',
-        message: `Evaluation for ${updated.teacher.user.displayName} (${updated.academicYear}) has been submitted.`,
+        title: 'Performance Evaluation Awaiting Review',
+        message: `Evaluation for ${updated.teacher.user.displayName} (${updated.academicYear}) — Overall: ${overallScore.toFixed(1)}, Rating: ${rating}`,
         type: 'info',
       },
     )
@@ -299,6 +373,14 @@ router.patch('/performance-evaluations/:id/review', authenticate, async (req: Au
           },
         },
       },
+    })
+
+    // Notify teacher of outcome
+    await send({
+      userId: updated.teacher.user.id,
+      title: `Performance Evaluation ${action === 'approve' ? 'Approved' : 'Rejected'}`,
+      message: `Your performance evaluation for ${updated.academicYear} has been ${action === 'approve' ? 'approved' : 'rejected'} by the principal.${reviewerComments ? ` Comments: ${reviewerComments}` : ''}`,
+      type: action === 'approve' ? 'success' : 'warning',
     })
 
     res.json({ success: true, data: updated })
@@ -571,7 +653,7 @@ router.post('/leave-applications/:id/assign-substitute', authenticate, async (re
 
     const leave = await prisma.leaveApplication.findUnique({
       where: { id },
-      include: { teacher: { include: { user: { select: { displayName: true } } } } },
+      include: { teacher: { include: { user: { select: { id: true, displayName: true } } } } },
     })
     if (!leave) { res.status(404).json({ success: false, message: 'Leave application not found' }); return }
 
@@ -593,6 +675,14 @@ router.post('/leave-applications/:id/assign-substitute', authenticate, async (re
       title: 'Substitute Assignment',
       message: `You have been assigned to cover ${leave.teacher.user.displayName}'s classes from ${leave.startDate.toDateString()} to ${leave.endDate.toDateString()}.`,
       type: 'info',
+    })
+
+    // Notify the absent teacher that their substitute is confirmed
+    await send({
+      userId: leave.teacher.user.id,
+      title: 'Substitute Confirmed for Your Leave',
+      message: `${substituteTeacher.user.displayName} has been assigned to cover your classes from ${leave.startDate.toDateString()} to ${leave.endDate.toDateString()}. Your students and their parents have been notified.`,
+      type: 'success',
     })
 
     // ─── FULL CASCADE: notify all affected students + their parents ──────────
@@ -828,6 +918,38 @@ router.post('/cpd-workshops/:workshopId/enroll', authenticate, async (req: AuthR
     })
   } catch (error) {
     console.error('POST /ems/cpd-workshops/:id/enroll error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /api/v1/ems/cpd-workshops/:workshopId/enrollees — list teachers enrolled in a workshop
+router.get('/cpd-workshops/:workshopId/enrollees', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'hod', 'principal'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+    const { workshopId } = req.params as { workshopId: string }
+    const enrollments = await prisma.cpdEnrollment.findMany({
+      where: { workshopId, status: 'ENROLLED' },
+      include: {
+        teacher: {
+          include: { user: { select: { displayName: true } } },
+        },
+      },
+      orderBy: { enrolledAt: 'asc' },
+    })
+    res.json({
+      success: true,
+      data: enrollments.map(e => ({
+        teacherId: e.teacherId,
+        displayName: e.teacher.user.displayName,
+        department: e.teacher.department,
+        enrolledAt: e.enrolledAt,
+      })),
+    })
+  } catch (error) {
+    console.error('GET /ems/cpd-workshops/:id/enrollees error:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })
@@ -1079,13 +1201,28 @@ router.patch('/performance-evaluations/:id/self-assess', authenticate, async (re
       res.status(403).json({ success: false, message: 'You can only self-assess your own evaluation' }); return
     }
 
-    if (evaluation.status !== 'draft') {
-      res.status(400).json({ success: false, message: 'Self-assessment can only be added while the evaluation is in draft' }); return
+    if (!['draft', 'pending_self_assessment'].includes(evaluation.status)) {
+      res.status(400).json({ success: false, message: 'Self-assessment can only be saved while in draft or pending self-assessment' }); return
     }
 
-    const updated = await prisma.performanceEvaluation.update({
+    const {
+      selfAssessmentTeachingScore,
+      selfAssessmentProfessionalScore,
+      selfAssessmentConductScore,
+    } = req.body as {
+      selfAssessmentTeachingScore?: number
+      selfAssessmentProfessionalScore?: number
+      selfAssessmentConductScore?: number
+    }
+
+    const updated = await (prisma.performanceEvaluation as any).update({
       where: { id },
-      data: { selfAssessment: selfAssessment.trim() },
+      data: {
+        selfAssessment: selfAssessment.trim(),
+        ...(selfAssessmentTeachingScore !== undefined && { selfAssessmentTeachingScore: Number(selfAssessmentTeachingScore) }),
+        ...(selfAssessmentProfessionalScore !== undefined && { selfAssessmentProfessionalScore: Number(selfAssessmentProfessionalScore) }),
+        ...(selfAssessmentConductScore !== undefined && { selfAssessmentConductScore: Number(selfAssessmentConductScore) }),
+      },
     })
 
     res.json({ success: true, data: updated })
@@ -1152,9 +1289,14 @@ router.post('/cpd-workshops', authenticate, async (req: AuthRequest, res: Respon
       res.status(403).json({ success: false, message: 'Forbidden: Admin/HOD only' }); return
     }
 
-    const { title, provider, subject, hours, startDate, endDate, location, maxParticipants, category } = req.body as {
+    const {
+      title, provider, subject, hours, startDate, endDate, location, maxParticipants, category,
+      description, objectives, targetAudience, prerequisites, facilitatorId, imageUrl,
+    } = req.body as {
       title: string; provider?: string; subject?: string; hours: number
       startDate: string; endDate: string; location?: string; maxParticipants?: number; category?: string
+      description?: string; objectives?: string; targetAudience?: string; prerequisites?: string
+      facilitatorId?: string; imageUrl?: string
     }
 
     if (!title || !hours || !startDate || !endDate) {
@@ -1166,6 +1308,12 @@ router.post('/cpd-workshops', authenticate, async (req: AuthRequest, res: Respon
         title,
         provider: provider ?? null,
         subject: subject ?? null,
+        description: description ?? null,
+        objectives: objectives ?? null,
+        targetAudience: targetAudience ?? null,
+        prerequisites: prerequisites ?? null,
+        facilitatorId: facilitatorId ?? null,
+        imageUrl: imageUrl ?? null,
         hours: Number(hours),
         startDate: new Date(startDate),
         endDate: new Date(endDate),
@@ -1333,6 +1481,264 @@ router.get('/cpd-workshops/recommendations', authenticate, async (req: AuthReque
     res.json({ success: true, data: result })
   } catch (error) {
     console.error('GET /ems/cpd-workshops/recommendations error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /api/v1/ems/cpd-workshops/:workshopId — full detail
+// NOTE: must be registered AFTER /recommendations to avoid route shadowing
+router.get('/cpd-workshops/:workshopId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    if (!['admin', 'manager', 'hod', 'principal', 'teacher'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+    const { workshopId } = req.params as { workshopId: string }
+
+    let currentTeacherId: string | undefined
+    if (role === 'teacher') {
+      const teacher = await prisma.teacher.findUnique({ where: { userId } })
+      currentTeacherId = teacher?.id
+    }
+
+    const workshop = await prisma.cpdWorkshop.findUnique({
+      where: { id: workshopId },
+      include: {
+        facilitator: { include: { user: { select: { displayName: true } } } },
+        sessions: { orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }] },
+        resources: { orderBy: { createdAt: 'asc' } },
+        enrollments: {
+          include: {
+            teacher: {
+              include: { user: { select: { displayName: true } } },
+            },
+          },
+          orderBy: { enrolledAt: 'asc' },
+        },
+      },
+    })
+    if (!workshop) { res.status(404).json({ success: false, message: 'Workshop not found' }); return }
+
+    const canSeeEnrollees = ['admin', 'manager', 'hod', 'principal'].includes(role)
+    const enrolledCount = workshop.enrollments.filter(e => e.status === 'ENROLLED').length
+
+    res.json({
+      success: true,
+      data: {
+        ...workshop,
+        facilitatorName: workshop.facilitator?.user?.displayName ?? null,
+        facilitatorDepartment: workshop.facilitator?.department ?? null,
+        enrolledCount,
+        alreadyEnrolled: currentTeacherId
+          ? workshop.enrollments.some(e => e.teacherId === currentTeacherId && e.status === 'ENROLLED')
+          : false,
+        enrollees: canSeeEnrollees
+          ? workshop.enrollments.map(e => ({
+              teacherId: e.teacherId,
+              displayName: e.teacher.user.displayName,
+              department: e.teacher.department,
+              enrolledAt: e.enrolledAt,
+              status: e.status,
+              hoursAwarded: e.hoursAwarded,
+            }))
+          : [],
+      },
+    })
+  } catch (error) {
+    console.error('GET /ems/cpd-workshops/:id error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// PATCH /api/v1/ems/cpd-workshops/:workshopId — edit workshop
+router.patch('/cpd-workshops/:workshopId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden: Admin/HOD only' }); return
+    }
+    const { workshopId } = req.params as { workshopId: string }
+
+    const {
+      title, provider, subject, description, objectives, targetAudience, prerequisites,
+      facilitatorId, imageUrl, hours, startDate, endDate, location, maxParticipants, category, status,
+    } = req.body as Record<string, any>
+
+    const workshop = await prisma.cpdWorkshop.findUnique({ where: { id: workshopId } })
+    if (!workshop) { res.status(404).json({ success: false, message: 'Workshop not found' }); return }
+
+    const updated = await prisma.cpdWorkshop.update({
+      where: { id: workshopId },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(provider !== undefined && { provider }),
+        ...(subject !== undefined && { subject }),
+        ...(description !== undefined && { description }),
+        ...(objectives !== undefined && { objectives }),
+        ...(targetAudience !== undefined && { targetAudience }),
+        ...(prerequisites !== undefined && { prerequisites }),
+        ...(facilitatorId !== undefined && { facilitatorId: facilitatorId || null }),
+        ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
+        ...(hours !== undefined && { hours: Number(hours) }),
+        ...(startDate !== undefined && { startDate: new Date(startDate) }),
+        ...(endDate !== undefined && { endDate: new Date(endDate) }),
+        ...(location !== undefined && { location }),
+        ...(maxParticipants !== undefined && { maxParticipants: Number(maxParticipants) }),
+        ...(category !== undefined && { category }),
+        ...(status !== undefined && { status }),
+      },
+    })
+    res.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('PATCH /ems/cpd-workshops/:id error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// DELETE /api/v1/ems/cpd-workshops/:workshopId
+router.delete('/cpd-workshops/:workshopId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden: Admin only' }); return
+    }
+    const { workshopId } = req.params as { workshopId: string }
+
+    const activeEnrollments = await prisma.cpdEnrollment.count({
+      where: { workshopId, status: 'ENROLLED' },
+    })
+    if (activeEnrollments > 0) {
+      res.status(400).json({ success: false, message: 'Cannot delete workshop with active enrollments' }); return
+    }
+
+    await prisma.cpdWorkshop.delete({ where: { id: workshopId } })
+    res.json({ success: true, message: 'Workshop deleted' })
+  } catch (error) {
+    console.error('DELETE /ems/cpd-workshops/:id error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── CPD: Sessions ───────────────────────────────────────────────────────────
+
+// POST /api/v1/ems/cpd-workshops/:workshopId/sessions
+router.post('/cpd-workshops/:workshopId/sessions', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+    const { workshopId } = req.params as { workshopId: string }
+    const { title, sessionDate, startTime, endTime, room } = req.body as {
+      title: string; sessionDate: string; startTime: string; endTime: string; room?: string
+    }
+    if (!title || !sessionDate || !startTime || !endTime) {
+      res.status(400).json({ success: false, message: 'title, sessionDate, startTime, endTime required' }); return
+    }
+
+    const session = await prisma.cpdWorkshopSession.create({
+      data: { workshopId, title, sessionDate: new Date(sessionDate), startTime, endTime, room: room ?? null },
+    })
+    res.status(201).json({ success: true, data: session })
+  } catch (error) {
+    console.error('POST /ems/cpd-workshops/:id/sessions error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// PATCH /api/v1/ems/cpd-workshops/:workshopId/sessions/:sessionId
+router.patch('/cpd-workshops/:workshopId/sessions/:sessionId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+    const { sessionId } = req.params as { sessionId: string }
+    const { title, sessionDate, startTime, endTime, room, status } = req.body as Record<string, any>
+
+    const updated = await prisma.cpdWorkshopSession.update({
+      where: { id: sessionId },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(sessionDate !== undefined && { sessionDate: new Date(sessionDate) }),
+        ...(startTime !== undefined && { startTime }),
+        ...(endTime !== undefined && { endTime }),
+        ...(room !== undefined && { room: room || null }),
+        ...(status !== undefined && { status }),
+      },
+    })
+    res.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('PATCH /ems/cpd-workshops/:id/sessions/:sid error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// DELETE /api/v1/ems/cpd-workshops/:workshopId/sessions/:sessionId
+router.delete('/cpd-workshops/:workshopId/sessions/:sessionId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+    const { sessionId } = req.params as { sessionId: string }
+    await prisma.cpdWorkshopSession.delete({ where: { id: sessionId } })
+    res.json({ success: true, message: 'Session deleted' })
+  } catch (error) {
+    console.error('DELETE /ems/cpd-workshops/:id/sessions/:sid error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── CPD: Resources ──────────────────────────────────────────────────────────
+
+// POST /api/v1/ems/cpd-workshops/:workshopId/resources
+router.post('/cpd-workshops/:workshopId/resources', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const { workshopId } = req.params as { workshopId: string }
+
+    // Allow facilitator of this workshop to add resources
+    const workshop = await prisma.cpdWorkshop.findUnique({ where: { id: workshopId } })
+    if (!workshop) { res.status(404).json({ success: false, message: 'Workshop not found' }); return }
+
+    const isAdmin = ['admin', 'manager', 'hod'].includes(role)
+    let isFacilitator = false
+    if (!isAdmin && workshop.facilitatorId) {
+      const teacher = await prisma.teacher.findUnique({ where: { userId } })
+      isFacilitator = teacher?.id === workshop.facilitatorId
+    }
+    if (!isAdmin && !isFacilitator) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+
+    const { title, type, url } = req.body as { title: string; type?: string; url: string }
+    if (!title || !url) {
+      res.status(400).json({ success: false, message: 'title and url required' }); return
+    }
+
+    const resource = await prisma.cpdWorkshopResource.create({
+      data: { workshopId, title, type: type ?? 'document', url, uploadedById: userId },
+    })
+    res.status(201).json({ success: true, data: resource })
+  } catch (error) {
+    console.error('POST /ems/cpd-workshops/:id/resources error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// DELETE /api/v1/ems/cpd-workshops/:workshopId/resources/:resourceId
+router.delete('/cpd-workshops/:workshopId/resources/:resourceId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+    const { resourceId } = req.params as { resourceId: string }
+    await prisma.cpdWorkshopResource.delete({ where: { id: resourceId } })
+    res.json({ success: true, message: 'Resource deleted' })
+  } catch (error) {
+    console.error('DELETE /ems/cpd-workshops/:id/resources/:rid error:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })

@@ -57,7 +57,8 @@ const LeaveManagementPage = lazy(() => import('@/pages/ems/LeaveManagementPage')
 const LeaveBalancePage    = lazy(() => import('@/pages/ems/LeaveBalancePage'))
 const LeaveCalendarPage   = lazy(() => import('@/pages/ems/LeaveCalendarPage'))
 const LeaveReportsPage    = lazy(() => import('@/pages/ems/LeaveReportsPage'))
-const CpdWorkshopsPage    = lazy(() => import('@/pages/ems/CpdWorkshopsPage'))
+const CpdWorkshopsPage      = lazy(() => import('@/pages/ems/CpdWorkshopsPage'))
+const CpdWorkshopDetailPage = lazy(() => import('@/pages/ems/CpdWorkshopDetailPage'))
 const PostingsPage        = lazy(() => import('@/pages/ems/PostingsPage'))
 
 // Attendance
@@ -243,15 +244,16 @@ export const router = createBrowserRouter([
       // EMS
       { path: 'ems/teachers', element: r(['admin', 'manager', 'principal', 'hod'], <TeacherDirectoryPage />) },
       { path: 'ems/teachers/:id', element: r(['admin', 'manager', 'hod', 'principal'], <TeacherDetailPage />) },
-      { path: 'ems/certifications', element: r(['admin', 'manager', 'teacher'], <CertificationsPage />) },
+      { path: 'ems/certifications', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <CertificationsPage />) },
       { path: 'ems/my-profile', element: r(['teacher'], <MyProfilePage />) },
-      { path: 'ems/workload', element: r(['admin', 'manager', 'teacher'], <TeachingWorkloadPage />) },
+      { path: 'ems/workload', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <TeachingWorkloadPage />) },
       { path: 'ems/performance-evaluations', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <PerformanceEvaluationPage />) },
       { path: 'ems/leave', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <LeaveManagementPage />) },
       { path: 'ems/leave/balance', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <LeaveBalancePage />) },
       { path: 'ems/leave/calendar', element: r(['admin', 'manager', 'hod', 'principal'], <LeaveCalendarPage />) },
       { path: 'ems/leave/reports', element: r(['admin', 'manager', 'hod', 'principal'], <LeaveReportsPage />) },
       { path: 'ems/cpd-workshops', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <CpdWorkshopsPage />) },
+      { path: 'ems/cpd-workshops/:workshopId', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <CpdWorkshopDetailPage />) },
 
       // Retirement
       { path: 'ems/retirement', element: r(['teacher', 'hod'], <MyRetirementPage />) },

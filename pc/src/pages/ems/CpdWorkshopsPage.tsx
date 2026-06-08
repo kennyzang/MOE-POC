@@ -1,13 +1,14 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Card, Row, Col, Typography, Space, Button, Tag, Progress, Alert,
-  Modal, Descriptions, Form, Input, InputNumber, Select, DatePicker,
-  message, Spin, Badge, Tabs,
+  Modal, Form, Input, InputNumber, Select, DatePicker,
+  message, Spin, Badge,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, Award, CheckCircle2, Clock, Users, Loader2, Plus, LogOut,
+  Award, CheckCircle2, Clock, Users, Loader2, Plus, LogOut,
   PieChart,
 } from 'lucide-react'
 import dayjs from 'dayjs'
@@ -43,6 +44,8 @@ interface CpdWorkshop {
   title: string
   provider?: string
   subject?: string
+  description?: string
+  facilitatorName?: string
   hours: number
   startDate: string
   endDate: string
@@ -52,6 +55,13 @@ interface CpdWorkshop {
   category: string
   enrolledCount: number
   alreadyEnrolled: boolean
+}
+
+interface EnrolledTeacher {
+  teacherId: string
+  displayName: string
+  department: string
+  enrolledAt: string
 }
 
 interface CpdTeacher {
@@ -69,10 +79,9 @@ const CpdWorkshopsPage = () => {
   const { t } = useTranslation()
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
-  const [enrollModal, setEnrollModal] = useState<{ open: boolean; workshop: CpdWorkshop | null }>({ open: false, workshop: null })
   const [createModalOpen, setCreateModalOpen] = useState(false)
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string | undefined>()
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>()
   const [createForm] = Form.useForm()
 
@@ -95,24 +104,34 @@ const CpdWorkshopsPage = () => {
       const { data } = await api.get('/ems/cpd-summary')
       return data.data as CpdTeacher[]
     },
-    enabled: canEnrollOthers,
+    // Load for admins/HODs AND for teacher (teacher sees own record only)
+    enabled: canEnrollOthers || isTeacher,
   })
 
-  const teacherOptions = cpdSummary.map(t => ({
-    label: `${t.displayName} (${t.cpdHours}/${t.cpdTarget}h)`,
-    value: t.id,
-  }))
+  // Own teacher record (for teacher's CPD overview)
+  const ownTeacherRecord = isTeacher ? cpdSummary[0] : undefined
 
-  // Derive CPD hours by category from enrolled/open workshops data
-  const categoryHours = Object.entries(
-    workshops
-      .filter(w => w.alreadyEnrolled)
-      .reduce<Record<string, number>>((acc, w) => {
-        const cat = w.category ?? 'General'
-        acc[cat] = (acc[cat] ?? 0) + w.hours * 0.2 // pre-credited hours
-        return acc
-      }, {}),
-  ).map(([category, hours]) => ({ category, hours: Math.round(hours * 10) / 10 }))
+  // Per-category hours from enrolled workshops — use full workshop hours (not pre-credited fraction)
+  const categoryHoursMap = workshops
+    .filter(w => w.alreadyEnrolled)
+    .reduce<Record<string, number>>((acc, w) => {
+      const cat = w.category ?? 'General'
+      acc[cat] = (acc[cat] ?? 0) + w.hours
+      return acc
+    }, {})
+
+  // Build chart data: current hours vs proportional target per category
+  const totalCurrentByCategory = Object.values(categoryHoursMap).reduce((s, h) => s + h, 0)
+  const numCategories = Object.keys(categoryHoursMap).length
+  const overallTarget = ownTeacherRecord?.cpdTarget ?? 40
+  const categoryHours = Object.entries(categoryHoursMap).map(([category, current]) => ({
+    category,
+    current: Math.round(current * 10) / 10,
+    // proportional target: scale the category's share of overall enrolled hours against total target
+    target: totalCurrentByCategory > 0
+      ? Math.round((current / totalCurrentByCategory) * overallTarget * 10) / 10
+      : Math.round((overallTarget / Math.max(numCategories, 1)) * 10) / 10,
+  }))
 
   // Filtered workshops for display
   const filteredWorkshops = categoryFilter
@@ -120,24 +139,6 @@ const CpdWorkshopsPage = () => {
     : workshops
 
   // ─── Mutations ────────────────────────────────────────────────────
-
-  const enrollMutation = useMutation({
-    mutationFn: async ({ workshopId, teacherId }: { workshopId: string; teacherId?: string }) => {
-      const body = teacherId ? { teacherId } : {}
-      const { data } = await api.post(`/ems/cpd-workshops/${workshopId}/enroll`, body)
-      return data
-    },
-    onSuccess: (res) => {
-      message.success(res.message ?? 'Enrolled successfully!', 5)
-      setEnrollModal({ open: false, workshop: null })
-      setSelectedTeacherId(undefined)
-      queryClient.invalidateQueries({ queryKey: ['cpd-workshops'] })
-      queryClient.invalidateQueries({ queryKey: ['cpd-summary'] })
-    },
-    onError: (err: any) => {
-      message.error(err?.response?.data?.message ?? 'Enrollment failed.')
-    },
-  })
 
   const withdrawMutation = useMutation({
     mutationFn: async (workshopId: string) => {
@@ -174,16 +175,6 @@ const CpdWorkshopsPage = () => {
       message.error(err?.response?.data?.message ?? 'Creation failed.')
     },
   })
-
-  // ─── Handlers ──────────────────────────────────────────────────────
-
-  const handleEnroll = () => {
-    if (!enrollModal.workshop) return
-    enrollMutation.mutate({
-      workshopId: enrollModal.workshop.id,
-      teacherId: canEnrollOthers ? selectedTeacherId : undefined,
-    })
-  }
 
   const belowTarget = cpdSummary.filter(t => t.belowTarget)
   const atTarget = cpdSummary.filter(t => !t.belowTarget).length
@@ -246,29 +237,47 @@ const CpdWorkshopsPage = () => {
           size="small"
           style={{ marginBottom: 16 }}
           title={<Space><PieChart size={14} /><span>My CPD Hours by Category</span></Space>}
+          extra={
+            ownTeacherRecord && (
+              <Space size={4}>
+                <Tag color={ownTeacherRecord.cpdHours >= overallTarget ? 'success' : 'orange'}>
+                  Total: {ownTeacherRecord.cpdHours}h / {overallTarget}h
+                </Tag>
+              </Space>
+            )
+          }
         >
           <Row gutter={[16, 8]} align="middle">
-            <Col xs={24} md={14}>
-              <ResponsiveContainer width="100%" height={100}>
+            <Col xs={24} md={16}>
+              <ResponsiveContainer width="100%" height={Math.max(80, categoryHours.length * 36)}>
                 <BarChart data={categoryHours} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
                   <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="category" tick={{ fontSize: 11 }} width={110} />
-                  <RechartTooltip formatter={(v) => [`${v}h`, 'Pre-credited hours']} />
-                  <Bar dataKey="hours" radius={[0, 4, 4, 0]}>
+                  <YAxis type="category" dataKey="category" tick={{ fontSize: 11 }} width={130} />
+                  <RechartTooltip formatter={(v, name) => [`${v}h`, name === 'target' ? 'Target' : 'Current Hours']} />
+                  <Bar dataKey="target" fill="#e6e6e6" radius={[0, 4, 4, 0]} name="target" />
+                  <Bar dataKey="current" radius={[0, 4, 4, 0]} name="current">
                     {categoryHours.map(entry => (
                       <Cell key={entry.category} fill={CATEGORY_COLORS[entry.category] ?? '#8C8C8C'} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4, paddingLeft: 8 }}>
+                Grey bar = proportional target · Coloured bar = current hours
+              </Text>
             </Col>
-            <Col xs={24} md={10}>
-              <Space direction="vertical" size={4}>
+            <Col xs={24} md={8}>
+              <Space direction="vertical" size={6}>
                 {categoryHours.map(e => (
-                  <Space key={e.category} size={4}>
-                    <div style={{ width: 12, height: 12, borderRadius: 2, background: CATEGORY_COLORS[e.category] ?? '#8C8C8C', flexShrink: 0 }} />
-                    <Text style={{ fontSize: 12 }}>{e.category}: <b>{e.hours}h</b></Text>
-                  </Space>
+                  <div key={e.category}>
+                    <Space size={4}>
+                      <div style={{ width: 12, height: 12, borderRadius: 2, background: CATEGORY_COLORS[e.category] ?? '#8C8C8C', flexShrink: 0 }} />
+                      <Text style={{ fontSize: 12 }}>{e.category}</Text>
+                    </Space>
+                    <div style={{ fontSize: 13, fontWeight: 600, paddingLeft: 16, color: '#1d2129' }}>
+                      {e.current}h <Text type="secondary" style={{ fontSize: 11 }}>/ {e.target}h target</Text>
+                    </div>
+                  </div>
                 ))}
               </Space>
             </Col>
@@ -329,11 +338,13 @@ const CpdWorkshopsPage = () => {
                 style={{
                   border: w.alreadyEnrolled ? '2px solid #52c41a' : '1px solid #f0f0f0',
                   height: '100%',
+                  cursor: 'pointer',
                 }}
+                onClick={() => navigate(`/ems/cpd-workshops/${w.id}`)}
                 actions={[
                   w.alreadyEnrolled ? (
-                    <Space key="enrolled-actions" size={4}>
-                      <Button type="text" icon={<CheckCircle2 size={16} color="#52c41a" />} disabled>
+                    <Space key="enrolled-actions" size={4} onClick={e => e.stopPropagation()}>
+                      <Button type="text" icon={<CheckCircle2 size={16} />} disabled style={{ color: '#52c41a' }}>
                         Enrolled
                       </Button>
                       <Button
@@ -342,19 +353,18 @@ const CpdWorkshopsPage = () => {
                         danger
                         icon={<LogOut size={14} />}
                         loading={withdrawMutation.isPending}
-                        onClick={() => withdrawMutation.mutate(w.id)}
+                        onClick={e => { e.stopPropagation(); withdrawMutation.mutate(w.id) }}
                       >
                         Withdraw
                       </Button>
                     </Space>
                   ) : (
                     <Button
-                      key="enroll"
-                      type="primary"
-                      disabled={w.status === 'full' && !canEnrollOthers}
-                      onClick={() => { setEnrollModal({ open: true, workshop: w }); setSelectedTeacherId(undefined) }}
+                      key="view"
+                      type="default"
+                      onClick={e => { e.stopPropagation(); navigate(`/ems/cpd-workshops/${w.id}`) }}
                     >
-                      {canEnrollOthers ? 'Enrol Teacher' : 'Enrol'}
+                      View Details
                     </Button>
                   ),
                 ]}
@@ -367,22 +377,37 @@ const CpdWorkshopsPage = () => {
                   <Text type="secondary" style={{ fontSize: 13 }}>
                     {w.provider ?? 'MOE Professional Development Centre'}
                   </Text>
+                  {w.description && (
+                    <Text
+                      type="secondary"
+                      style={{
+                        fontSize: 12,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {w.description}
+                    </Text>
+                  )}
                   <Space wrap>
                     <Tag icon={<Clock size={12} />} color="blue">{w.hours}h CPD</Tag>
                     <Tag icon={<Users size={12} />}>
                       {w.enrolledCount}/{w.maxParticipants} enrolled
                     </Tag>
                     {w.category && (
-                      <Tag color={CATEGORY_COLORS[w.category] ? undefined : undefined} style={{ background: `${CATEGORY_COLORS[w.category] ?? '#8C8C8C'}20`, color: CATEGORY_COLORS[w.category] ?? '#8C8C8C', borderColor: `${CATEGORY_COLORS[w.category] ?? '#8C8C8C'}40` }}>
+                      <Tag style={{ background: `${CATEGORY_COLORS[w.category] ?? '#8C8C8C'}20`, color: CATEGORY_COLORS[w.category] ?? '#8C8C8C', borderColor: `${CATEGORY_COLORS[w.category] ?? '#8C8C8C'}40` }}>
                         {w.category}
                       </Tag>
                     )}
                   </Space>
                   <div style={{ fontSize: 13, color: '#595959' }}>
-                    📅 {new Date(w.startDate).toLocaleDateString()} – {new Date(w.endDate).toLocaleDateString()}
+                    {dayjs(w.startDate).format('D MMM YYYY')}
+                    {!dayjs(w.startDate).isSame(dayjs(w.endDate), 'day') && ` – ${dayjs(w.endDate).format('D MMM YYYY')}`}
                   </div>
                   {w.location && (
-                    <Text type="secondary" style={{ fontSize: 12 }}>📍 {w.location}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{w.location}</Text>
                   )}
                   <Progress
                     percent={Math.round((w.enrolledCount / w.maxParticipants) * 100)}
@@ -400,70 +425,13 @@ const CpdWorkshopsPage = () => {
         </Row>
       )}
 
-      {/* ─── Enrol Modal ─────────────────────────────────────────── */}
-      <Modal
-        open={enrollModal.open}
-        title={<Space><BookOpen size={18} /><span>Enrol in Workshop</span></Space>}
-        onCancel={() => { setEnrollModal({ open: false, workshop: null }); setSelectedTeacherId(undefined) }}
-        onOk={handleEnroll}
-        okText="Confirm Enrolment"
-        confirmLoading={enrollMutation.isPending}
-        okButtonProps={{ disabled: canEnrollOthers && !selectedTeacherId && !isTeacher }}
-      >
-        {enrollModal.workshop && (
-          <>
-            <Descriptions bordered size="small" column={1} style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="Workshop">{enrollModal.workshop.title}</Descriptions.Item>
-              <Descriptions.Item label="Category">
-                <Tag>{enrollModal.workshop.category}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="CPD Hours">
-                <Tag color="blue">{enrollModal.workshop.hours}h</Tag>
-                <Text type="secondary" style={{ marginLeft: 8 }}>
-                  ({(enrollModal.workshop.hours * 0.2).toFixed(1)}h pre-credited on enrolment)
-                </Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Date">
-                {new Date(enrollModal.workshop.startDate).toLocaleDateString()} – {new Date(enrollModal.workshop.endDate).toLocaleDateString()}
-              </Descriptions.Item>
-              <Descriptions.Item label="Location">{enrollModal.workshop.location ?? 'TBC'}</Descriptions.Item>
-            </Descriptions>
-
-            {canEnrollOthers && (
-              <>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>Select Teacher to Enrol</Text>
-                <Select
-                  style={{ width: '100%' }}
-                  placeholder="Select teacher..."
-                  options={teacherOptions}
-                  value={selectedTeacherId}
-                  onChange={v => setSelectedTeacherId(v)}
-                  showSearch
-                  filterOption={(input, option) =>
-                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                  }
-                  loading={loadingCpd}
-                />
-              </>
-            )}
-
-            <Alert
-              type="info"
-              showIcon
-              style={{ marginTop: 16 }}
-              message="On confirmation: CPD hours are pre-credited and workshop dates are blocked in the teacher's schedule."
-            />
-          </>
-        )}
-      </Modal>
-
       {/* ─── Create Workshop Modal ────────────────────────────────── */}
       <Modal
         open={createModalOpen}
         title={<Space><Plus size={18} /><span>Create Workshop</span></Space>}
         onCancel={() => { setCreateModalOpen(false); createForm.resetFields() }}
         footer={null}
-        width={560}
+        width={640}
         destroyOnHidden
       >
         <Form
@@ -484,6 +452,24 @@ const CpdWorkshopsPage = () => {
             <Col span={12}>
               <Form.Item name="subject" label="Subject Area">
                 <Input placeholder="e.g. Mathematics" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="description" label="Description">
+            <Input.TextArea rows={3} placeholder="What does this workshop cover?" />
+          </Form.Item>
+          <Form.Item name="objectives" label="Learning Objectives">
+            <Input.TextArea rows={3} placeholder="One objective per line" />
+          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="targetAudience" label="Target Audience">
+                <Input placeholder="e.g. Secondary Science Teachers" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="prerequisites" label="Prerequisites">
+                <Input placeholder="e.g. None" />
               </Form.Item>
             </Col>
           </Row>
@@ -518,6 +504,9 @@ const CpdWorkshopsPage = () => {
           </Row>
           <Form.Item name="location" label="Location">
             <Input placeholder="e.g. PDC Training Room A" />
+          </Form.Item>
+          <Form.Item name="imageUrl" label="Cover Image URL">
+            <Input placeholder="https://... (optional)" />
           </Form.Item>
           <Space style={{ justifyContent: 'flex-end', width: '100%' }}>
             <Button onClick={() => { setCreateModalOpen(false); createForm.resetFields() }}>Cancel</Button>

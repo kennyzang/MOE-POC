@@ -115,6 +115,7 @@ model Teacher {
   timetableSlots  TimetableSlot[]
   leaveApplications LeaveApplication[]
   cpdEnrollments  CpdEnrollment[]
+  facilitatedWorkshops CpdWorkshop[] @relation("WorkshopFacilitator")
   parentTeacherMeetings ParentTeacherMeeting[]
   assignments     Assignment[]
   staffAttendanceRecords StaffAttendanceRecord[]
@@ -453,14 +454,24 @@ model PerformanceEvaluation {
   teacherId         String
   academicYear      String    // "2025/2026"
   evaluatorId       String    // HOD User.id
+
+  // HOD-assigned scores (filled after teacher self-assessment)
   teachingScore     Float?    // 0-100
   professionalScore Float?    // 0-100
   conductScore      Float?    // 0-100
-  overallScore      Float?    // (teaching+professional+conduct)/3
+  overallScore      Float?    // computed from above
   rating            String?   // Excellent | Good | Satisfactory | NeedsImprovement
-  comments          String?
-  selfAssessment    String?   // teacher's own reflection before HOD submits
-  status            String    @default("draft") // draft | submitted | approved | rejected
+  comments          String?   // HOD comments
+
+  // Teacher self-assessment (step 2 of workflow)
+  selfAssessment    String?                     // teacher's reflection text
+  selfAssessmentTeachingScore     Float?        // teacher's own score 0-100
+  selfAssessmentProfessionalScore Float?
+  selfAssessmentConductScore      Float?
+  selfAssessmentSubmittedAt       DateTime?     // when teacher submitted
+
+  // status: pending_self_assessment | self_assessment_submitted | draft | submitted | approved | rejected
+  status            String    @default("pending_self_assessment")
   reviewerId        String?   // Principal User.id
   reviewerComments  String?
   submittedAt       DateTime?
@@ -860,20 +871,55 @@ model GradeAmendment {
 // ─── CPD Workshops ────────────────────────────────────────────────
 
 model CpdWorkshop {
-  id           String    @id @default(uuid())
-  title        String
-  provider     String?
-  subject      String?   // Maths, Science, etc — used for filtering
-  hours        Float     // CPD hours credited on completion
-  startDate    DateTime
-  endDate      DateTime
-  location     String?
-  maxParticipants Int    @default(30)
-  category     String    @default("General") // Pedagogy | Subject Knowledge | Educational Technology | Leadership | Special Education | General
-  status       String    @default("open") // open, full, completed, cancelled
-  createdAt    DateTime  @default(now())
+  id              String    @id @default(uuid())
+  title           String
+  provider        String?
+  subject         String?
+  description     String?
+  objectives      String?
+  targetAudience  String?
+  prerequisites   String?
+  facilitatorId   String?
+  imageUrl        String?
+  hours           Float
+  startDate       DateTime
+  endDate         DateTime
+  location        String?
+  maxParticipants Int       @default(30)
+  category        String    @default("General")
+  status          String    @default("open")
+  createdAt       DateTime  @default(now())
 
+  facilitator  Teacher?  @relation("WorkshopFacilitator", fields: [facilitatorId], references: [id])
   enrollments  CpdEnrollment[]
+  sessions     CpdWorkshopSession[]
+  resources    CpdWorkshopResource[]
+}
+
+model CpdWorkshopSession {
+  id          String   @id @default(uuid())
+  workshopId  String
+  title       String
+  sessionDate DateTime
+  startTime   String
+  endTime     String
+  room        String?
+  status      String   @default("scheduled")
+  createdAt   DateTime @default(now())
+
+  workshop    CpdWorkshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+}
+
+model CpdWorkshopResource {
+  id           String   @id @default(uuid())
+  workshopId   String
+  title        String
+  type         String   @default("document")
+  url          String
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  workshop     CpdWorkshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
 }
 
 model CpdEnrollment {

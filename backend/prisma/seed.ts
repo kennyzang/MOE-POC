@@ -1671,76 +1671,135 @@ async function main() {
     return d
   }
 
-  await prisma.cpdWorkshop.createMany({
-    data: [
-      {
-        title: 'Digital Pedagogy for Mathematics',
-        provider: 'MOE Professional Development Centre',
-        subject: 'Mathematics',
-        hours: 4,
-        startDate: futureDate(14),
-        endDate: futureDate(14),
-        location: 'Resource Centre, Block B',
-        maxParticipants: 25,
-        status: 'open',
-      },
-      {
-        title: 'Inquiry-Based Science Teaching',
-        provider: 'MOE Professional Development Centre',
-        subject: 'Science',
-        hours: 6,
-        startDate: futureDate(21),
-        endDate: futureDate(22),
-        location: 'Science Lab Wing',
-        maxParticipants: 20,
-        status: 'open',
-      },
-      {
-        title: 'Classroom Management & Student Engagement',
-        provider: 'Universiti Brunei Darussalam',
-        subject: 'General',
-        hours: 3,
-        startDate: futureDate(10),
-        endDate: futureDate(10),
-        location: 'UBD Main Campus',
-        maxParticipants: 40,
-        status: 'open',
-      },
-      {
-        title: 'Assessment for Learning: Formative Strategies',
-        provider: 'MOE Professional Development Centre',
-        subject: 'General',
-        hours: 5,
-        startDate: futureDate(28),
-        endDate: futureDate(29),
-        location: 'Resource Centre, Block A',
-        maxParticipants: 30,
-        status: 'open',
-      },
-      {
-        title: 'Inclusive Education & SEN Strategies',
-        provider: 'Brunei Darussalam National Institute of Education',
-        subject: 'General',
-        hours: 8,
-        startDate: futureDate(35),
-        endDate: futureDate(36),
-        location: 'BDNIE Conference Hall',
-        maxParticipants: 50,
-        status: 'open',
-      },
-      {
-        title: 'ICT Integration in the Secondary Classroom',
-        provider: 'MOE ICT Division',
-        subject: 'ICT',
-        hours: 4,
-        startDate: futureDate(18),
-        endDate: futureDate(18),
-        location: 'Computer Lab, Block C',
-        maxParticipants: 20,
-        status: 'open',
-      },
-    ],
-  })
+  // Individual creates so we can attach sessions and resources
+  const wClassroom = await prisma.cpdWorkshop.create({ data: {
+    title: 'Classroom Management & Student Engagement',
+    provider: 'Universiti Brunei Darussalam',
+    subject: 'General',
+    description: 'A full-day practical workshop on building positive classroom culture and sustaining student engagement. Participants will analyse real classroom scenarios, practise de-escalation techniques, and co-design engagement strategies tailored to secondary learners.',
+    objectives: 'Apply at least three evidence-based engagement strategies in a lesson plan\nUse restorative practices to resolve classroom disruptions\nDesign seating arrangements and routines that reduce off-task behaviour\nDevelop a personal classroom management toolkit',
+    targetAudience: 'All teaching staff — particularly beneficial for teachers with fewer than 5 years of experience',
+    prerequisites: 'None. Open to all teaching staff.',
+    facilitatorId: drsiti.id,
+    hours: 3,
+    startDate: futureDate(10),
+    endDate: futureDate(10),
+    location: 'UBD Main Campus',
+    maxParticipants: 40,
+    category: 'Pedagogy',
+    status: 'open',
+  }})
+
+  const wMath = await prisma.cpdWorkshop.create({ data: {
+    title: 'Digital Pedagogy for Mathematics',
+    provider: 'MOE Professional Development Centre',
+    subject: 'Mathematics',
+    description: 'A one-day hands-on workshop exploring how digital tools and platforms can transform mathematics instruction. Participants will work with GeoGebra, Desmos, and MOE\'s digital resource library to design technology-enhanced lessons.',
+    objectives: 'Design at least one technology-enhanced mathematics lesson\nNavigate and curate resources from MOE\'s digital library\nApply formative assessment via digital quiz platforms\nEvaluate the impact of digital tools on student engagement',
+    targetAudience: 'Mathematics Teachers, Years 7–12',
+    prerequisites: 'Minimum 1 year teaching experience. Basic familiarity with computers and internet browsing.',
+    facilitatorId: drsiti.id,
+    hours: 4,
+    startDate: futureDate(14),
+    endDate: futureDate(14),
+    location: 'Resource Centre, Block B',
+    maxParticipants: 25,
+    category: 'Educational Technology',
+    status: 'open',
+  }})
+
+  const wICT = await prisma.cpdWorkshop.create({ data: {
+    title: 'ICT Integration in the Secondary Classroom',
+    provider: 'MOE ICT Division',
+    subject: 'ICT',
+    description: 'Practical training on embedding ICT tools into everyday teaching — from interactive presentations and digital assessments to online collaboration spaces and learning management systems.',
+    objectives: 'Set up and manage a class using MOE\'s LMS platform\nCreate interactive digital assessments\nUse collaborative tools (shared docs, digital whiteboards) in lessons\nApply basic data literacy to interpret student analytics',
+    targetAudience: 'All teaching staff, particularly those new to digital teaching tools',
+    prerequisites: 'None.',
+    hours: 4,
+    startDate: futureDate(18),
+    endDate: futureDate(18),
+    location: 'Computer Lab, Block C',
+    maxParticipants: 20,
+    category: 'Educational Technology',
+    status: 'open',
+  }})
+
+  const wScience = await prisma.cpdWorkshop.create({ data: {
+    title: 'Inquiry-Based Science Teaching',
+    provider: 'MOE Professional Development Centre',
+    subject: 'Science',
+    description: 'A two-day immersive workshop on transforming science classrooms into centres of inquiry and discovery. Teachers will experience inquiry cycles first-hand through lab activities, then deconstruct the pedagogy to apply it in their own contexts.',
+    objectives: 'Distinguish guided, structured and open inquiry models\nDesign a full inquiry-based investigation for secondary students\nFacilitate student-led scientific discourse without over-scaffolding\nAdapt existing textbook lessons to an inquiry-first sequence\nAssess the inquiry process, not just the outcome',
+    targetAudience: 'Science Teachers (Physics, Chemistry, Biology, Combined Science), Years 7–12',
+    prerequisites: 'None. Open to all science teachers regardless of experience level.',
+    facilitatorId: drsiti.id,
+    imageUrl: 'https://images.unsplash.com/photo-1532094349884-543559244e3f?w=800&q=80',
+    hours: 6,
+    startDate: futureDate(21),
+    endDate: futureDate(22),
+    location: 'Science Lab Wing',
+    maxParticipants: 20,
+    category: 'Pedagogy',
+    status: 'open',
+  }})
+
+  const wAssessment = await prisma.cpdWorkshop.create({ data: {
+    title: 'Assessment for Learning: Formative Strategies',
+    provider: 'MOE Professional Development Centre',
+    subject: 'General',
+    description: 'A two-day workshop on embedding formative assessment into daily teaching practice. Participants will leave with a full toolkit of strategies — from exit tickets and peer assessment to questioning techniques and learning progressions.',
+    objectives: 'Distinguish formative from summative assessment and explain the pedagogical value of each\nImplement at least five different formative assessment techniques\nUse student data from formative tasks to adjust instruction in real time\nDesign a unit of work with integrated formative checkpoints\nProvide effective written and verbal feedback that moves learning forward',
+    targetAudience: 'All teaching staff. Particularly relevant for teachers preparing students for national examinations.',
+    prerequisites: 'None.',
+    hours: 5,
+    startDate: futureDate(28),
+    endDate: futureDate(29),
+    location: 'Resource Centre, Block A',
+    maxParticipants: 30,
+    category: 'Pedagogy',
+    status: 'open',
+  }})
+
+  const wInclusive = await prisma.cpdWorkshop.create({ data: {
+    title: 'Inclusive Education & SEN Strategies',
+    provider: 'Brunei Darussalam National Institute of Education',
+    subject: 'General',
+    description: 'A two-day professional development programme designed to equip teachers with the knowledge, skills and attitudes needed to support students with special educational needs in mainstream classrooms. Covers identification, differentiation, co-teaching models and communication with parents.',
+    objectives: 'Identify common SEN profiles and their classroom manifestations\nApply Universal Design for Learning (UDL) principles to lesson planning\nDifferentiate instruction across three tiers of support\nCollaborate effectively with the SEN team and external specialists\nCommunicate sensitively with parents of students with SEN',
+    targetAudience: 'All teaching staff. Priority given to Form Teachers and subject teachers with identified SEN students in their classes.',
+    prerequisites: 'Recommended to complete \'Classroom Management & Student Engagement\' first.',
+    hours: 8,
+    startDate: futureDate(35),
+    endDate: futureDate(36),
+    location: 'BDNIE Conference Hall',
+    maxParticipants: 50,
+    category: 'Special Education',
+    status: 'open',
+  }})
+
+  // Sessions for multi-day workshops
+  await prisma.cpdWorkshopSession.createMany({ data: [
+    { workshopId: wScience.id, title: 'Day 1: Understanding Inquiry & Lab Investigations', sessionDate: futureDate(21), startTime: '08:30', endTime: '16:00', room: 'Science Lab 1' },
+    { workshopId: wScience.id, title: 'Day 2: Lesson Redesign & Peer Sharing', sessionDate: futureDate(22), startTime: '08:30', endTime: '13:00', room: 'Science Lab 1' },
+    { workshopId: wAssessment.id, title: 'Day 1: Foundations of Formative Assessment', sessionDate: futureDate(28), startTime: '08:00', endTime: '16:30', room: 'Resource Centre, Block A' },
+    { workshopId: wAssessment.id, title: 'Day 2: Designing Assessment Into Units', sessionDate: futureDate(29), startTime: '08:00', endTime: '13:00', room: 'Resource Centre, Block A' },
+    { workshopId: wInclusive.id, title: 'Day 1: SEN Profiles, UDL & Differentiation', sessionDate: futureDate(35), startTime: '08:30', endTime: '17:00', room: 'BDNIE Main Hall' },
+    { workshopId: wInclusive.id, title: 'Day 2: Co-Teaching Models & Parent Communication', sessionDate: futureDate(36), startTime: '08:30', endTime: '16:00', room: 'BDNIE Main Hall' },
+  ]})
+
+  // Resources for select workshops
+  await prisma.cpdWorkshopResource.createMany({ data: [
+    { workshopId: wScience.id, title: 'Workshop Overview & Schedule', type: 'document', url: 'https://www.moe.gov.bn/resources/cpd/inquiry-science-overview.pdf', uploadedById: hodUser.id },
+    { workshopId: wScience.id, title: 'Inquiry Cycle Framework (Slides)', type: 'slides', url: 'https://www.moe.gov.bn/resources/cpd/inquiry-cycle-slides.pdf', uploadedById: hodUser.id },
+    { workshopId: wScience.id, title: 'Inquiry Lab Activity Worksheet', type: 'document', url: 'https://www.moe.gov.bn/resources/cpd/inquiry-lab-worksheet.pdf', uploadedById: hodUser.id },
+    { workshopId: wAssessment.id, title: 'Formative Assessment Strategy Toolkit', type: 'document', url: 'https://www.moe.gov.bn/resources/cpd/formative-toolkit.pdf', uploadedById: hodUser.id },
+    { workshopId: wAssessment.id, title: 'Workshop Slides — Day 1', type: 'slides', url: 'https://www.moe.gov.bn/resources/cpd/assessment-slides-day1.pdf', uploadedById: hodUser.id },
+    { workshopId: wMath.id, title: 'Getting Started with GeoGebra', type: 'link', url: 'https://www.geogebra.org/learn', uploadedById: hodUser.id },
+    { workshopId: wMath.id, title: 'Digital Maths Resources Catalogue', type: 'document', url: 'https://www.moe.gov.bn/resources/cpd/digital-maths-catalogue.pdf', uploadedById: hodUser.id },
+    { workshopId: wInclusive.id, title: 'Universal Design for Learning Guidelines', type: 'link', url: 'https://udlguidelines.cast.org', uploadedById: hodUser.id },
+    { workshopId: wInclusive.id, title: 'SEN Identification Checklist', type: 'document', url: 'https://www.moe.gov.bn/resources/cpd/sen-checklist.pdf', uploadedById: hodUser.id },
+  ]})
 
   console.log('  CPD Workshops seeded.')
 
@@ -3362,8 +3421,8 @@ async function main() {
 
   // ── 6. CPD Enrollments ────────────────────────────────────────────────────
   const allWorkshops = await prisma.cpdWorkshop.findMany({ orderBy: { startDate: 'asc' } })
-  // Indices: 0=Digital Pedagogy Math, 1=Inquiry-Based Science, 2=Classroom Management,
-  //          3=Assessment for Learning, 4=Inclusive Education, 5=ICT Integration
+  // Indices by startDate ASC: 0=Classroom Mgmt(+10), 1=Digital Pedagogy(+14), 2=ICT(+18),
+  //   3=Inquiry Science(+21), 4=Assessment(+28), 5=Inclusive Ed(+35)
   const cpdEnrData = [
     { teacherId: drsiti.id,    wIdx: 0 }, { teacherId: drsiti.id,    wIdx: 1 },
     { teacherId: teacher01.id, wIdx: 2 }, { teacherId: teacher01.id, wIdx: 3 },
