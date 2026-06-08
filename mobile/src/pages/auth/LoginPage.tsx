@@ -29,7 +29,7 @@ const AUTHORITY_BG: Record<string, string> = {
 }
 
 function maskPassword(pw: string) {
-  return pw.length <= 4 ? '••••' : pw.slice(0, 6) + '…'
+  return pw
 }
 
 export default function LoginPage() {
@@ -216,22 +216,23 @@ export default function LoginPage() {
             <div style={{ flex: 1, height: 1, background: '#e5e5e5' }} />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => { setSsoSelectedUser(''); setSsoProvider('BRUNEI_ID') }}
               style={{
-                padding: '10px',
+                flex: 1,
+                padding: '10px 6px',
                 borderRadius: 10,
                 border: '1.5px solid #FDB913',
                 background: '#FFFBE6',
                 color: '#7A5800',
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 6,
+                gap: 4,
               }}
             >
               🛡️ {t('auth.signInWithBruneiId')}
@@ -240,18 +241,19 @@ export default function LoginPage() {
             <button
               onClick={() => { setSsoSelectedUser(''); setSsoProvider('EGNC_IDPM') }}
               style={{
-                padding: '10px',
+                flex: 1,
+                padding: '10px 6px',
                 borderRadius: 10,
                 border: '1.5px solid #165DFF',
                 background: '#E6F0FF',
                 color: '#165DFF',
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 8,
+                gap: 4,
               }}
             >
               🏛️ {t('auth.signInWithEgnc')}
