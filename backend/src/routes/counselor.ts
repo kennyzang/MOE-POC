@@ -12,28 +12,44 @@ router.get(
   '/dashboard',
   authenticate,
   requireRole('counselor', 'admin', 'principal'),
-  async (_req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     try {
-      const [casesOpen, casesInProgress, casesResolved, casesClosed, riskBands] = await Promise.all([
-        prisma.counselorCase.count({ where: { status: 'OPEN' } }),
-        prisma.counselorCase.count({ where: { status: 'IN_PROGRESS' } }),
-        prisma.counselorCase.count({ where: { status: 'RESOLVED' } }),
-        prisma.counselorCase.count({ where: { status: 'CLOSED' } }),
-        prisma.riskScore.findMany({
-          orderBy: { computedAt: 'desc' },
-          distinct: ['studentId'],
-          select: { band: true },
-        }),
+      const { role, userId } = req.user!
+
+      // Counselors see only their own assigned cases; admins/principals see all
+      const counselorFilter = role === 'counselor' ? { counselorUserId: userId } : {}
+
+      const [casesOpen, casesInProgress, casesResolved, casesClosed] = await Promise.all([
+        prisma.counselorCase.count({ where: { ...counselorFilter, status: 'OPEN' } }),
+        prisma.counselorCase.count({ where: { ...counselorFilter, status: 'IN_PROGRESS' } }),
+        prisma.counselorCase.count({ where: { ...counselorFilter, status: 'RESOLVED' } }),
+        prisma.counselorCase.count({ where: { ...counselorFilter, status: 'CLOSED' } }),
       ])
+
+      // Risk band distribution — scoped to students in counselor's cases
+      const counselorStudentIds = role === 'counselor'
+        ? (await prisma.counselorCase.findMany({
+            where: { counselorUserId: userId },
+            select: { studentId: true },
+            distinct: ['studentId'],
+          })).map(c => c.studentId)
+        : null // null = no filter (admin/principal)
+
+      const riskBands = await prisma.riskScore.findMany({
+        where: counselorStudentIds !== null ? { studentId: { in: counselorStudentIds } } : {},
+        orderBy: { computedAt: 'desc' },
+        distinct: ['studentId'],
+        select: { band: true },
+      })
 
       const bandCounts: Record<string, number> = { HIGH_RISK: 0, MONITOR: 0, ON_TRACK: 0 }
       for (const rs of riskBands) {
         if (rs.band in bandCounts) bandCounts[rs.band]++
       }
 
-      // Active cases with student info for the list
+      // Active cases with student info for the list — scoped to counselor
       const activeCases = await prisma.counselorCase.findMany({
-        where: { status: { in: ['OPEN', 'IN_PROGRESS'] } },
+        where: { ...counselorFilter, status: { in: ['OPEN', 'IN_PROGRESS'] } },
         include: {
           student: {
             include: {
@@ -47,7 +63,7 @@ router.get(
           },
         },
         orderBy: { openedAt: 'desc' },
-        take: 10,
+        take: 20,
       })
 
       const activeCaseData = activeCases.map((c) => ({
@@ -81,16 +97,18 @@ router.get(
   },
 )
 
-// GET /counselor/cases — list all cases with filters
+// GET /counselor/cases — list cases (counselor sees own; admin/principal sees all)
 router.get(
   '/cases',
   authenticate,
   requireRole('counselor', 'admin', 'principal'),
   async (req: AuthRequest, res: Response) => {
     try {
+      const { role, userId } = req.user!
       const { status, riskBand } = req.query as { status?: string; riskBand?: string }
 
-      const where: Record<string, unknown> = {}
+      const counselorFilter = role === 'counselor' ? { counselorUserId: userId } : {}
+      const where: Record<string, unknown> = { ...counselorFilter }
       if (status) where.status = status
 
       const cases = await prisma.counselorCase.findMany({

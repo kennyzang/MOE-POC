@@ -260,6 +260,23 @@ router.get('/status', async (req: Request, res: Response) => {
       },
     })
 
+    // When enrolled, look up the new student record for credentials display
+    let enrolledStudent: { studentId: string; className: string; gradeLevel: string; username: string } | null = null
+    if (application && application.status === 'offer_accepted' && application.icNumber) {
+      const student = await prisma.student.findFirst({
+        where: { icNumber: application.icNumber },
+        include: { user: { select: { username: true } } },
+      })
+      if (student) {
+        enrolledStudent = {
+          studentId: student.studentId,
+          className: student.className ?? '',
+          gradeLevel: student.gradeLevel ?? '',
+          username: student.user.username,
+        }
+      }
+    }
+
     if (!application) {
       res.status(404).json({
         success: false,
@@ -300,6 +317,8 @@ router.get('/status', async (req: Request, res: Response) => {
         documentsRequiredNote: application.documentsRequiredNote,
         documents: application.documents,
         timeline,
+        enrolledStudent,
+        parentEmail: application.parentEmail,
       },
     })
   } catch (error) {

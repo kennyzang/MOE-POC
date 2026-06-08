@@ -524,8 +524,9 @@ export async function computeRiskForGrade(gradeLevel: string): Promise<StudentRi
 
   for (const student of students) {
     // ── Attendance ──
+    // Count 'present' AND 'late' as attended (consistent with student detail page)
     const totalSessions = student.attendances.length
-    const presentSessions = student.attendances.filter(a => a.status === 'present').length
+    const presentSessions = student.attendances.filter(a => a.status === 'present' || a.status === 'late').length
     const attendanceRate = totalSessions > 0
       ? Math.round((presentSessions / totalSessions) * 100)
       : 100
@@ -547,7 +548,7 @@ export async function computeRiskForGrade(gradeLevel: string): Promise<StudentRi
       if (weekRecords.length === 0) {
         weeklyAttendance.push(attendanceRate) // use overall as fallback
       } else {
-        const present = weekRecords.filter(a => a.status === 'present').length
+        const present = weekRecords.filter(a => a.status === 'present' || a.status === 'late').length
         weeklyAttendance.push(Math.round((present / weekRecords.length) * 100))
       }
     }

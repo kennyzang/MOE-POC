@@ -15,7 +15,7 @@ import {
   Row,
   Col,
 } from 'antd'
-import { Search, FileText, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react'
+import { Search, FileText, CheckCircle, XCircle, Clock, AlertCircle, UserCheck, Copy } from 'lucide-react'
 import axios from 'axios'
 
 const { Title, Text, Paragraph } = Typography
@@ -60,6 +60,13 @@ interface ApplicationStatus {
   decidedAt?: string
   remarks?: string
   documentsRequiredNote?: string
+  parentEmail?: string
+  enrolledStudent?: {
+    studentId: string
+    className: string
+    gradeLevel: string
+    username: string
+  }
   documents: Array<{
     id: string
     type: string
@@ -76,6 +83,7 @@ export default function RegistrationStatusPage() {
   const [loading, setLoading] = useState(false)
   const [appStatus, setAppStatus] = useState<ApplicationStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [copiedUser, setCopiedUser] = useState(false)
 
   const handleSearch = async () => {
     try {
@@ -188,6 +196,63 @@ export default function RegistrationStatusPage() {
                 }))}
               />
             </Card>
+
+            {/* Enrolled: show student account credentials */}
+            {appStatus.status === 'offer_accepted' && appStatus.enrolledStudent && (
+              <Card
+                style={{ border: '2px solid #52c41a', background: '#f6ffed' }}
+                title={
+                  <Space>
+                    <UserCheck size={18} color="#52c41a" />
+                    <Text strong style={{ color: '#389e0d', fontSize: 16 }}>
+                      Congratulations — Your Child is Now Enrolled!
+                    </Text>
+                  </Space>
+                }
+              >
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>Student ID</Text>
+                      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'monospace', color: '#1677ff' }}>
+                        {appStatus.enrolledStudent.studentId}
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>Class Assigned</Text>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: '#1d2129' }}>
+                        {appStatus.enrolledStudent.className} ({appStatus.enrolledStudent.gradeLevel})
+                      </div>
+                    </Col>
+                  </Row>
+                  <Divider style={{ margin: '8px 0' }} />
+                  <Text type="secondary" style={{ fontSize: 12 }}>Student Login Username</Text>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Text code style={{ fontSize: 15 }}>{appStatus.enrolledStudent.username}</Text>
+                    <Button
+                      size="small"
+                      icon={<Copy size={12} />}
+                      onClick={() => {
+                        navigator.clipboard.writeText(appStatus.enrolledStudent!.username)
+                        setCopiedUser(true)
+                        setTimeout(() => setCopiedUser(false), 2000)
+                      }}
+                      type={copiedUser ? 'primary' : 'default'}
+                    >
+                      {copiedUser ? 'Copied!' : 'Copy'}
+                    </Button>
+                  </div>
+                  <Alert
+                    type="info"
+                    showIcon
+                    message={`A temporary password has been sent to ${appStatus.parentEmail ?? 'your registered email'}. Please log in and change your password on first use.`}
+                  />
+                  <Button type="primary" href="/login">
+                    Go to Student Login
+                  </Button>
+                </Space>
+              </Card>
+            )}
 
             {/* Special Alerts */}
             {appStatus.status === 'documents_required' && appStatus.documentsRequiredNote && (

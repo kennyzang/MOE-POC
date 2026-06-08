@@ -72,8 +72,9 @@ export async function recalcStudentRisk(studentDbId: string, triggerEvent: strin
   if (!student) return
 
   // Attendance rate (all time)
+  // Count 'present' and 'late' as attended (consistent with student detail page)
   const total = student.attendances.length
-  const present = student.attendances.filter(a => a.status === 'present').length
+  const present = student.attendances.filter(a => a.status === 'present' || a.status === 'late').length
   const attendanceRatePercent = total > 0 ? Math.round((present / total) * 100) : 100
 
   // Recent 14-day absence count

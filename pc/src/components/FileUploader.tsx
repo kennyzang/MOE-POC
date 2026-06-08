@@ -48,8 +48,11 @@ export default function FileUploader({
         message.error(`File must be smaller than ${maxSizeMB}MB`)
         return Upload.LIST_IGNORE
       }
-      setFileList([file])
-      return false // prevent auto upload
+      return false // prevent auto upload; onChange will handle fileList
+    },
+    onChange: ({ fileList: newList }) => {
+      // keep only files that passed beforeUpload (not LIST_IGNORE'd)
+      setFileList(newList.filter(f => f.status !== 'error').slice(-1))
     },
     onRemove: () => setFileList([]),
   }

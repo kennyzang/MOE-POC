@@ -18,7 +18,22 @@ import {
   Upload,
   message,
 } from 'antd'
-import type { UploadFile } from 'antd'
+import type { UploadFile, UploadProps } from 'antd'
+
+const COUNTRY_CODES = [
+  { value: '+673', label: '🇧🇳 +673' },
+  { value: '+60', label: '🇲🇾 +60' },
+  { value: '+65', label: '🇸🇬 +65' },
+  { value: '+62', label: '🇮🇩 +62' },
+  { value: '+63', label: '🇵🇭 +63' },
+  { value: '+66', label: '🇹🇭 +66' },
+  { value: '+84', label: '🇻🇳 +84' },
+  { value: '+44', label: '🇬🇧 +44' },
+  { value: '+1', label: '🇺🇸 +1' },
+  { value: '+61', label: '🇦🇺 +61' },
+  { value: '+86', label: '🇨🇳 +86' },
+  { value: '+91', label: '🇮🇳 +91' },
+]
 import {
   User,
   Users,
@@ -103,6 +118,12 @@ export default function RegistrationPortalPage() {
   const nextStep = async (formInstance: typeof form1) => {
     try {
       const values = await formInstance.validateFields()
+      // Merge country code into phone number for step 1 (parent info)
+      if (values.parentPhone && values.parentPhoneCountryCode) {
+        const raw = String(values.parentPhone).replace(/^\+?\d{1,4}[\s-]?/, '')
+        values.parentPhone = `${values.parentPhoneCountryCode} ${raw}`
+        delete values.parentPhoneCountryCode
+      }
       setFormData(prev => ({ ...prev, ...values }))
       setStep(s => s + 1)
       if (step === 1) loadSchools()
@@ -294,8 +315,15 @@ export default function RegistrationPortalPage() {
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="parentPhone" label="Contact Number" rules={[{ required: true }]}>
-                    <Input placeholder="+673 xxxxxxx" />
+                  <Form.Item name="parentPhone" label="Contact Number" rules={[{ required: true, message: 'Contact number is required' }]}>
+                    <Input
+                      addonBefore={
+                        <Form.Item name="parentPhoneCountryCode" noStyle initialValue="+673">
+                          <Select style={{ width: 110 }} options={COUNTRY_CODES} />
+                        </Form.Item>
+                      }
+                      placeholder="7xxxxxx"
+                    />
                   </Form.Item>
                 </Col>
                 <Col xs={24}>
@@ -391,39 +419,67 @@ export default function RegistrationPortalPage() {
           <Card title={<Space><FileText size={18} /> Document Upload</Space>}>
             <Alert
               type="info"
-              message="Accepted formats: PDF, JPG, PNG (max 5MB each). Documents marked as required must be uploaded before submission."
+              message="Accepted formats: PDF, JPG, PNG (max 5MB each). Documents marked as required must be uploaded before proceeding."
               style={{ marginBottom: 16 }}
             />
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              {DOC_TYPES.map(dt => (
-                <Card key={dt.value} size="small" style={{ borderColor: dt.required ? '#1677ff' : '#d9d9d9' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Text strong>{dt.label}</Text>
-                    {dt.required && <Tag color="blue">Required</Tag>}
-                  </div>
-                  <Upload
-                    beforeUpload={(file) => {
-                      const isValidType = ['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)
-                      const isValidSize = file.size / 1024 / 1024 < 5
-                      if (!isValidType) { message.error('Only PDF, JPG, PNG allowed'); return Upload.LIST_IGNORE }
-                      if (!isValidSize) { message.error('File must be under 5MB'); return Upload.LIST_IGNORE }
-                      const taggedFile = Object.assign(file, { docType: dt.value })
-                      setFileList(prev => [...prev, taggedFile])
-                      return false
-                    }}
-                    fileList={fileList.filter(f => (f as any).docType === dt.value)}
-                    onRemove={(file) => setFileList(prev => prev.filter(f => f.uid !== file.uid))}
-                    maxCount={1}
-                    accept=".pdf,.jpg,.jpeg,.png"
-                  >
-                    <Button size="small">Select File</Button>
-                  </Upload>
-                </Card>
-              ))}
+              {DOC_TYPES.map(dt => {
+                const docFiles = fileList.filter(f => (f as any).docType === dt.value)
+                const handleChange: UploadProps['onChange'] = ({ fileList: newList }) => {
+                  // keep only valid entries for this docType; preserve other types
+                  const othersUnchanged = fileList.filter(f => (f as any).docType !== dt.value)
+                  const tagged = newList
+                    .filter(f => f.status !== 'error')
+                    .map(f => Object.assign(f, { docType: dt.value }))
+                  setFileList([...othersUnchanged, ...tagged])
+                }
+                return (
+                  <Card key={dt.value} size="small" style={{ borderColor: dt.required ? '#1677ff' : '#d9d9d9' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text strong>{dt.label}</Text>
+                      {dt.required
+                        ? docFiles.length > 0
+                          ? <Tag color="success">Uploaded</Tag>
+                          : <Tag color="blue">Required</Tag>
+                        : <Tag>Optional</Tag>}
+                    </div>
+                    <Upload
+                      beforeUpload={(file) => {
+                        const isValidType = ['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)
+                        const isValidSize = file.size / 1024 / 1024 < 5
+                        if (!isValidType) { message.error('Only PDF, JPG, PNG allowed'); return Upload.LIST_IGNORE }
+                        if (!isValidSize) { message.error('File must be under 5MB'); return Upload.LIST_IGNORE }
+                        return false
+                      }}
+                      onChange={handleChange}
+                      fileList={docFiles}
+                      onRemove={(file) => setFileList(prev => prev.filter(f => f.uid !== file.uid))}
+                      maxCount={1}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                    >
+                      <Button size="small">Select File</Button>
+                    </Upload>
+                  </Card>
+                )
+              })}
             </Space>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
               <Button icon={<ArrowLeft size={14} />} onClick={prevStep}>Back</Button>
-              <Button type="primary" icon={<ArrowRight size={14} />} iconPosition="end" onClick={() => setStep(4)}>
+              <Button
+                type="primary"
+                icon={<ArrowRight size={14} />}
+                iconPosition="end"
+                onClick={() => {
+                  const missing = DOC_TYPES.filter(
+                    d => d.required && !fileList.some(f => (f as any).docType === d.value),
+                  )
+                  if (missing.length > 0) {
+                    message.error(`Please upload required documents: ${missing.map(d => d.label.split(' (')[0]).join(', ')}`)
+                    return
+                  }
+                  setStep(4)
+                }}
+              >
                 Next: Review
               </Button>
             </div>

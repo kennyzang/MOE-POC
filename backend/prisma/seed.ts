@@ -1299,8 +1299,8 @@ async function main() {
     { courseId: sci8.id,  teacherId: hassan.id,    dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
     { courseId: eng8.id,  teacherId: faizal.id,    dayOfWeek: 0, startTime: '13:00', endTime: '14:30', room: 'Classroom 8A' },
     { courseId: eng8.id,  teacherId: faizal.id,    dayOfWeek: 2, startTime: '13:00', endTime: '14:30', room: 'Classroom 8A' },
-    { courseId: mib8.id,  teacherId: faizal.id,    dayOfWeek: 4, startTime: '08:00', endTime: '09:30', room: 'Classroom 8A' },
-    { courseId: ict8.id,  teacherId: drsiti.id,    dayOfWeek: 4, startTime: '10:00', endTime: '11:30', room: 'Computer Lab' },
+    { courseId: mib8.id,  teacherId: faizal.id,    dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Classroom 8A' }, // Thu P1 (was Fri P1 — conflict with Y7 MIB)
+    { courseId: ict8.id,  teacherId: drsiti.id,    dayOfWeek: 1, startTime: '13:00', endTime: '14:30', room: 'Computer Lab' }, // Tue P3 (was Fri P2 — conflict with Y7 ICT)
   ]
   for (const slot of y8aSlots) {
     await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 8', className: '8A', semester: '2026-S1' } })
@@ -1810,6 +1810,136 @@ async function main() {
     { workshopId: wInclusive.id, title: 'SEN Identification Checklist', type: 'document', url: 'https://www.moe.gov.bn/resources/cpd/sen-checklist.pdf', uploadedById: hodUser.id },
   ]})
 
+  // ── Additional workshops (richer demo data) ────────────────────────────────
+  const pastDate = (daysAgo: number) => {
+    const d = new Date()
+    d.setDate(d.getDate() - daysAgo)
+    return d
+  }
+
+  // Past completed workshop (STEM Integration — 30 days ago)
+  const wStem = await prisma.cpdWorkshop.create({ data: {
+    title: 'STEM Integration Across Disciplines',
+    provider: 'MOE Professional Development Centre',
+    subject: 'STEM',
+    description: 'A two-day intensive programme on designing cross-disciplinary STEM lessons that connect Science, Technology, Engineering, and Mathematics in meaningful contexts for secondary learners.',
+    objectives: 'Design at least one cross-disciplinary STEM project\nAlign STEM projects with national curriculum objectives\nFacilitate student inquiry and hands-on problem solving\nAssess STEM competencies holistically',
+    targetAudience: 'Science, Mathematics, ICT, and Design & Technology Teachers',
+    prerequisites: 'None.',
+    hours: 6,
+    startDate: pastDate(32),
+    endDate: pastDate(31),
+    location: 'MOE Professional Development Centre',
+    maxParticipants: 30,
+    category: 'Pedagogy',
+    status: 'open',
+    imageUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80',
+  }})
+  await prisma.cpdWorkshopSession.createMany({ data: [
+    { workshopId: wStem.id, title: 'Day 1: STEM Frameworks & Cross-Disciplinary Design', sessionDate: pastDate(32), startTime: '08:30', endTime: '17:00', room: 'MOE PDC Room 1' },
+    { workshopId: wStem.id, title: 'Day 2: Lesson Prototyping & Peer Review', sessionDate: pastDate(31), startTime: '08:30', endTime: '16:00', room: 'MOE PDC Room 1' },
+  ]})
+  // Add completions for drsiti and teacher01
+  await prisma.cpdEnrollment.create({ data: {
+    workshopId: wStem.id, teacherId: drsiti.id,
+    status: 'COMPLETED', enrolledAt: pastDate(40), completedAt: pastDate(31), hoursAwarded: 6,
+  }})
+  await prisma.cpdEnrollment.create({ data: {
+    workshopId: wStem.id, teacherId: teacher01.id,
+    status: 'COMPLETED', enrolledAt: pastDate(38), completedAt: pastDate(31), hoursAwarded: 6,
+  }})
+  await prisma.cpdWorkshopResource.createMany({ data: [
+    { workshopId: wStem.id, title: 'STEM Integration Framework', type: 'document', url: 'https://www.moe.gov.bn/resources/cpd/stem-framework.pdf', uploadedById: hodUser.id },
+    { workshopId: wStem.id, title: 'Sample STEM Project: Bridge Builder', type: 'slides', url: 'https://www.moe.gov.bn/resources/cpd/stem-bridge-project.pdf', uploadedById: hodUser.id },
+  ]})
+
+  // Full workshop — Google Workspace (all slots filled)
+  const wGoogleWS = await prisma.cpdWorkshop.create({ data: {
+    title: 'Google Workspace for Education: Advanced Features',
+    provider: 'MOE ICT Division',
+    subject: 'ICT',
+    description: 'Advanced training on Google Workspace for Education — focusing on Classroom management, collaborative Docs/Slides, Forms for assessment, and Meet for hybrid teaching.',
+    objectives: 'Manage Google Classroom efficiently\nDesign collaborative activities using Google Docs and Slides\nCreate auto-graded quizzes using Google Forms\nRun effective hybrid lessons via Google Meet',
+    targetAudience: 'All teaching staff who have completed the basic ICT Integration workshop',
+    prerequisites: 'ICT Integration in the Secondary Classroom (or equivalent experience).',
+    hours: 4,
+    startDate: futureDate(7),
+    endDate: futureDate(7),
+    location: 'Computer Lab, Block C',
+    maxParticipants: 15,
+    category: 'Educational Technology',
+    status: 'full',
+  }})
+  // Enroll enough teachers to fill it (use drsiti, faizal, teacher01 + create placeholder rows)
+  for (const tid of [drsiti.id, faizal.id, teacher01.id]) {
+    await prisma.cpdEnrollment.upsert({
+      where: { workshopId_teacherId: { workshopId: wGoogleWS.id, teacherId: tid } },
+      create: { workshopId: wGoogleWS.id, teacherId: tid, status: 'ENROLLED', enrolledAt: new Date() },
+      update: {},
+    })
+  }
+
+  // Draft workshop — admin-only (not yet visible to teachers)
+  const wLeadership = await prisma.cpdWorkshop.create({ data: {
+    title: 'Leadership in Education: Middle Management Programme',
+    provider: 'MOE Leadership Institute',
+    subject: 'Leadership',
+    description: 'A three-day residential programme preparing experienced teachers for middle management roles — covering instructional leadership, staff development, performance management, and strategic planning.',
+    objectives: 'Apply instructional leadership principles to improve department outcomes\nCoach and mentor junior colleagues effectively\nConduct productive performance conversations\nContribute to whole-school strategic planning',
+    targetAudience: 'Senior teachers and department heads preparing for formal leadership positions',
+    prerequisites: 'Minimum 5 years teaching experience. Recommended by Principal.',
+    hours: 20,
+    startDate: futureDate(45),
+    endDate: futureDate(47),
+    location: 'MOE Leadership Institute, Berakas',
+    maxParticipants: 20,
+    category: 'Leadership',
+    status: 'draft',
+  }})
+  await prisma.cpdWorkshopResource.create({ data: {
+    workshopId: wLeadership.id, title: 'Programme Overview & Schedule', type: 'document',
+    url: 'https://www.moe.gov.bn/resources/cpd/leadership-prog-overview.pdf', uploadedById: hodUser.id,
+  }})
+
+  // Open workshop — Malay Language Teaching Methodology
+  await prisma.cpdWorkshop.create({ data: {
+    title: 'Bahasa Melayu Teaching Methodology for Secondary',
+    provider: 'Universiti Brunei Darussalam',
+    subject: 'Bahasa Melayu',
+    description: 'A one-day workshop on contemporary approaches to teaching Bahasa Melayu at the secondary level, including communicative language teaching, genre-based approaches, and assessment of oral proficiency.',
+    objectives: 'Apply communicative language teaching principles in Bahasa Melayu lessons\nDesign genre-based writing tasks for secondary students\nAssess oral proficiency using structured rubrics',
+    targetAudience: 'Bahasa Melayu teachers, Years 7–12',
+    prerequisites: 'None.',
+    hours: 3,
+    startDate: futureDate(25),
+    endDate: futureDate(25),
+    location: 'UBD Language Centre',
+    maxParticipants: 25,
+    category: 'Subject Knowledge',
+    status: 'open',
+  }})
+
+  // Open workshop — Mental Health Awareness
+  await prisma.cpdWorkshop.create({ data: {
+    title: 'Mental Health Awareness for Educators',
+    provider: 'Health Promotion Centre Brunei',
+    subject: 'General',
+    description: 'A half-day awareness session helping teachers recognise signs of mental health challenges in students and colleagues, and respond appropriately. Covers school-appropriate referral pathways and supportive conversation techniques.',
+    objectives: 'Identify common mental health challenges in secondary school students\nUse non-stigmatising language when discussing mental health\nApply basic psychological first-aid in school settings\nKnow when and how to refer students to professional support',
+    targetAudience: 'All teaching and non-teaching staff',
+    prerequisites: 'None.',
+    hours: 3,
+    startDate: futureDate(42),
+    endDate: futureDate(42),
+    location: 'School Hall',
+    maxParticipants: 60,
+    category: 'General',
+    status: 'open',
+  }})
+
+  // Update maxParticipants counts to reflect enrollment status
+  await prisma.cpdWorkshop.update({ where: { id: wGoogleWS.id }, data: { status: 'full' } })
+
   console.log('  CPD Workshops seeded.')
 
   // ─── Year 9-12 Demo Data ──────────────────────────────────────────────────
@@ -2054,54 +2184,54 @@ async function main() {
   const y9aSlots = [
     { courseId: math9.id, teacherId: drsiti.id,   dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 9A' },
     { courseId: math9.id, teacherId: drsiti.id,   dayOfWeek: 2, startTime: '08:00', endTime: '09:30', room: 'Classroom 9A' },
-    { courseId: sci9.id,  teacherId: hassan.id,   dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
-    { courseId: sci9.id,  teacherId: hassan.id,   dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
+    { courseId: sci9.id,  teacherId: hassan.id,   dayOfWeek: 1, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' }, // Tue P2 (was Tue P1 — room conflict with Y7 Science)
+    { courseId: sci9.id,  teacherId: hassan.id,   dayOfWeek: 3, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' }, // Thu P2 (was Thu P1 — room conflict with Y7 Science)
     { courseId: eng9.id,  teacherId: zuraidah.id, dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Classroom 9A' },
     { courseId: eng9.id,  teacherId: zuraidah.id, dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Classroom 9A' },
-    { courseId: mib9.id,  teacherId: faizal.id,   dayOfWeek: 4, startTime: '08:00', endTime: '10:00', room: 'Classroom 9A' },
-    { courseId: geog9.id, teacherId: ridwan.id,   dayOfWeek: 4, startTime: '10:00', endTime: '12:00', room: 'Classroom 9A' },
+    { courseId: mib9.id,  teacherId: faizal.id,   dayOfWeek: 1, startTime: '13:00', endTime: '14:30', room: 'Classroom 9A' }, // Tue P3 (was Fri 08:00 — conflict with Y7 MIB)
+    { courseId: geog9.id, teacherId: ridwan.id,   dayOfWeek: 4, startTime: '13:00', endTime: '14:30', room: 'Classroom 9A' }, // Fri P3 (was Fri 10:00-12:00 non-standard)
   ]
   for (const slot of y9aSlots) {
     await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 9', className: '9A', semester: '2026-S1' } })
   }
 
   const y10aSlots = [
-    { courseId: math10.id,    teacherId: teacher01.id, dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 10A' },
-    { courseId: math10.id,    teacherId: teacher01.id, dayOfWeek: 2, startTime: '08:00', endTime: '09:30', room: 'Classroom 10A' },
-    { courseId: phy10.id,     teacherId: drsiti.id,    dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
-    { courseId: phy10.id,     teacherId: drsiti.id,    dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
-    { courseId: chem10.id,    teacherId: hassan.id,    dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
-    { courseId: bio10.id,     teacherId: hassan.id,    dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
-    { courseId: addMath10.id, teacherId: drsiti.id,    dayOfWeek: 1, startTime: '10:00', endTime: '11:30', room: 'Classroom 10A' },
-    { courseId: eng10.id,     teacherId: zuraidah.id,  dayOfWeek: 4, startTime: '08:00', endTime: '10:00', room: 'Classroom 10A' },
+    { courseId: math10.id,    teacherId: teacher01.id, dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Classroom 10A' }, // Mon P2 (was Mon P1 — conflict with Y7 Math)
+    { courseId: math10.id,    teacherId: teacher01.id, dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Classroom 10A' }, // Wed P2 (was Wed P1 — conflict with Y7 Math)
+    { courseId: phy10.id,     teacherId: drsiti.id,    dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 2' }, // Tue P1, Lab 2 (separate from Y7 Science in Lab 1)
+    { courseId: phy10.id,     teacherId: drsiti.id,    dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 2' }, // Thu P1, Lab 2
+    { courseId: chem10.id,    teacherId: hassan.id,    dayOfWeek: 3, startTime: '13:00', endTime: '14:30', room: 'Science Lab 1' }, // Thu P3 (was Mon P2 — conflict with Y8 Science)
+    { courseId: bio10.id,     teacherId: hassan.id,    dayOfWeek: 2, startTime: '13:00', endTime: '14:30', room: 'Science Lab 1' }, // Wed P3 (was Wed P2 — conflict with Y8 Science)
+    { courseId: addMath10.id, teacherId: drsiti.id,    dayOfWeek: 1, startTime: '10:00', endTime: '11:30', room: 'Classroom 10A' }, // Tue P2 (unchanged — drsiti now free here)
+    { courseId: eng10.id,     teacherId: zuraidah.id,  dayOfWeek: 4, startTime: '08:00', endTime: '09:30', room: 'Classroom 10A' }, // Fri P1 (standardised end time)
   ]
   for (const slot of y10aSlots) {
     await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 10', className: '10A', semester: '2026-S1' } })
   }
 
   const y11aSlots = [
-    { courseId: math11.id,    teacherId: teacher01.id, dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 11A' },
-    { courseId: math11.id,    teacherId: teacher01.id, dayOfWeek: 2, startTime: '08:00', endTime: '09:30', room: 'Classroom 11A' },
-    { courseId: phy11.id,     teacherId: drsiti.id,    dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
-    { courseId: phy11.id,     teacherId: drsiti.id,    dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
-    { courseId: chem11.id,    teacherId: hassan.id,    dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
-    { courseId: bio11.id,     teacherId: hassan.id,    dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
-    { courseId: addMath11.id, teacherId: drsiti.id,    dayOfWeek: 1, startTime: '10:00', endTime: '11:30', room: 'Classroom 11A' },
-    { courseId: eng11.id,     teacherId: zuraidah.id,  dayOfWeek: 4, startTime: '08:00', endTime: '10:00', room: 'Classroom 11A' },
+    { courseId: math11.id,    teacherId: teacher01.id, dayOfWeek: 0, startTime: '13:00', endTime: '14:30', room: 'Classroom 11A' }, // Mon P3
+    { courseId: math11.id,    teacherId: teacher01.id, dayOfWeek: 2, startTime: '13:00', endTime: '14:30', room: 'Classroom 11A' }, // Wed P3
+    { courseId: phy11.id,     teacherId: drsiti.id,    dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Science Lab 2' }, // Mon P2, Lab 2
+    { courseId: phy11.id,     teacherId: drsiti.id,    dayOfWeek: 3, startTime: '10:00', endTime: '11:30', room: 'Science Lab 2' }, // Thu P2, Lab 2
+    { courseId: chem11.id,    teacherId: hassan.id,    dayOfWeek: 1, startTime: '13:00', endTime: '14:30', room: 'Science Lab 1' }, // Tue P3
+    { courseId: bio11.id,     teacherId: hassan.id,    dayOfWeek: 4, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' }, // Fri P1
+    { courseId: addMath11.id, teacherId: drsiti.id,    dayOfWeek: 3, startTime: '13:00', endTime: '14:30', room: 'Classroom 11A' }, // Thu P3
+    { courseId: eng11.id,     teacherId: zuraidah.id,  dayOfWeek: 3, startTime: '14:30', endTime: '16:00', room: 'Classroom 11A' }, // Thu P4
   ]
   for (const slot of y11aSlots) {
     await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 11', className: '11A', semester: '2026-S1' } })
   }
 
   const y12aSlots = [
-    { courseId: math12.id,    teacherId: drsiti.id,   dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 12A' },
-    { courseId: math12.id,    teacherId: drsiti.id,   dayOfWeek: 2, startTime: '08:00', endTime: '09:30', room: 'Classroom 12A' },
-    { courseId: phy12.id,     teacherId: drsiti.id,   dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
-    { courseId: phy12.id,     teacherId: drsiti.id,   dayOfWeek: 3, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1' },
-    { courseId: chem12.id,    teacherId: hassan.id,   dayOfWeek: 0, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
-    { courseId: bio12.id,     teacherId: hassan.id,   dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Science Lab 1' },
-    { courseId: addMath12.id, teacherId: drsiti.id,   dayOfWeek: 1, startTime: '10:00', endTime: '11:30', room: 'Classroom 12A' },
-    { courseId: eng12.id,     teacherId: zuraidah.id, dayOfWeek: 4, startTime: '08:00', endTime: '10:00', room: 'Classroom 12A' },
+    { courseId: math12.id,    teacherId: drsiti.id,   dayOfWeek: 2, startTime: '10:00', endTime: '11:30', room: 'Classroom 12A' }, // Wed P2
+    { courseId: math12.id,    teacherId: drsiti.id,   dayOfWeek: 4, startTime: '08:00', endTime: '09:30', room: 'Classroom 12A' }, // Fri P1
+    { courseId: phy12.id,     teacherId: drsiti.id,   dayOfWeek: 0, startTime: '13:00', endTime: '14:30', room: 'Science Lab 2' }, // Mon P3, Lab 2
+    { courseId: phy12.id,     teacherId: drsiti.id,   dayOfWeek: 2, startTime: '13:00', endTime: '14:30', room: 'Science Lab 2' }, // Wed P3, Lab 2
+    { courseId: chem12.id,    teacherId: hassan.id,   dayOfWeek: 1, startTime: '14:30', endTime: '16:00', room: 'Science Lab 1' }, // Tue P4
+    { courseId: bio12.id,     teacherId: hassan.id,   dayOfWeek: 3, startTime: '14:30', endTime: '16:00', room: 'Science Lab 1' }, // Thu P4
+    { courseId: addMath12.id, teacherId: drsiti.id,   dayOfWeek: 4, startTime: '13:00', endTime: '14:30', room: 'Classroom 12A' }, // Fri P3
+    { courseId: eng12.id,     teacherId: zuraidah.id, dayOfWeek: 3, startTime: '13:00', endTime: '14:30', room: 'Classroom 12A' }, // Thu P3
   ]
   for (const slot of y12aSlots) {
     await prisma.timetableSlot.create({ data: { ...slot, gradeLevel: 'Year 12', className: '12A', semester: '2026-S1' } })
@@ -3059,52 +3189,52 @@ async function main() {
       createdForms.push(form)
     }
 
-    // Assign active forms to parents of matching students
-    const activeForms = createdForms.filter((f) => f.status === 'ACTIVE')
-    for (const form of activeForms) {
-      const whereClause: { enrollmentStatus: string; schoolId?: string; gradeLevel?: string } = {
-        enrollmentStatus: 'enrolled',
+    // Assign active/closed forms to parents via explicit known parent-student links
+    // (dynamic grade-level query is unreliable if Year 8 students have no parent links in seed)
+    const parentStudentLinks = await prisma.parentStudent.findMany({
+      include: { parent: { select: { userId: true } } },
+    })
+
+    const allCreatedForms = createdForms
+    for (const form of allCreatedForms) {
+      if (form.status === 'DRAFT') continue  // draft forms have no recipients
+
+      // For grade-targeted forms, first try dynamic query; always supplement with known links
+      let eligibleStudentIds: string[]
+      if (form.targetGradeLevel) {
+        const matched = await prisma.student.findMany({
+          where: { enrollmentStatus: 'enrolled', gradeLevel: form.targetGradeLevel },
+          select: { id: true },
+        })
+        // Fall back to all linked students if none found for the grade
+        eligibleStudentIds = matched.length > 0
+          ? matched.map((s) => s.id)
+          : parentStudentLinks.map((l) => l.studentId)
+      } else {
+        // No grade filter — all students with parent links
+        eligibleStudentIds = parentStudentLinks.map((l) => l.studentId)
       }
-      if (adminForComms.schoolId) whereClause.schoolId = adminForComms.schoolId
-      if (form.targetGradeLevel) whereClause.gradeLevel = form.targetGradeLevel
 
-      const students = await prisma.student.findMany({ where: whereClause, select: { id: true }, take: 20 })
-      const studentIds = students.map((s) => s.id)
-      if (studentIds.length === 0) continue
+      const relevantLinks = parentStudentLinks.filter((l) => eligibleStudentIds.includes(l.studentId))
+      if (relevantLinks.length === 0) continue
 
-      const parentLinks = await prisma.parentStudent.findMany({
-        where: { studentId: { in: studentIds } },
-        select: { parentId: true, studentId: true },
-      })
-
-      const parentIds = [...new Set(parentLinks.map((l) => l.parentId))]
-      const parents = await prisma.parent.findMany({
-        where: { id: { in: parentIds } },
-        select: { id: true, userId: true },
-      })
-      const parentUserMap = new Map(parents.map((p) => [p.id, p.userId]))
-
-      for (const link of parentLinks) {
-        const parentUserId = parentUserMap.get(link.parentId)
-        if (!parentUserId) continue
+      let ackIdx = 0
+      for (const link of relevantLinks) {
+        const parentUserId = link.parent.userId
+        // Alternate acknowledged/pending for demo variety
+        const acknowledged = form.status === 'CLOSED' || ackIdx % 2 === 0
         await prisma.consentFormRecipient.upsert({
-          where: {
-            formId_parentUserId_studentId: {
-              formId: form.id,
-              parentUserId,
-              studentId: link.studentId,
-            },
-          },
+          where: { formId_parentUserId_studentId: { formId: form.id, parentUserId, studentId: link.studentId } },
           create: {
             formId: form.id,
             parentUserId,
             studentId: link.studentId,
-            // Simulate that some parents have already acknowledged
-            acknowledgedAt: Math.random() > 0.5 ? new Date('2026-06-01') : null,
-            acknowledgmentNote: Math.random() > 0.7 ? 'Confirmed, thank you.' : null,
+            acknowledgedAt: acknowledged ? new Date('2026-06-01') : null,
+            acknowledgmentNote: acknowledged && ackIdx % 3 === 0 ? 'Confirmed, thank you.' : null,
           },
           update: {},
         })
+        ackIdx++
       }
     }
   }

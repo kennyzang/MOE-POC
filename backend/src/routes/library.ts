@@ -1,10 +1,18 @@
 import { Router, Response } from 'express'
+import multer from 'multer'
+import * as XLSX from 'xlsx'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 
 const router = Router()
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 
 const FINE_PER_DAY = 0.10
+
+const VALID_CATEGORIES = new Set([
+  'Fiction', 'Non-Fiction', 'Reference', 'Textbook',
+  'Science', 'History', 'Mathematics', 'Language', 'Arts', 'General',
+])
 
 function computeOverdueDays(dueDate: Date, returnedAt: Date | null): number {
   const end = returnedAt ?? new Date()
@@ -80,6 +88,54 @@ router.post('/books', authenticate, requireRole('admin', 'manager'), async (req:
     res.status(201).json({ success: true, data: book })
   } catch {
     res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// POST /library/books/import — batch import from Excel (admin/manager)
+router.post('/books/import', authenticate, requireRole('admin', 'manager'), upload.single('file'), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.file) { res.status(400).json({ success: false, message: 'No file uploaded' }); return }
+
+    const schoolId = req.user!.schoolId ?? ''
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' })
+    const sheet = workbook.Sheets[workbook.SheetNames[0]]
+    if (!sheet) { res.status(400).json({ success: false, message: 'Excel file has no sheets' }); return }
+
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
+
+    let imported = 0
+    const errors: Array<{ row: number; reason: string }> = []
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]!
+      const rowNum = i + 2  // 1-indexed, row 1 is header
+
+      const title = String(row['title'] ?? row['Title'] ?? '').trim()
+      const author = String(row['author'] ?? row['Author'] ?? '').trim()
+      const category = String(row['category'] ?? row['Category'] ?? 'General').trim()
+      const totalCopies = parseInt(String(row['totalCopies'] ?? row['Total Copies'] ?? '1'))
+      const isbn = String(row['isbn'] ?? row['ISBN'] ?? '').trim() || undefined
+      const kohaId = String(row['kohaId'] ?? row['Koha ID'] ?? '').trim() || undefined
+
+      if (!title) { errors.push({ row: rowNum, reason: 'Title is required' }); continue }
+      if (!author) { errors.push({ row: rowNum, reason: 'Author is required' }); continue }
+      if (!VALID_CATEGORIES.has(category)) {
+        errors.push({ row: rowNum, reason: `Invalid category "${category}". Must be one of: ${[...VALID_CATEGORIES].join(', ')}` }); continue
+      }
+      if (isNaN(totalCopies) || totalCopies < 1) {
+        errors.push({ row: rowNum, reason: 'totalCopies must be a positive number' }); continue
+      }
+
+      await prisma.libraryBook.create({
+        data: { schoolId, isbn, title, author, category, totalCopies, availableCopies: totalCopies, kohaId },
+      })
+      imported++
+    }
+
+    res.json({ success: true, data: { imported, skipped: errors.length, errors } })
+  } catch (err) {
+    console.error('POST /library/books/import error:', err)
+    res.status(500).json({ success: false, message: 'Import failed' })
   }
 })
 
