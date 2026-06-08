@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SpinLoading, Card, Button, Tag } from 'antd-mobile'
-import { Users, Megaphone, Pin } from 'lucide-react'
+import { Users, Megaphone, Pin, BookOpen, ShieldAlert, CalendarDays, FileText, Phone, MessageSquare, ClipboardList } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import AppLayout from '@/components/AppLayout'
@@ -117,6 +117,43 @@ export default function ParentHomePage() {
           </Card>
         ))
       )}
+
+      {/* Quick Access Grid */}
+      <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>{t('common.quickAccess')}</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+        {[
+          { icon: <BookOpen size={22} color="#165DFF" />, label: t('parent.homework'), path: '/parent/homework' },
+          { icon: <ShieldAlert size={22} color="#FF7D00" />, label: t('parent.behavior'), path: '/parent/behavior' },
+          { icon: <CalendarDays size={22} color="#00B42A" />, label: t('parent.meetings'), path: '/parent/meetings' },
+          { icon: <FileText size={22} color="#722ED1" />, label: t('parent.consentForms'), path: '/parent/consent-forms' },
+          { icon: <Phone size={22} color="#0FC6C2" />, label: t('parent.contactDirectory'), path: '/parent/contact-directory' },
+          { icon: <MessageSquare size={22} color="#F53F3F" />, label: t('parent.commHistory'), path: '/parent/comm-history' },
+          { icon: <ClipboardList size={22} color="#165DFF" />, label: t('parent.application'), path: '/parent/apply' },
+        ].map(item => (
+          <div
+            key={item.path}
+            onClick={() => navigate(item.path)}
+            style={{
+              background: 'white',
+              borderRadius: 12,
+              padding: '12px 6px 8px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            }}
+          >
+            {item.icon}
+            <span style={{ fontSize: 10, color: '#1d2129', textAlign: 'center', lineHeight: 1.3 }}>
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </div>
 
       {/* Announcements Section */}
       {latestAnnos.length > 0 && (

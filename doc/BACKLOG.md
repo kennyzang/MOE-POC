@@ -1,7 +1,7 @@
 # MOE SERPS POC — 任务看板 & 进度存档
 
-> **演示日期**：2026-06-10（距今约 12 天）  
-> **最后更新**：2026-05-29（今日更新）  
+> **演示日期**：2026-06-10（距今约 2 天）  
+> **最后更新**：2026-06-08（今日更新）  
 > **项目入口**：`<project-root>`（git 仓库根目录）
 > **启动命令**：`./start.sh`（backend:4000 / pc:3000 / mobile:5173）
 
@@ -22,13 +22,13 @@
 ## 📊 总体进度
 
 ```
-已完成  ████████████████████  100%  (约 55/55 演示分钟)
-剩余    ░░░░░░░░░░░░░░░░░░░░   0%
+已完成  ████████████████████  99%  (约 54/55 演示分钟)
+剩余    ░░░░░░░░░░░░░░░░░░░█   1%  ← PWA Push 人工冒烟测试
 ```
 
 | 优先级 | 任务数 | 说明 |
 |--------|--------|------|
-| 🔴 P0 必须 | 0 | 全部完成 ✅ |
+| 🔴 P0 必须 | 0 | MOB-NAV-01/02/03 全部完成 ✅ 260608 |
 | 🟡 P1 重要 | 2 | Ahmad 验收链路 + SSE 广播接入 |
 | 🟢 P2 完善 | 2 | Leave Application UI + SMTP 联调（需公网） |
 | ✅ 已完成 | 23 | 全部可演示，Command Center 8-KPI 精确 |
@@ -80,9 +80,86 @@ cd pc && npm run dev
 
 ---
 
-## 🔴 P0 — 必须完成
+## 🔴 P0 — 必须完成（260608 新增：移动端导航缺口）
 
-_全部完成 ✅_
+> **背景**：最近几次提交已建好所有移动端页面文件和路由，但 `ParentHomePage`、`StudentHomePage`、`TeacherHomePage` 以及 `RoleTabBar` 均未添加跳转入口，导致以下页面在演示中**完全无法访问**。
+
+---
+
+### [x] MOB-NAV-01：家长端——为 7 个已有页面添加 Home 入口 ✅ 260608
+
+**演示影响**：家长剧本涉及作业查看、行为记录、家长会、知情书、联系目录、沟通历史、申请，全部进不去
+
+**现状**：
+- 页面文件已建：`ParentHomeworkPage` / `ParentBehaviorPage` / `ParentMeetingsPage` / `ParentConsentFormsPage` / `ParentContactDirectoryPage` / `ParentCommHistoryPage` / `ParentApplyPage`
+- 路由已注册（`App.tsx` 第 68-75 行）
+- `ParentHomePage`：只有 grades / attendance 两个按钮，无其他入口
+- `RoleTabBar`：只有 5 个 tab（Home / Grades / Attendance / Announcements / Messages）
+
+**方案**：在 `ParentHomePage` 底部添加"快捷功能"图标宫格（2 列 × N 行），覆盖这 7 个页面
+
+**关键文件**：
+- `mobile/src/pages/parent/ParentHomePage.tsx` — 添加功能入口宫格
+- `mobile/src/locales/zh.ts` / `en.ts` / `ms.ts` — 确认 i18n key 存在
+
+**状态**：`已完成` ✅（ParentHomePage 底部添加 7 格快捷宫格）
+
+---
+
+### [x] MOB-NAV-02：学生端——为 Behavior / Report Card 添加入口 ✅ 260608
+
+**演示影响**：学生剧本需展示行为记录和成绩单，当前 StudentHomePage 无跳转
+
+**现状**：
+- 页面已建：`StudentBehaviorPage`（`/student/behavior`）、`StudentReportCardPage`（`/student/report-card`）
+- `StudentHomePage` 无快捷入口，TabBar 也无这两个 tab
+
+**方案**：在 `StudentHomePage` 的快捷功能区添加 Behavior 和 Report Card 入口卡片
+
+**关键文件**：
+- `mobile/src/pages/student/StudentHomePage.tsx` — 添加入口
+
+**状态**：`已完成` ✅（StudentHomePage 添加 2 格横排快捷卡片）
+
+---
+
+### [x] MOB-NAV-03：教师端——为 Attendance History 添加入口 ✅ 260608
+
+**演示影响**：教师考勤历史已建好，但 TeacherAttendancePage 和 TeacherHomePage 均无"查看历史"链接
+
+**现状**：
+- 页面已建：`TeacherAttendanceHistoryPage`（`/teacher/attendance/history`）
+- `TeacherAttendancePage`：有 `Session History` 字样（第 458 行），但无 `navigate` 调用
+
+**方案**：在 `TeacherAttendancePage` 顶部或底部添加"查看历史记录"按钮，跳转 `/teacher/attendance/history`
+
+**关键文件**：
+- `mobile/src/pages/teacher/TeacherAttendancePage.tsx` — 添加历史入口按钮
+
+**状态**：`已完成` ✅（TeacherAttendancePage 添加"查看完整考勤历史"链接 + History 图标）
+
+---
+
+### [ ] MOB-PWA-04：PWA Push 端到端冒烟测试
+
+**演示影响**：剧本第 8 段（5 分钟）演示 PWA 离线 + 推送，如未验证则无法 demo
+
+**现状**：
+- 基础设施已齐全：`vite-plugin-pwa` + Workbox + VAPID 自动生成 + `pushService` + `PushNotificationBanner`
+- BACKLOG 原标注"未完成，fallback"—— 需确认是否真实可用
+
+**需验证**：
+1. Chrome/Safari 点"启用通知"→ 确认权限弹窗出现
+2. 触发出勤打卡 → 确认家长收到 Web Push
+3. 断网后访问已缓存页面 → 确认 OfflineBanner 显示
+4. 验证通过后更新本条标注
+
+**关键文件**：
+- `mobile/src/hooks/usePushNotification.ts`
+- `backend/src/services/pushService.ts`
+- `backend/src/routes/push.ts`
+
+**状态**：`待验证`
 
 ---
 
@@ -293,34 +370,44 @@ _全部完成 ✅_
 | SPEC-P2 | Demo Reset 修复 | tsx seed re-run + school.deleteMany() 补全，测试通过 | 260529 |
 | SPEC-P3 | SSE Live 指示器 | /api/v1/events/stream + ● Live 绿色指示器 | 260529 |
 | VERIFY-09 | AI Chat 验收 | Claude SSE 流式回复人工验收通过 | 260529 |
+| MOB-EXT | Mobile 页面扩展 | 新增家长7页（作业/行为/会议/知情书/联系目录/沟通历史/申请）+ 学生2页（行为/成绩单）+ 教师考勤历史 | 260607 |
+| MOB-NAV-01 | 家长导航宫格 | ParentHomePage 添加 7 格快捷图标宫格，覆盖全部扩展页面 | 260608 |
+| MOB-NAV-02 | 学生导航入口 | StudentHomePage 添加 Behavior / Report Card 横排快捷卡片 | 260608 |
+| MOB-NAV-03 | 教师考勤历史入口 | TeacherAttendancePage 添加"查看完整考勤历史"链接 | 260608 |
 
 ---
 
 ## 📋 演示前 Checklist（人工必做）
 
-演示日（6/10）前 2 天完成以下操作：
+演示日（6/10）前完成以下操作：
 
-- [ ] 配置真实 SMTP（需公网环境，admin → Settings → SMTP Configuration）并发送测试邮件
-- [x] ~~配置 Claude API Key~~ — 已验收通过 ✅
+**6/8 今天（AI 负责）：**
+- [ ] MOB-NAV-01：家长 Home 页添加 7 个快捷入口
+- [ ] MOB-NAV-02：学生 Home 页添加 Behavior / Report Card 入口
+- [ ] MOB-NAV-03：教师考勤页添加"查看历史"按钮
+
+**6/9 明天（人工 + AI）：**
+- [ ] MOB-PWA-04：Chrome 实际点击启用 Push 通知，确认可收到推送
+- [ ] 移动端三角色（teacher/student/parent）走一遍所有页面，确认无死链
 - [ ] 重置数据库（`cd backend && npx prisma db push --force-reset && npx tsx prisma/seed.ts`）确保种子数据干净
-- [ ] 运行 `npx tsc --noEmit`（pc 和 mobile 目录），确认 0 TypeScript 错误
+- [ ] 运行 `cd mobile && npm run build` 确认 0 TypeScript 错误
+- [ ] 完整 55 分钟演示预演，计时
+
+**6/10 演示日：**
+- [x] ~~配置 Claude API Key~~ — 已验收通过 ✅
+- [ ] 配置真实 SMTP（需公网环境，admin → Settings → SMTP Configuration）并发送测试邮件
 - [ ] 按 `doc/acceptance-checklist-manual.md` 走完完整人工验收
-- [ ] 按演示剧本（DEMO-05 完成后）完整预演一次，计时 ≤ 55 分钟
 
 ---
 
-## 📐 Sprint 规划建议
+## 📐 Sprint 规划建议（260608 更新：最终冲刺）
 
-| 日期 | 目标 | 预计完成的任务 |
-|------|------|--------------|
-| 5/27（周二）| PWA 开发 | PWA-01 Mobile PWA 离线 + Push |
-| 5/28（周三）| 功能补齐 | SMS-02 School Calendar + EMS-03 Teacher Dashboard |
-| 5/29（周四）| 验证修复 | DEMO-04 HOD 视图验证 + POLISH-06 账号表更新 |
-| 5/30（周五）| 脚本准备 | DEMO-05 演示剧本 + 第一次全链路预演 |
-| 6/1-6/5 | 修复润色 | Bug 修复 + POLISH-07 错误页 + 数据精调 |
-| 6/7（周日）| 封存演练 | 完整 55 分钟演示预演，计时 |
-| 6/8-6/9 | Hotfix only | 仅修 Critical Bug，不加新功能 |
-| **6/10** | **演示日** | 🎯 |
+| 日期 | 目标 | 任务 |
+|------|------|------|
+| ~~5/27-6/7~~ | ~~已完成~~ | ~~见已完成模块总览~~ |
+| **6/8（今天）** | **移动端导航修复** | MOB-NAV-01 家长7入口 + MOB-NAV-02 学生2入口 + MOB-NAV-03 教师历史入口 |
+| **6/9（明天）** | **PWA验证 + 预演** | MOB-PWA-04 Push 冒烟测试 + 完整 55 分钟演示预演 |
+| **6/10** | **演示日** | 🎯 Hotfix only |
 
 ---
 

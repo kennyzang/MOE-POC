@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next'
 import {
   SpinLoading, Tag, Button, Popup, Selector, Toast, List,
 } from 'antd-mobile'
-import { ChevronLeft, Plus, Users, Clock, CheckCircle2, LogIn, LogOut, ListChecks } from 'lucide-react'
+import { ChevronLeft, Plus, Users, Clock, CheckCircle2, LogIn, LogOut, ListChecks, History } from 'lucide-react'
 import dayjs from 'dayjs'
+import { useNavigate } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout'
 import api from '@/lib/api'
 import type { ApiResponse, AttendanceSession, Course } from '@/types'
@@ -728,6 +729,7 @@ function AttendanceMarkerPopup({
 
 export default function TeacherAttendancePage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabKey>('my-records')
   const [showMarker, setShowMarker] = useState(false)
 
@@ -745,6 +747,19 @@ export default function TeacherAttendancePage() {
 
         {/* ── Check In/Out Hero ── */}
         <CheckInHero />
+
+        {/* ── Full History Link ── */}
+        <div
+          onClick={() => navigate('/teacher/attendance/history')}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '8px 0', cursor: 'pointer',
+            fontSize: 13, color: '#165DFF', fontWeight: 500,
+          }}
+        >
+          <History size={15} />
+          <span>{t('teacher.viewAttendanceHistory', 'View Full Attendance History')}</span>
+        </div>
 
         {/* ── Tab Switcher ── */}
         <div style={{

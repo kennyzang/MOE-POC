@@ -246,6 +246,7 @@ const ms = {
     noAssignments: 'Tiada tugasan lagi',
     assignmentTitle: 'Tajuk',
     newAssignment: 'Tugasan Baharu',
+    viewAttendanceHistory: 'Lihat Sejarah Kehadiran Penuh',
   },
   attendance: {
     present: 'Hadir',

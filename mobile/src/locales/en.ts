@@ -246,6 +246,7 @@ const en = {
     noAssignments: 'No assignments yet',
     assignmentTitle: 'Title',
     newAssignment: 'New Assignment',
+    viewAttendanceHistory: 'View Full Attendance History',
   },
   attendance: {
     present: 'Present',

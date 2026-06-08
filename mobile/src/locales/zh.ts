@@ -246,6 +246,7 @@ const zh = {
     noAssignments: '暂无作业',
     assignmentTitle: '标题',
     newAssignment: '新建作业',
+    viewAttendanceHistory: '查看完整考勤历史',
   },
   attendance: {
     present: '出席',

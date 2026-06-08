@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SpinLoading, List, Tag } from 'antd-mobile'
-import { BookOpen, CalendarCheck, Award, Megaphone, Pin } from 'lucide-react'
+import { BookOpen, CalendarCheck, Award, Megaphone, Pin, ShieldAlert, FileText } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout'
@@ -73,6 +73,36 @@ export default function StudentHomePage() {
                 {(data?.gpa ?? 0).toFixed(2)}
               </div>
               <div className="stat-label">{t('student.gpa')}</div>
+            </div>
+          </div>
+
+          {/* Quick Access */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+            <div
+              onClick={() => navigate('/student/behavior')}
+              style={{
+                background: 'white', borderRadius: 12, padding: '12px 14px',
+                display: 'flex', alignItems: 'center', gap: 10,
+                cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+              }}
+            >
+              <ShieldAlert size={20} color="#FF7D00" />
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>
+                {t('student.behavior')}
+              </span>
+            </div>
+            <div
+              onClick={() => navigate('/student/report-card')}
+              style={{
+                background: 'white', borderRadius: 12, padding: '12px 14px',
+                display: 'flex', alignItems: 'center', gap: 10,
+                cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+              }}
+            >
+              <FileText size={20} color="#722ED1" />
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>
+                {t('student.reportCard')}
+              </span>
             </div>
           </div>
 
