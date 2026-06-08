@@ -121,28 +121,8 @@ export default function LoginPage() {
       display: 'flex',
       flexDirection: 'column',
     }}>
-      {/* Language switcher */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px 20px', gap: 8 }}>
-        {langs.map(l => (
-          <button
-            key={l.code}
-            onClick={() => { setLanguage(l.code); void i18n.changeLanguage(l.code) }}
-            style={{
-              padding: '4px 14px',
-              borderRadius: 20,
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: language === l.code ? 700 : 400,
-              background: language === l.code ? 'white' : 'rgba(255,255,255,0.3)',
-              color: language === l.code ? '#165DFF' : 'white',
-              transition: 'all 0.2s',
-            }}
-          >
-            {l.label}
-          </button>
-        ))}
-      </div>
+      {/* Spacer — language switcher moved into form card */}
+      <div style={{ height: 20 }} />
 
       {/* Header */}
       <div style={{ textAlign: 'center', padding: '12px 20px 24px', color: 'white' }}>
@@ -166,6 +146,34 @@ export default function LoginPage() {
         borderRadius: '24px 24px 0 0',
         padding: '20px 20px 24px',
       }}>
+        {/* Language switcher — UNISSA style inside card */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 4,
+          marginBottom: 16,
+        }}>
+          {langs.map(l => (
+            <button
+              key={l.code}
+              onClick={() => { setLanguage(l.code); void i18n.changeLanguage(l.code) }}
+              style={{
+                padding: '4px 12px',
+                borderRadius: 6,
+                border: language === l.code ? '1.5px solid #165DFF' : '1.5px solid transparent',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: language === l.code ? 700 : 400,
+                background: 'transparent',
+                color: language === l.code ? '#165DFF' : '#86909c',
+                transition: 'all 0.15s',
+              }}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+
         <Form
           form={form}
           onFinish={values => void onFinish(values as { username: string; password: string })}

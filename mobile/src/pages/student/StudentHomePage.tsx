@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { SpinLoading, List, Tag } from 'antd-mobile'
+import { SpinLoading, List, Tag, Tabs } from 'antd-mobile'
 import { BookOpen, CalendarCheck, Award, Megaphone, Pin, ShieldAlert, FileText } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
@@ -20,6 +21,7 @@ export default function StudentHomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
+  const [assessTab, setAssessTab] = useState('all')
 
   const { data, isLoading } = useQuery({
     queryKey: ['student-dashboard'],
@@ -108,35 +110,59 @@ export default function StudentHomePage() {
 
           <div className="section-title">{t('student.upcomingAssessments')}</div>
 
-          {!data?.upcomingItems?.length ? (
-            <div style={{
-              textAlign: 'center', color: '#86909c', padding: 20,
-              background: 'white', borderRadius: 12,
-            }}>
-              {t('student.noUpcoming')}
-            </div>
-          ) : (
-            <List style={{ borderRadius: 12, overflow: 'hidden' }}>
-              {data.upcomingItems.map(item => (
-                <List.Item
-                  key={item.id}
-                  prefix={
-                    <Tag color={typeColor[item.type] ?? 'default'} style={{ fontSize: 11 }}>
-                      {item.type}
-                    </Tag>
-                  }
-                  description={item.course?.name ?? ''}
-                  extra={
-                    <span style={{ fontSize: 12, color: '#86909c' }}>
-                      {item.dueDate ? dayjs(item.dueDate).format('DD/MM') : ''}
-                    </span>
-                  }
-                >
-                  {item.name}
-                </List.Item>
-              ))}
-            </List>
-          )}
+          {/* Assessment type tabs */}
+          <Tabs
+            activeKey={assessTab}
+            onChange={setAssessTab}
+            style={{ '--active-line-color': '#165DFF', '--active-title-color': '#165DFF', marginBottom: 8 } as React.CSSProperties}
+          >
+            {[
+              { key: 'all',        title: t('student.allTypes') },
+              { key: 'exam',       title: t('student.examType') },
+              { key: 'quiz',       title: t('student.quizType') },
+              { key: 'assignment', title: t('student.assignmentType') },
+            ].map(tab => (
+              <Tabs.Tab key={tab.key} title={tab.title} />
+            ))}
+          </Tabs>
+
+          {(() => {
+            const items = (data?.upcomingItems ?? []).filter(
+              item => assessTab === 'all' || item.type === assessTab
+            )
+            if (!items.length) {
+              return (
+                <div style={{
+                  textAlign: 'center', color: '#86909c', padding: 20,
+                  background: 'white', borderRadius: 12,
+                }}>
+                  {t('student.noUpcoming')}
+                </div>
+              )
+            }
+            return (
+              <List style={{ borderRadius: 12, overflow: 'hidden' }}>
+                {items.map(item => (
+                  <List.Item
+                    key={item.id}
+                    prefix={
+                      <Tag color={typeColor[item.type] ?? 'default'} style={{ fontSize: 11 }}>
+                        {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
+                      </Tag>
+                    }
+                    description={item.course?.name ?? ''}
+                    extra={
+                      <span style={{ fontSize: 12, color: '#86909c' }}>
+                        {item.dueDate ? dayjs(item.dueDate).format('DD/MM') : ''}
+                      </span>
+                    }
+                  >
+                    {item.name}
+                  </List.Item>
+                ))}
+              </List>
+            )
+          })()}
 
           {/* Announcements Section */}
           {latestAnnos.length > 0 && (
