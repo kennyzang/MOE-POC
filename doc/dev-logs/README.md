@@ -58,3 +58,4 @@
 | 2026-06-07 18:00 | [260607-1800.md](260607-1800.md) | 移动端Phase3完成：Student Behavior(加分/扣分筛选Tab)、Student Report Card(学期选择+GPA卡片)、Teacher Attendance History(月份导航+统计)，i18n +20键 | ~35k |
 | 2026-06-07 18:20 | [260607-1820.md](260607-1820.md) | 成绩单跨角色数据一致性验证；修复StudentReportCardPage 403 bug(改用transcript endpoint)；添加打印预览窗口(transcript+reportcard)；Admissions SIS Enrol CTA；seed修复 | ~45k |
 | 2026-06-07 19:30 | [260607-1930.md](260607-1930.md) | 修复9个Form Teacher问题：教师可见性后端作用域(/students+/courses)、点名持久化、考勤深链接、KPI卡片导航、成绩/作业学生计数、缺席记录验证 | ~80k |
+| 2026-06-08 15:00 | [260608-1500.md](260608-1500.md) | 移动端导航缺口修复（MOB-NAV-01/02/03）：家长7格宫格+学生2格横排+教师历史链接，BACKLOG.md P0清零，进度99% | ~35k |
