@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   Card, Row, Col, Typography, Space, Button, Tag, Progress, Tabs, Table,
   Form, Input, Select, DatePicker, TimePicker, Modal, Descriptions, Badge,
-  message, Spin, Empty, Popconfirm,
+  message, Spin, Empty, Popconfirm, Upload, Segmented,
 } from 'antd'
+import type { UploadFile } from 'antd'
 import {
   ArrowLeft, Award, BookOpen, Calendar, Clock, ExternalLink, FileText,
   Link2, Loader2, MapPin, Plus, Trash2, User, Users, Video, UserCheck,
+  Paperclip, Send,
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -110,6 +112,8 @@ const CpdWorkshopDetailPage = () => {
   const [editSessionId, setEditSessionId] = useState<string | null>(null)
   const [addSessionOpen, setAddSessionOpen] = useState(false)
   const [addResourceOpen, setAddResourceOpen] = useState(false)
+  const [resourceMode, setResourceMode] = useState<'url' | 'file'>('url')
+  const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([])
 
   const canManage = ['admin', 'manager', 'hod'].includes(user?.role ?? '')
   const canSeeEnrollees = ['admin', 'manager', 'hod', 'principal'].includes(user?.role ?? '')
@@ -201,8 +205,33 @@ const CpdWorkshopDetailPage = () => {
     },
   })
 
+  const publishMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.patch(`/ems/cpd-workshops/${workshopId}`, { status: 'open' })
+      return data
+    },
+    onSuccess: () => {
+      message.success('Workshop published — teachers can now see and enroll.')
+      queryClient.invalidateQueries({ queryKey: ['cpd-workshop', workshopId] })
+      queryClient.invalidateQueries({ queryKey: ['cpd-workshops'] })
+    },
+    onError: (err: any) => message.error(err?.response?.data?.message ?? 'Publish failed.'),
+  })
+
   const addResourceMutation = useMutation({
     mutationFn: async (values: Record<string, any>) => {
+      if (resourceMode === 'file') {
+        const file = uploadFileList[0]?.originFileObj
+        if (!file) throw new Error('No file selected')
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('title', values.title || file.name)
+        formData.append('type', values.type ?? 'document')
+        const { data } = await api.post(`/ems/cpd-workshops/${workshopId}/resources/upload`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        return data
+      }
       const { data } = await api.post(`/ems/cpd-workshops/${workshopId}/resources`, values)
       return data
     },
@@ -210,6 +239,8 @@ const CpdWorkshopDetailPage = () => {
       message.success('Resource added.')
       setAddResourceOpen(false)
       resourceForm.resetFields()
+      setUploadFileList([])
+      setResourceMode('url')
       queryClient.invalidateQueries({ queryKey: ['cpd-workshop', workshopId] })
     },
     onError: (err: any) => message.error(err?.response?.data?.message ?? 'Failed to add resource.'),
@@ -635,6 +666,22 @@ const CpdWorkshopDetailPage = () => {
             </Space>
           </Col>
 
+          {/* Admin publish action for draft workshops */}
+          {canManage && workshop.status === 'draft' && (
+            <Col xs={24} md={8} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
+              <Popconfirm
+                title="Publish this workshop?"
+                description="Teachers will be able to see and enroll in it."
+                onConfirm={() => publishMutation.mutate()}
+                okText="Publish"
+              >
+                <Button type="primary" icon={<Send size={14} />} loading={publishMutation.isPending}>
+                  Publish Workshop
+                </Button>
+              </Popconfirm>
+            </Col>
+          )}
+
           {/* Enrol/Withdraw action */}
           {isTeacher && (
             <Col xs={24} md={8} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
@@ -720,7 +767,7 @@ const CpdWorkshopDetailPage = () => {
       <Modal
         open={addResourceOpen}
         title={<Space><FileText size={16} /><span>Add Resource</span></Space>}
-        onCancel={() => { setAddResourceOpen(false); resourceForm.resetFields() }}
+        onCancel={() => { setAddResourceOpen(false); resourceForm.resetFields(); setUploadFileList([]); setResourceMode('url') }}
         footer={null}
         destroyOnHidden
       >
@@ -730,17 +777,40 @@ const CpdWorkshopDetailPage = () => {
           onFinish={values => addResourceMutation.mutate(values)}
           initialValues={{ type: 'document' }}
         >
-          <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Required' }]}>
+          <Form.Item name="title" label="Title">
             <Input placeholder="e.g. Workshop Slides — Day 1" />
           </Form.Item>
           <Form.Item name="type" label="Type">
             <Select options={RESOURCE_TYPE_OPTIONS} />
           </Form.Item>
-          <Form.Item name="url" label="URL" rules={[{ required: true, message: 'Required' }, { type: 'url', message: 'Must be a valid URL' }]}>
-            <Input placeholder="https://..." />
+          <Form.Item label="Source">
+            <Segmented
+              value={resourceMode}
+              onChange={v => setResourceMode(v as 'url' | 'file')}
+              options={[
+                { label: <Space size={4}><Link2 size={13} />Link URL</Space>, value: 'url' },
+                { label: <Space size={4}><Paperclip size={13} />Upload File</Space>, value: 'file' },
+              ]}
+              style={{ marginBottom: 8 }}
+            />
+            {resourceMode === 'url' ? (
+              <Form.Item name="url" noStyle rules={[{ required: true, message: 'Required' }, { type: 'url', message: 'Must be a valid URL' }]}>
+                <Input placeholder="https://..." />
+              </Form.Item>
+            ) : (
+              <Upload
+                fileList={uploadFileList}
+                beforeUpload={() => false}
+                onChange={({ fileList }) => setUploadFileList(fileList.slice(-1))}
+                maxCount={1}
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.png,.jpg"
+              >
+                <Button icon={<Paperclip size={14} />}>Select File</Button>
+              </Upload>
+            )}
           </Form.Item>
           <Space style={{ justifyContent: 'flex-end', width: '100%' }}>
-            <Button onClick={() => { setAddResourceOpen(false); resourceForm.resetFields() }}>Cancel</Button>
+            <Button onClick={() => { setAddResourceOpen(false); resourceForm.resetFields(); setUploadFileList([]); setResourceMode('url') }}>Cancel</Button>
             <Button type="primary" htmlType="submit" loading={addResourceMutation.isPending}>
               Add Resource
             </Button>

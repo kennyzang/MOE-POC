@@ -1,4 +1,7 @@
 import { Router, Response } from 'express'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
 import prisma from '../lib/prisma'
 import { authenticate, type AuthRequest } from '../middleware/auth'
 import { send, sendMany } from '../services/notificationService'
@@ -9,6 +12,19 @@ import { getConfigFloat } from '../lib/config'
 import { calculateWorkingDays } from '../lib/leaveCalendar'
 
 const router = Router()
+
+// ─── Multer (CPD resource file uploads) ────────────────────────
+const cpdUploadDir = path.join(process.cwd(), 'uploads', 'cpd-resources')
+if (!fs.existsSync(cpdUploadDir)) fs.mkdirSync(cpdUploadDir, { recursive: true })
+
+const cpdStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, cpdUploadDir),
+  filename: (_req, file, cb) => {
+    const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
+    cb(null, `${Date.now()}-${safe}`)
+  },
+})
+const cpdUpload = multer({ storage: cpdStorage, limits: { fileSize: 20 * 1024 * 1024 } })
 
 // ─── Helpers ───────────────────────────────────────────────────
 
@@ -798,20 +814,24 @@ router.get('/cpd-workshops', authenticate, async (req: AuthRequest, res: Respons
       currentTeacherId = teacher?.id
     }
 
-    // Build OR: available workshops (subject-filtered, future) OR already-enrolled workshops
-    const availableFilter: any = {
-      status: { in: ['open', 'full'] },
-      startDate: { gte: new Date() },
-      ...(subjectFilter ? { subject: { contains: subjectFilter } } : {}),
+    // Admin/hod/principal see all workshops including draft
+    // Teachers only see open/full future workshops (+ their enrolled ones regardless of date)
+    let workshopWhere: any
+    if (role === 'teacher') {
+      const availableFilter: any = {
+        status: { in: ['open', 'full'] },
+        startDate: { gte: new Date() },
+        ...(subjectFilter ? { subject: { contains: subjectFilter } } : {}),
+      }
+      workshopWhere = currentTeacherId
+        ? { OR: [availableFilter, { enrollments: { some: { teacherId: currentTeacherId, status: 'ENROLLED' } } }] }
+        : availableFilter
+    } else {
+      workshopWhere = {}
     }
-    const enrolledFilter: any = currentTeacherId
-      ? { enrollments: { some: { teacherId: currentTeacherId, status: 'ENROLLED' } } }
-      : null
 
     const workshops = await prisma.cpdWorkshop.findMany({
-      where: enrolledFilter
-        ? { OR: [availableFilter, enrolledFilter] }
-        : availableFilter,
+      where: workshopWhere,
       include: {
         enrollments: { select: { teacherId: true, status: true } },
       },
@@ -1320,7 +1340,7 @@ router.post('/cpd-workshops', authenticate, async (req: AuthRequest, res: Respon
         location: location ?? null,
         maxParticipants: maxParticipants ? Number(maxParticipants) : 30,
         category: category ?? 'General',
-        status: 'open',
+        status: 'draft',
       },
     })
 
@@ -1485,8 +1505,34 @@ router.get('/cpd-workshops/recommendations', authenticate, async (req: AuthReque
   }
 })
 
+// GET /api/v1/ems/cpd-workshops/options — distinct provider/subject/location for dropdown autocomplete
+router.get('/cpd-workshops/options', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+    const [providers, subjects, locations] = await Promise.all([
+      prisma.cpdWorkshop.findMany({ where: { provider: { not: null } }, select: { provider: true }, distinct: ['provider'] }),
+      prisma.cpdWorkshop.findMany({ where: { subject: { not: null } }, select: { subject: true }, distinct: ['subject'] }),
+      prisma.cpdWorkshop.findMany({ where: { location: { not: null } }, select: { location: true }, distinct: ['location'] }),
+    ])
+    res.json({
+      success: true,
+      data: {
+        providers: providers.map(r => r.provider).filter(Boolean) as string[],
+        subjects: subjects.map(r => r.subject).filter(Boolean) as string[],
+        locations: locations.map(r => r.location).filter(Boolean) as string[],
+      },
+    })
+  } catch (error) {
+    console.error('GET /ems/cpd-workshops/options error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
 // GET /api/v1/ems/cpd-workshops/:workshopId — full detail
-// NOTE: must be registered AFTER /recommendations to avoid route shadowing
+// NOTE: must be registered AFTER /recommendations and /options to avoid route shadowing
 router.get('/cpd-workshops/:workshopId', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { role, userId } = req.user!
@@ -1723,6 +1769,46 @@ router.post('/cpd-workshops/:workshopId/resources', authenticate, async (req: Au
     res.status(201).json({ success: true, data: resource })
   } catch (error) {
     console.error('POST /ems/cpd-workshops/:id/resources error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// POST /api/v1/ems/cpd-workshops/:workshopId/resources/upload — file upload
+router.post('/cpd-workshops/:workshopId/resources/upload', authenticate, cpdUpload.single('file'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, userId } = req.user!
+    const { workshopId } = req.params as { workshopId: string }
+
+    const workshop = await prisma.cpdWorkshop.findUnique({ where: { id: workshopId } })
+    if (!workshop) { res.status(404).json({ success: false, message: 'Workshop not found' }); return }
+
+    const isAdmin = ['admin', 'manager', 'hod'].includes(role)
+    let isFacilitator = false
+    if (!isAdmin && workshop.facilitatorId) {
+      const teacher = await prisma.teacher.findUnique({ where: { userId } })
+      isFacilitator = teacher?.id === workshop.facilitatorId
+    }
+    if (!isAdmin && !isFacilitator) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return
+    }
+    if (!req.file) {
+      res.status(400).json({ success: false, message: 'No file uploaded' }); return
+    }
+
+    const { title, type } = req.body as { title?: string; type?: string }
+    const fileUrl = `/uploads/cpd-resources/${req.file.filename}`
+    const resource = await prisma.cpdWorkshopResource.create({
+      data: {
+        workshopId,
+        title: title || req.file.originalname,
+        type: type ?? 'document',
+        url: fileUrl,
+        uploadedById: userId,
+      },
+    })
+    res.status(201).json({ success: true, data: resource })
+  } catch (error) {
+    console.error('POST /ems/cpd-workshops/:id/resources/upload error:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })

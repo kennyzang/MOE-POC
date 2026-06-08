@@ -38,9 +38,9 @@ export function getValidNextStatuses(map: TransitionMap, fromStatus: string): re
 // 'accepted' is kept as an admin-override terminal alongside 'offer_accepted'
 // (the admin PATCH handlers use 'accepted'; the parent portal uses 'offer_accepted').
 export const ADMISSION_TRANSITIONS: TransitionMap = {
-  draft:                ['submitted', 'under_review', 'accepted', 'rejected'],
-  pending:              ['submitted', 'under_review', 'accepted', 'rejected'],
-  submitted:            ['under_review', 'accepted', 'rejected'],
+  draft:                ['submitted', 'under_review', 'documents_required', 'accepted', 'rejected'],
+  pending:              ['submitted', 'under_review', 'documents_required', 'accepted', 'rejected'],
+  submitted:            ['under_review', 'documents_required', 'accepted', 'rejected'],
   under_review:         ['documents_required', 'offer_issued', 'waitlisted', 'accepted', 'rejected'],
   documents_required:   ['under_review', 'rejected'],
   offer_issued:         ['offer_accepted', 'rejected'],

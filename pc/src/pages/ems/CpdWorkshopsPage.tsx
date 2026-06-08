@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Card, Row, Col, Typography, Space, Button, Tag, Progress, Alert,
-  Modal, Form, Input, InputNumber, Select, DatePicker,
-  message, Spin, Badge,
+  Modal, Form, Input, InputNumber, Select, DatePicker, AutoComplete,
+  message, Spin, Badge, Tooltip,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Award, CheckCircle2, Clock, Users, Loader2, Plus, LogOut,
-  PieChart,
+  PieChart, Send,
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import {
@@ -89,6 +89,16 @@ const CpdWorkshopsPage = () => {
   const canCreate = ['admin', 'manager', 'hod'].includes(user?.role ?? '')
   const isTeacher = user?.role === 'teacher'
 
+  const { data: workshopOptions } = useQuery({
+    queryKey: ['cpd-workshop-options'],
+    queryFn: async () => {
+      const { data } = await api.get('/ems/cpd-workshops/options')
+      return data.data as { providers: string[]; subjects: string[]; locations: string[] }
+    },
+    enabled: canCreate,
+    staleTime: 60000,
+  })
+
   const { data: workshops = [], isLoading } = useQuery({
     queryKey: ['cpd-workshops'],
     queryFn: async () => {
@@ -133,6 +143,8 @@ const CpdWorkshopsPage = () => {
       : Math.round((overallTarget / Math.max(numCategories, 1)) * 10) / 10,
   }))
 
+  const draftWorkshops = workshops.filter(w => w.status === 'draft')
+
   // Filtered workshops for display
   const filteredWorkshops = categoryFilter
     ? workshops.filter(w => w.category === categoryFilter)
@@ -152,6 +164,20 @@ const CpdWorkshopsPage = () => {
     },
     onError: (err: any) => {
       message.error(err?.response?.data?.message ?? 'Withdrawal failed.')
+    },
+  })
+
+  const publishMutation = useMutation({
+    mutationFn: async (workshopId: string) => {
+      const { data } = await api.patch(`/ems/cpd-workshops/${workshopId}`, { status: 'open' })
+      return data
+    },
+    onSuccess: () => {
+      message.success('Workshop published — teachers can now see and enroll.')
+      queryClient.invalidateQueries({ queryKey: ['cpd-workshops'] })
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message ?? 'Publish failed.')
     },
   })
 
@@ -228,7 +254,27 @@ const CpdWorkshopsPage = () => {
               </div>
             </Card>
           </Col>
+          <Col xs={12} md={6}>
+            <Card size="small">
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#8c8c8c' }}>
+                  {draftWorkshops.length}
+                </div>
+                <div style={{ color: '#8c8c8c' }}>Drafts (not published)</div>
+              </div>
+            </Card>
+          </Col>
         </Row>
+      )}
+
+      {canCreate && draftWorkshops.length > 0 && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={`${draftWorkshops.length} draft workshop${draftWorkshops.length > 1 ? 's' : ''} not yet visible to teachers`}
+          description="Click Publish on a workshop card to make it available for enrollment."
+        />
       )}
 
       {/* Per-teacher CPD by category (teacher's own enrolled hours) */}
@@ -336,13 +382,35 @@ const CpdWorkshopsPage = () => {
             <Col key={w.id} xs={24} md={12} lg={8}>
               <Card
                 style={{
-                  border: w.alreadyEnrolled ? '2px solid #52c41a' : '1px solid #f0f0f0',
+                  border: w.status === 'draft' ? '1px dashed #d9d9d9'
+                    : w.alreadyEnrolled ? '2px solid #52c41a' : '1px solid #f0f0f0',
                   height: '100%',
                   cursor: 'pointer',
+                  opacity: w.status === 'draft' ? 0.85 : 1,
                 }}
                 onClick={() => navigate(`/ems/cpd-workshops/${w.id}`)}
                 actions={[
-                  w.alreadyEnrolled ? (
+                  w.status === 'draft' && canCreate ? (
+                    <Space key="draft-actions" size={4} onClick={e => e.stopPropagation()}>
+                      <Tooltip title="Make visible to teachers">
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<Send size={14} />}
+                          loading={publishMutation.isPending}
+                          onClick={e => { e.stopPropagation(); publishMutation.mutate(w.id) }}
+                        >
+                          Publish
+                        </Button>
+                      </Tooltip>
+                      <Button
+                        size="small"
+                        onClick={e => { e.stopPropagation(); navigate(`/ems/cpd-workshops/${w.id}`) }}
+                      >
+                        Edit
+                      </Button>
+                    </Space>
+                  ) : w.alreadyEnrolled ? (
                     <Space key="enrolled-actions" size={4} onClick={e => e.stopPropagation()}>
                       <Button type="text" icon={<CheckCircle2 size={16} />} disabled style={{ color: '#52c41a' }}>
                         Enrolled
@@ -373,6 +441,7 @@ const CpdWorkshopsPage = () => {
                   <div>
                     <Text strong style={{ fontSize: 15 }}>{w.title}</Text>
                     {w.subject && <Tag style={{ marginLeft: 8 }}>{w.subject}</Tag>}
+                    {w.status === 'draft' && <Tag color="default" style={{ marginLeft: 4 }}>Draft</Tag>}
                   </div>
                   <Text type="secondary" style={{ fontSize: 13 }}>
                     {w.provider ?? 'MOE Professional Development Centre'}
@@ -446,12 +515,20 @@ const CpdWorkshopsPage = () => {
           <Row gutter={12}>
             <Col span={12}>
               <Form.Item name="provider" label="Provider">
-                <Input placeholder="e.g. MOE PDC" />
+                <AutoComplete
+                  options={(workshopOptions?.providers ?? []).map(v => ({ value: v }))}
+                  placeholder="e.g. MOE PDC"
+                  filterOption={(input, opt) => (opt?.value as string ?? '').toLowerCase().includes(input.toLowerCase())}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="subject" label="Subject Area">
-                <Input placeholder="e.g. Mathematics" />
+                <AutoComplete
+                  options={(workshopOptions?.subjects ?? []).map(v => ({ value: v }))}
+                  placeholder="e.g. Mathematics"
+                  filterOption={(input, opt) => (opt?.value as string ?? '').toLowerCase().includes(input.toLowerCase())}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -503,14 +580,18 @@ const CpdWorkshopsPage = () => {
             </Col>
           </Row>
           <Form.Item name="location" label="Location">
-            <Input placeholder="e.g. PDC Training Room A" />
+            <AutoComplete
+              options={(workshopOptions?.locations ?? []).map(v => ({ value: v }))}
+              placeholder="e.g. PDC Training Room A"
+              filterOption={(input, opt) => (opt?.value as string ?? '').toLowerCase().includes(input.toLowerCase())}
+            />
           </Form.Item>
           <Form.Item name="imageUrl" label="Cover Image URL">
             <Input placeholder="https://... (optional)" />
           </Form.Item>
           <Space style={{ justifyContent: 'flex-end', width: '100%' }}>
             <Button onClick={() => { setCreateModalOpen(false); createForm.resetFields() }}>Cancel</Button>
-            <Button type="primary" htmlType="submit" loading={createMutation.isPending}>Create Workshop</Button>
+            <Button type="primary" htmlType="submit" loading={createMutation.isPending}>Create as Draft</Button>
           </Space>
         </Form>
       </Modal>

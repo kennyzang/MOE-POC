@@ -53,10 +53,8 @@ const CertificationsPage = lazy(() => import('@/pages/ems/CertificationsPage'))
 const MyProfilePage = lazy(() => import('@/pages/ems/MyProfilePage'))
 const TeachingWorkloadPage = lazy(() => import('@/pages/ems/TeachingWorkloadPage'))
 const PerformanceEvaluationPage = lazy(() => import('@/pages/ems/PerformanceEvaluationPage'))
-const LeaveManagementPage = lazy(() => import('@/pages/ems/LeaveManagementPage'))
+const LeaveHubPage        = lazy(() => import('@/pages/ems/LeaveHubPage'))
 const LeaveBalancePage    = lazy(() => import('@/pages/ems/LeaveBalancePage'))
-const LeaveCalendarPage   = lazy(() => import('@/pages/ems/LeaveCalendarPage'))
-const LeaveReportsPage    = lazy(() => import('@/pages/ems/LeaveReportsPage'))
 const CpdWorkshopsPage      = lazy(() => import('@/pages/ems/CpdWorkshopsPage'))
 const CpdWorkshopDetailPage = lazy(() => import('@/pages/ems/CpdWorkshopDetailPage'))
 const PostingsPage        = lazy(() => import('@/pages/ems/PostingsPage'))
@@ -174,9 +172,6 @@ const ManagementReportsPage = lazy(() => import('@/pages/sms/ManagementReportsPa
 // Module 7: Self-Service Portal
 const SelfServicePortalPage = lazy(() => import('@/pages/ems/SelfServicePortalPage'))
 
-// Module 9: Notification Auto-Triggers
-const AutoTriggersPage = lazy(() => import('@/pages/sms/AutoTriggersPage'))
-
 // Module 10: Timetable Conflict Detection
 const TimetableConflictsPage = lazy(() => import('@/pages/sms/TimetableConflictsPage'))
 
@@ -248,10 +243,8 @@ export const router = createBrowserRouter([
       { path: 'ems/my-profile', element: r(['teacher'], <MyProfilePage />) },
       { path: 'ems/workload', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <TeachingWorkloadPage />) },
       { path: 'ems/performance-evaluations', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <PerformanceEvaluationPage />) },
-      { path: 'ems/leave', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <LeaveManagementPage />) },
+      { path: 'ems/leave', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <LeaveHubPage />) },
       { path: 'ems/leave/balance', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <LeaveBalancePage />) },
-      { path: 'ems/leave/calendar', element: r(['admin', 'manager', 'hod', 'principal'], <LeaveCalendarPage />) },
-      { path: 'ems/leave/reports', element: r(['admin', 'manager', 'hod', 'principal'], <LeaveReportsPage />) },
       { path: 'ems/cpd-workshops', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <CpdWorkshopsPage />) },
       { path: 'ems/cpd-workshops/:workshopId', element: r(['admin', 'manager', 'hod', 'principal', 'teacher'], <CpdWorkshopDetailPage />) },
 
@@ -335,8 +328,6 @@ export const router = createBrowserRouter([
       { path: 'parent/comm-history', element: r(['parent'], <ParentCommHistoryPage />) },
       // Module 8: Admin Consent Forms
       { path: 'sms/consent-forms', element: r(['admin', 'manager', 'principal'], <ConsentFormsAdminPage />) },
-      // Module 9: Auto Triggers
-      { path: 'sms/auto-triggers', element: r(['admin', 'manager', 'principal'], <AutoTriggersPage />) },
       // Module 10: Timetable Conflicts
       { path: 'sms/timetable-conflicts', element: r(['admin', 'manager', 'principal', 'hod'], <TimetableConflictsPage />) },
 

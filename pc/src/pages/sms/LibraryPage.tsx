@@ -2,12 +2,12 @@ import { useState, useRef } from 'react'
 import {
   Table, Button, Tag, Modal, Form, Input, Select, Switch, Tabs,
   Space, Popconfirm, message, Typography, Row, Col, InputNumber,
-  DatePicker, Tooltip, Badge,
+  DatePicker, Tooltip, Badge, Upload, Alert, List,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Plus, Edit2, Trash2, RotateCcw, BookMarked } from 'lucide-react'
+import { BookOpen, Plus, Edit2, Trash2, RotateCcw, BookMarked, FileSpreadsheet } from 'lucide-react'
 import dayjs from 'dayjs'
 import api from '../../lib/api'
 import SyncBadge from '../../components/SyncBadge'
@@ -111,6 +111,11 @@ export default function LibraryPage() {
   const [editingBook, setEditingBook] = useState<LibraryBook | null>(null)
   const [bookForm] = Form.useForm()
 
+  // Import modal
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; errors: Array<{ row: number; reason: string }> } | null>(null)
+
   // Borrow modal
   const [borrowModalOpen, setBorrowModalOpen] = useState(false)
   const [borrowBook, setBorrowBook] = useState<LibraryBook | null>(null)
@@ -170,6 +175,23 @@ export default function LibraryPage() {
   const { data: holdStudents = [] } = useStudentSearch(holdSearch)
 
   // ── Mutations ──────────────────────────────────────────────────────────────
+
+  const importMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData()
+      form.append('file', file)
+      const { data } = await api.post('/library/books/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      return data.data as { imported: number; skipped: number; errors: Array<{ row: number; reason: string }> }
+    },
+    onSuccess: (result) => {
+      setImportResult(result)
+      if (result.imported > 0) {
+        queryClient.invalidateQueries({ queryKey: ['library-books'] })
+        message.success(`Imported ${result.imported} book${result.imported !== 1 ? 's' : ''}`)
+      }
+    },
+    onError: (err: any) => message.error(err?.response?.data?.message ?? 'Import failed'),
+  })
 
   const addBookMutation = useMutation({
     mutationFn: (values: Record<string, unknown>) => api.post('/library/books', values),
@@ -523,9 +545,14 @@ export default function LibraryPage() {
           <SyncBadge source="KOHA" relativeTime="5 min ago" />
         </div>
         {isAdmin && (
-          <Button type="primary" icon={<Plus size={14} />} onClick={openAddBook}>
-            {t('library.addBook')}
-          </Button>
+          <Space size={8}>
+            <Button icon={<FileSpreadsheet size={14} />} onClick={() => { setImportResult(null); setImportFile(null); setImportModalOpen(true) }}>
+              Import Books
+            </Button>
+            <Button type="primary" icon={<Plus size={14} />} onClick={openAddBook}>
+              {t('library.addBook')}
+            </Button>
+          </Space>
         )}
       </div>
 
@@ -747,6 +774,80 @@ export default function LibraryPage() {
             </Select>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* ── Import Books Modal ── */}
+      <Modal
+        title={<Space><FileSpreadsheet size={18} /><span>Import Books from Excel</span></Space>}
+        open={importModalOpen}
+        onCancel={() => { setImportModalOpen(false); setImportFile(null); setImportResult(null) }}
+        footer={[
+          <Button key="close" onClick={() => { setImportModalOpen(false); setImportFile(null); setImportResult(null) }}>Close</Button>,
+          !importResult && (
+            <Button
+              key="import"
+              type="primary"
+              icon={<FileSpreadsheet size={14} />}
+              disabled={!importFile}
+              loading={importMutation.isPending}
+              onClick={() => importFile && importMutation.mutate(importFile)}
+            >
+              Import
+            </Button>
+          ),
+        ].filter(Boolean)}
+        destroyOnHidden
+        width={560}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size={16}>
+          <Alert
+            type="info"
+            showIcon
+            message="Excel Template Columns"
+            description={
+              <div style={{ fontSize: 12 }}>
+                <div>Required: <strong>title</strong>, <strong>author</strong></div>
+                <div>Optional: <strong>isbn</strong>, <strong>category</strong> (default: General), <strong>totalCopies</strong> (default: 1), <strong>kohaId</strong></div>
+                <div style={{ marginTop: 4 }}>Valid categories: Fiction, Non-Fiction, Reference, Textbook, Science, History, Mathematics, Language, Arts, General</div>
+              </div>
+            }
+          />
+          {!importResult ? (
+            <Upload.Dragger
+              accept=".xlsx,.xls"
+              beforeUpload={file => { setImportFile(file); return false }}
+              fileList={importFile ? [{ uid: '1', name: importFile.name, status: 'done' } as any] : []}
+              onRemove={() => setImportFile(null)}
+              maxCount={1}
+            >
+              <p className="ant-upload-drag-icon"><FileSpreadsheet size={32} /></p>
+              <p className="ant-upload-text">Click or drag an Excel file here</p>
+              <p className="ant-upload-hint">.xlsx or .xls, max 10 MB</p>
+            </Upload.Dragger>
+          ) : (
+            <Space direction="vertical" style={{ width: '100%' }} size={12}>
+              <Alert
+                type={importResult.imported > 0 ? 'success' : 'warning'}
+                showIcon
+                message={`${importResult.imported} book${importResult.imported !== 1 ? 's' : ''} imported, ${importResult.skipped} row${importResult.skipped !== 1 ? 's' : ''} skipped`}
+              />
+              {importResult.errors.length > 0 && (
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Skipped rows:</div>
+                  <List
+                    size="small"
+                    dataSource={importResult.errors}
+                    renderItem={e => (
+                      <List.Item style={{ padding: '4px 0', fontSize: 12 }}>
+                        Row {e.row}: {e.reason}
+                      </List.Item>
+                    )}
+                  />
+                </div>
+              )}
+            </Space>
+          )}
+        </Space>
       </Modal>
     </div>
   )
