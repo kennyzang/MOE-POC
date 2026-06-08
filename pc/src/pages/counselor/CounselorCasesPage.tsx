@@ -13,7 +13,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import ResolutionDrawer from '@/components/ResolutionDrawer'
-import type { ResolutionActionItem, ResolutionEvidenceDoc } from '@/components/ResolutionDrawer'
+import type { ResolutionActionItem, ResolutionEvidenceDoc, StaffOption } from '@/components/ResolutionDrawer'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -91,6 +91,20 @@ const CounselorCasesPage = () => {
       if (riskFilter) params.riskBand = riskFilter
       const { data } = await api.get('/counselor/cases', { params })
       return data.data as CaseRow[]
+    },
+  })
+
+  const { data: staffList } = useQuery({
+    queryKey: ['counselor-staff'],
+    queryFn: async () => {
+      const { data } = await api.get<{ success: boolean; data: { id: string; displayName: string; role: string }[] }>(
+        '/counselor/staff',
+      )
+      return data.data.map((u): StaffOption => ({
+        value: u.id,
+        label: u.displayName,
+        role: u.role,
+      }))
     },
   })
 
@@ -504,6 +518,8 @@ const CounselorCasesPage = () => {
         onResolutionNotesChange={setResolutionNotes}
         actionItemLabel="Intervention"
         evidenceLabel="Session Record"
+        assigneeOptions={staffList}
+        evidenceEntityId={resolutionCaseId ?? undefined}
         categoryOptions={['Attendance', 'Behaviour', 'Academic', 'Mental Health', 'Family', 'Peer Relations']}
         onCreateActionItem={(vals) => createActionItemMutation.mutate(vals as Record<string, unknown>)}
         onUpdateActionItemStatus={(itemId, status) => updateActionItemMutation.mutate({ itemId, status })}
