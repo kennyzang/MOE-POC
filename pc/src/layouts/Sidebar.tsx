@@ -201,6 +201,7 @@ const Sidebar = () => {
           { key: '/teacher/form-class', label: 'My Form Class', icon: icon(Users), roles: ['teacher'] },
           { key: '/teacher/assignments', label: 'Assignments', icon: icon(BookOpen), roles: ['teacher'] },
           { key: '/teacher/messages', label: 'Messages', icon: icon(MessageSquare), roles: ['teacher'] },
+          { key: '/counselor/my-interventions', label: 'My Interventions', icon: icon(ClipboardList), roles: ['teacher'] },
         ],
       },
       // Counselor Portal
@@ -212,6 +213,7 @@ const Sidebar = () => {
         children: [
           { key: '/counselor/dashboard', label: t('common.dashboard'), roles: ['counselor'] },
           { key: '/counselor/cases', label: t('nav.counselorCases', { defaultValue: 'Case Management' }), roles: ['counselor'] },
+          { key: '/counselor/my-interventions', label: t('counselor.myInterventions', { defaultValue: 'My Interventions' }), icon: icon(ClipboardList), roles: ['counselor'] },
           { key: '/dashboard/at-risk', label: t('nav.atRisk'), roles: ['counselor'] },
           { key: '/sis/students', label: t('nav.sisStudents'), roles: ['counselor'] },
           { key: '/sis/behavior', label: 'Behavior Records', icon: icon(ShieldAlert), roles: ['counselor'] },

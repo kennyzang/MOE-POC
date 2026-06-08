@@ -713,20 +713,22 @@ model CounselorCase {
 }
 
 model CounselorCaseActionItem {
-  id              String    @id @default(uuid())
-  caseId          String
-  category        String?                      // e.g. Attendance, Behaviour, Academic
-  title           String
-  description     String?
-  assignedTo      String?                      // person/party responsible
-  dueDate         DateTime?
-  status          String    @default("OPEN")   // OPEN | IN_PROGRESS | DONE
-  createdByUserId String
-  closedAt        DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  caseId           String
+  category         String?                      // e.g. Attendance, Behaviour, Academic
+  title            String
+  description      String?
+  assignedTo       String?                      // display name (free text, kept for legacy)
+  assignedToUserId String?                      // User.id — used for in-app notifications
+  dueDate          DateTime?
+  status           String    @default("OPEN")   // OPEN | IN_PROGRESS | DONE
+  resultNotes      String?                      // filled by assignee when completing
+  createdByUserId  String
+  closedAt         DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  case            CounselorCase @relation(fields: [caseId], references: [id])
+  case             CounselorCase @relation(fields: [caseId], references: [id])
 }
 
 model CounselorCaseEvidence {

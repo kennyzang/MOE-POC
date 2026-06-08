@@ -3,6 +3,7 @@ import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 import { USER_SELECT_NAME, USER_SELECT_CONTACT } from '../lib/querySelects'
 import { validateTransition, COUNSELOR_CASE_TRANSITIONS } from '../lib/transitions'
+import { send } from '../services/notificationService'
 
 const router = Router()
 
@@ -286,24 +287,165 @@ router.patch(
   },
 )
 
+// GET /counselor/staff — list all assignable staff (non-student, non-parent users)
+router.get(
+  '/staff',
+  authenticate,
+  requireRole('counselor', 'admin', 'principal'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const staff = await prisma.user.findMany({
+        where: {
+          role: { notIn: ['student', 'parent'] },
+          status: 'active',
+        },
+        select: { id: true, displayName: true, role: true, email: true },
+        orderBy: { displayName: 'asc' },
+      })
+      res.json({ success: true, data: staff })
+    } catch (err) {
+      console.error('GET /counselor/staff error:', err)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// GET /counselor/my-interventions — interventions assigned to the current user (any role)
+router.get(
+  '/my-interventions',
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const items = await prisma.counselorCaseActionItem.findMany({
+        where: { assignedToUserId: req.user!.userId },
+        include: {
+          case: {
+            include: {
+              student: { include: { user: { select: { displayName: true } } } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      const data = items.map((item) => ({
+        ...item,
+        studentName: item.case.student.user.displayName,
+        caseStatus: item.case.status,
+      }))
+
+      res.json({ success: true, data })
+    } catch (err) {
+      console.error('GET /counselor/my-interventions error:', err)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// PATCH /counselor/interventions/:itemId — assignee updates their intervention (any role)
+router.patch(
+  '/interventions/:itemId',
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { itemId } = req.params as { itemId: string }
+      const { status, resultNotes } = req.body as { status?: string; resultNotes?: string }
+
+      // Only the assignee (or counselor/admin) may update
+      const existing = await prisma.counselorCaseActionItem.findUnique({
+        where: { id: itemId },
+        include: {
+          case: {
+            include: { student: { include: { user: { select: { displayName: true } } } } },
+          },
+        },
+      })
+      if (!existing) { res.status(404).json({ success: false, message: 'Not found' }); return }
+
+      const { userId, role } = req.user!
+      const isCounselorAdmin = ['counselor', 'admin', 'principal'].includes(role)
+      if (existing.assignedToUserId !== userId && !isCounselorAdmin) {
+        res.status(403).json({ success: false, message: 'Forbidden' }); return
+      }
+
+      const updated = await prisma.counselorCaseActionItem.update({
+        where: { id: itemId },
+        data: {
+          ...(status !== undefined && {
+            status,
+            closedAt: status === 'DONE' ? new Date() : null,
+          }),
+          ...(resultNotes !== undefined && { resultNotes: resultNotes.trim() }),
+        },
+      })
+
+      // When assignee marks DONE, notify the counselor who opened the case
+      if (status === 'DONE' && existing.case.counselorUserId) {
+        const assigneeName = (await prisma.user.findUnique({
+          where: { id: userId },
+          select: { displayName: true },
+        }))?.displayName ?? 'Staff'
+
+        await send({
+          userId: existing.case.counselorUserId,
+          title: 'Intervention Completed',
+          message: `${assigneeName} has completed the intervention "${existing.title}" for student ${existing.case.student.user.displayName}.`,
+          type: 'success',
+          link: '/counselor/cases',
+        }).catch((e) => console.error('[notify counselor on done]', e))
+      }
+
+      res.json({ success: true, data: updated })
+    } catch (err) {
+      console.error('PATCH /counselor/interventions/:itemId error:', err)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
 // ─── Counselor Case Action Items ───────────────────────────────────────────
 
 router.post('/cases/:id/action-items', authenticate, requireRole('counselor', 'admin', 'principal'), async (req: AuthRequest, res: Response) => {
   try {
     const caseId = req.params['id'] as string
-    const { title, description, assignedTo, dueDate, category } = req.body
+    const { title, description, assignedTo, assignedToUserId, dueDate, category } = req.body
     if (!title || !title.trim()) { res.status(400).json({ success: false, message: 'title is required' }); return }
+
     const item = await prisma.counselorCaseActionItem.create({
       data: {
         caseId,
         title: title.trim(),
         description: description?.trim() ?? null,
         assignedTo: assignedTo?.trim() ?? null,
+        assignedToUserId: assignedToUserId ?? null,
         dueDate: dueDate ? new Date(dueDate) : null,
         category: category?.trim() ?? null,
         createdByUserId: req.user!.userId,
       },
     })
+
+    // Notify the assigned user
+    if (assignedToUserId) {
+      const counselorName = (await prisma.user.findUnique({
+        where: { id: req.user!.userId },
+        select: { displayName: true },
+      }))?.displayName ?? 'Counselor'
+
+      const caseInfo = await prisma.counselorCase.findUnique({
+        where: { id: caseId },
+        include: { student: { include: { user: { select: { displayName: true } } } } },
+      })
+      const studentName = caseInfo?.student.user.displayName ?? 'a student'
+
+      await send({
+        userId: assignedToUserId,
+        title: 'New Intervention Assigned',
+        message: `${counselorName} has assigned you an intervention: "${title.trim()}" for student ${studentName}.${dueDate ? ` Due: ${new Date(dueDate).toLocaleDateString()}.` : ''}`,
+        type: 'info',
+        link: '/counselor/my-interventions',
+      }).catch((e) => console.error('[notify assignee]', e))
+    }
+
     res.status(201).json({ success: true, data: item })
   } catch (err) {
     console.error('POST /counselor/cases/:id/action-items error:', err)
@@ -314,7 +456,7 @@ router.post('/cases/:id/action-items', authenticate, requireRole('counselor', 'a
 router.patch('/cases/:id/action-items/:itemId', authenticate, requireRole('counselor', 'admin', 'principal'), async (req: AuthRequest, res: Response) => {
   try {
     const { itemId } = req.params as { itemId: string }
-    const { status, title, description, assignedTo, dueDate, category } = req.body
+    const { status, title, description, assignedTo, assignedToUserId, dueDate, category, resultNotes } = req.body
     const item = await prisma.counselorCaseActionItem.update({
       where: { id: itemId },
       data: {
@@ -322,8 +464,10 @@ router.patch('/cases/:id/action-items/:itemId', authenticate, requireRole('couns
         ...(title !== undefined && { title: title.trim() }),
         ...(description !== undefined && { description: description?.trim() ?? null }),
         ...(assignedTo !== undefined && { assignedTo: assignedTo?.trim() ?? null }),
+        ...(assignedToUserId !== undefined && { assignedToUserId: assignedToUserId ?? null }),
         ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
         ...(category !== undefined && { category: category?.trim() ?? null }),
+        ...(resultNotes !== undefined && { resultNotes: resultNotes?.trim() ?? null }),
       },
     })
     res.json({ success: true, data: item })
@@ -348,13 +492,14 @@ router.delete('/cases/:id/action-items/:itemId', authenticate, requireRole('coun
 router.post('/cases/:id/evidence', authenticate, requireRole('counselor', 'admin', 'principal'), async (req: AuthRequest, res: Response) => {
   try {
     const caseId = req.params['id'] as string
-    const { fileName, fileType, description } = req.body
+    const { fileName, fileType, description, filePath } = req.body
     if (!fileName || !fileName.trim()) { res.status(400).json({ success: false, message: 'fileName is required' }); return }
     const doc = await prisma.counselorCaseEvidence.create({
       data: {
         caseId,
         fileName: fileName.trim(),
-        filePath: `/evidence/cases/${caseId}/${fileName.trim()}`,
+        // Use provided filePath (real upload URL) or compute a legacy placeholder
+        filePath: filePath?.trim() ?? `/evidence/cases/${caseId}/${fileName.trim()}`,
         fileType: fileType?.trim() ?? null,
         description: description?.trim() ?? null,
         uploadedByUserId: req.user!.userId,

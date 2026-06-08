@@ -123,6 +123,7 @@ const ApprovalsInboxPage = lazy(() => import('@/pages/approvals/ApprovalsInboxPa
 // Counselor Portal
 const CounselorDashboardPage = lazy(() => import('@/pages/counselor/CounselorDashboardPage'))
 const CounselorCasesPage = lazy(() => import('@/pages/counselor/CounselorCasesPage'))
+const MyInterventionsPage = lazy(() => import('@/pages/counselor/MyInterventionsPage'))
 
 // HOD Portal
 const HodDashboardPage = lazy(() => import('@/pages/hod/HodDashboardPage'))
@@ -305,6 +306,7 @@ export const router = createBrowserRouter([
       // Counselor Portal
       { path: 'counselor/dashboard', element: r(['counselor', 'admin', 'principal'], <CounselorDashboardPage />) },
       { path: 'counselor/cases', element: r(['counselor', 'admin', 'principal'], <CounselorCasesPage />) },
+      { path: 'counselor/my-interventions', element: r(['counselor', 'admin', 'principal', 'teacher', 'hod', 'manager', 'finance', 'admissions'], <MyInterventionsPage />) },
 
       // HOD Portal
       { path: 'hod/dashboard', element: r(['hod', 'admin', 'principal'], <HodDashboardPage />) },

@@ -9,15 +9,17 @@
 
 import {
   Drawer, Space, Button, Table, Tag, Tooltip, Divider, Input, Form,
-  Row, Col, Select, DatePicker, Card, Alert, Progress,
+  Row, Col, Select, DatePicker, Card, Alert, Progress, Upload, message,
 } from 'antd'
+import type { UploadFile, UploadProps } from 'antd'
 import {
-  CheckCircle2, AlertTriangle, ClipboardList, Upload, FileText,
-  PlusCircle, Trash2, CheckCheck,
+  CheckCircle2, AlertTriangle, ClipboardList, FileText,
+  PlusCircle, Trash2, CheckCheck, UploadCloud, Download,
 } from 'lucide-react'
 import { useState } from 'react'
 import dayjs from 'dayjs'
 import { Typography } from 'antd'
+import api from '@/lib/api'
 
 const { Text } = Typography
 
@@ -28,8 +30,10 @@ export interface ResolutionActionItem {
   title: string
   description: string | null
   assignedTo: string | null
+  assignedToUserId: string | null
   dueDate: string | null
   status: string        // OPEN | IN_PROGRESS | DONE
+  resultNotes: string | null
   closedAt: string | null
   createdAt: string
   category?: string | null
@@ -42,6 +46,12 @@ export interface ResolutionEvidenceDoc {
   fileType: string | null
   description: string | null
   createdAt: string
+}
+
+export interface StaffOption {
+  value: string   // User.id
+  label: string   // displayName
+  role?: string
 }
 
 export interface ResolutionDrawerProps {
@@ -60,18 +70,27 @@ export interface ResolutionDrawerProps {
   // ── Action items ───────────────────────────────────────────────────────────
   actionItems: ResolutionActionItem[]
   onCreateActionItem: (vals: {
-    title: string; description?: string; assignedTo?: string
+    title: string; description?: string; assignedTo?: string; assignedToUserId?: string
     dueDate?: string; category?: string
   }) => void
   onUpdateActionItemStatus: (itemId: string, status: string) => void
   onDeleteActionItem: (itemId: string) => void
   creatingActionItem?: boolean
 
+  /** When provided, "Assigned to" becomes a searchable staff picker */
+  assigneeOptions?: StaffOption[]
+
   // ── Evidence docs ──────────────────────────────────────────────────────────
   evidenceDocs: ResolutionEvidenceDoc[]
-  onCreateEvidence: (vals: { fileName: string; fileType?: string; description?: string }) => void
+  onCreateEvidence: (vals: { fileName: string; fileType?: string; description?: string; filePath?: string }) => void
   onDeleteEvidence: (docId: string) => void
   creatingEvidence?: boolean
+
+  /**
+   * When provided, the evidence form includes a real file upload.
+   * Should be the case/entity ID (used as entityId in /files/upload).
+   */
+  evidenceEntityId?: string
 
   // ── Resolution ─────────────────────────────────────────────────────────────
   resolutionNotes: string
@@ -99,6 +118,10 @@ const ACTION_STATUS_COLOR: Record<string, string> = {
   OPEN: 'default', IN_PROGRESS: 'processing', DONE: 'success',
 }
 
+function isRealFilePath(p: string): boolean {
+  return p.startsWith('/api/') || p.startsWith('http')
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const ResolutionDrawer = ({
@@ -106,7 +129,9 @@ const ResolutionDrawer = ({
   summaryContent,
   isResolved, resolvedAt, resolvedNotes,
   actionItems, onCreateActionItem, onUpdateActionItemStatus, onDeleteActionItem, creatingActionItem,
+  assigneeOptions,
   evidenceDocs, onCreateEvidence, onDeleteEvidence, creatingEvidence,
+  evidenceEntityId,
   resolutionNotes, onResolutionNotesChange, onResolve, resolving,
   minNotesLength = 20,
   requireEvidence = true,
@@ -119,6 +144,12 @@ const ResolutionDrawer = ({
   const [showAddEvidence, setShowAddEvidence] = useState(false)
   const [actionItemForm] = Form.useForm()
   const [evidenceForm] = Form.useForm()
+
+  // File upload state for evidence
+  const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([])
+  const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null)
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   // Gate checks
   const gateNotesOk = resolutionNotes.trim().length >= minNotesLength
@@ -142,7 +173,53 @@ const ResolutionDrawer = ({
     setShowAddEvidence(false)
     actionItemForm.resetFields()
     evidenceForm.resetFields()
+    setUploadFileList([])
+    setUploadedFilePath(null)
+    setUploadedFileName(null)
     onClose()
+  }
+
+  const handleUploadFile = async () => {
+    if (!uploadFileList.length || !evidenceEntityId) return
+    const formData = new FormData()
+    formData.append('file', uploadFileList[0] as unknown as File)
+    formData.append('entityType', 'case_evidence')
+    formData.append('entityId', evidenceEntityId)
+    setUploading(true)
+    try {
+      const { data } = await api.post<{ success: boolean; data: { originalName: string; downloadUrl: string } }>(
+        '/files/upload',
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      )
+      setUploadedFilePath(data.data.downloadUrl)
+      setUploadedFileName(data.data.originalName)
+      evidenceForm.setFieldValue('fileName', data.data.originalName)
+      message.success(`${data.data.originalName} uploaded`)
+    } catch {
+      message.error('Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const uploadProps: UploadProps = {
+    fileList: uploadFileList,
+    accept: '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.txt',
+    maxCount: 1,
+    beforeUpload: (file) => {
+      if (file.size / 1024 / 1024 > 10) { message.error('File must be < 10 MB'); return Upload.LIST_IGNORE }
+      setUploadFileList([file])
+      setUploadedFilePath(null)
+      setUploadedFileName(null)
+      return false
+    },
+    onRemove: () => {
+      setUploadFileList([])
+      setUploadedFilePath(null)
+      setUploadedFileName(null)
+      evidenceForm.setFieldValue('fileName', '')
+    },
   }
 
   return (
@@ -253,10 +330,12 @@ const ResolutionDrawer = ({
                 layout="vertical"
                 size="small"
                 onFinish={(vals) => {
+                  const selectedOption = assigneeOptions?.find(o => o.value === vals.assignedToUserId)
                   onCreateActionItem({
                     title: vals.title,
                     description: vals.description,
-                    assignedTo: vals.assignedTo,
+                    assignedTo: selectedOption?.label ?? vals.assignedTo,
+                    assignedToUserId: vals.assignedToUserId,
                     dueDate: vals.dueDate?.toISOString(),
                     category: vals.category,
                   })
@@ -282,8 +361,40 @@ const ResolutionDrawer = ({
                     </Col>
                   )}
                   <Col span={12}>
-                    <Form.Item name="assignedTo" label="Assigned to" style={{ marginBottom: 8 }}>
-                      <Input placeholder="Person or party responsible" />
+                    <Form.Item
+                      name={assigneeOptions ? 'assignedToUserId' : 'assignedTo'}
+                      label="Assigned to"
+                      style={{ marginBottom: 8 }}
+                    >
+                      {assigneeOptions ? (
+                        <Select
+                          showSearch
+                          allowClear
+                          placeholder="Select staff member"
+                          filterOption={(input, opt) =>
+                            (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+                          }
+                          options={assigneeOptions.map(o => ({
+                            value: o.value,
+                            label: o.label,
+                          }))}
+                          optionRender={(opt) => {
+                            const staff = assigneeOptions.find(s => s.value === opt.value)
+                            return (
+                              <div>
+                                <div style={{ fontSize: 13 }}>{staff?.label}</div>
+                                {staff?.role && (
+                                  <div style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'capitalize' }}>
+                                    {staff.role}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          }}
+                        />
+                      ) : (
+                        <Input placeholder="Person or party responsible" />
+                      )}
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -325,6 +436,11 @@ const ResolutionDrawer = ({
                       {row.category && <div style={{ fontSize: 11, color: '#8c8c8c' }}>Re: {row.category}</div>}
                       {row.assignedTo && <div style={{ fontSize: 11, color: '#8c8c8c' }}>→ {row.assignedTo}</div>}
                       {row.description && <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 2 }}>{row.description}</div>}
+                      {row.resultNotes && (
+                        <div style={{ fontSize: 11, color: '#52c41a', marginTop: 2, fontStyle: 'italic' }}>
+                          Result: {row.resultNotes}
+                        </div>
+                      )}
                     </div>
                   ),
                 },
@@ -389,7 +505,7 @@ const ResolutionDrawer = ({
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <Text strong>
-              <Upload size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              <UploadCloud size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />
               {evidenceLabel} Documents ({evidenceDocs.length})
             </Text>
             {!isResolved && (
@@ -398,10 +514,15 @@ const ResolutionDrawer = ({
                 icon={<PlusCircle size={12} />}
                 onClick={() => {
                   setShowAddEvidence(!showAddEvidence)
-                  if (!showAddEvidence) evidenceForm.resetFields()
+                  if (!showAddEvidence) {
+                    evidenceForm.resetFields()
+                    setUploadFileList([])
+                    setUploadedFilePath(null)
+                    setUploadedFileName(null)
+                  }
                 }}
               >
-                {showAddEvidence ? 'Cancel' : `Record ${evidenceLabel}`}
+                {showAddEvidence ? 'Cancel' : `Add ${evidenceLabel}`}
               </Button>
             )}
           </div>
@@ -417,14 +538,52 @@ const ResolutionDrawer = ({
                     fileName: vals.fileName,
                     fileType: vals.fileType,
                     description: vals.description,
+                    filePath: uploadedFilePath ?? undefined,
                   })
                   evidenceForm.resetFields()
+                  setUploadFileList([])
+                  setUploadedFilePath(null)
+                  setUploadedFileName(null)
                   setShowAddEvidence(false)
                 }}
               >
+                {/* File upload (when evidenceEntityId provided) */}
+                {evidenceEntityId && (
+                  <Form.Item label="Upload file" style={{ marginBottom: 8 }}>
+                    <Space wrap>
+                      <Upload {...uploadProps}>
+                        <Button icon={<UploadCloud size={13} />} size="small" disabled={!!uploadedFilePath}>
+                          Choose File
+                        </Button>
+                      </Upload>
+                      {uploadFileList.length > 0 && !uploadedFilePath && (
+                        <Button
+                          type="primary"
+                          size="small"
+                          loading={uploading}
+                          onClick={handleUploadFile}
+                        >
+                          Upload
+                        </Button>
+                      )}
+                      {uploadedFileName && (
+                        <Text type="success" style={{ fontSize: 12 }}>
+                          <CheckCircle2 size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                          {uploadedFileName} uploaded
+                        </Text>
+                      )}
+                    </Space>
+                  </Form.Item>
+                )}
+
                 <Row gutter={8}>
                   <Col span={14}>
-                    <Form.Item name="fileName" label="File name / reference" rules={[{ required: true, message: 'Required' }]} style={{ marginBottom: 8 }}>
+                    <Form.Item
+                      name="fileName"
+                      label={evidenceEntityId ? 'File name (auto-filled on upload)' : 'File name / reference'}
+                      rules={[{ required: true, message: 'Required' }]}
+                      style={{ marginBottom: 8 }}
+                    >
                       <Input placeholder="e.g. Session-Notes-2026-06-05.pdf" />
                     </Form.Item>
                   </Col>
@@ -452,7 +611,13 @@ const ResolutionDrawer = ({
                     </Form.Item>
                   </Col>
                 </Row>
-                <Button type="primary" size="small" htmlType="submit" loading={creatingEvidence}>
+                <Button
+                  type="primary"
+                  size="small"
+                  htmlType="submit"
+                  loading={creatingEvidence}
+                  disabled={evidenceEntityId ? uploading : false}
+                >
                   Record
                 </Button>
               </Form>
@@ -478,8 +643,26 @@ const ResolutionDrawer = ({
                     <div>
                       <Space size={4}>
                         <FileText size={12} style={{ color: '#1677ff' }} />
-                        <Text style={{ fontSize: 12 }}>{name}</Text>
+                        {isRealFilePath(row.filePath) ? (
+                          <a
+                            href={`/api/v1${row.filePath}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ fontSize: 12 }}
+                          >
+                            {name}
+                          </a>
+                        ) : (
+                          <Text style={{ fontSize: 12 }}>{name}</Text>
+                        )}
                         {row.fileType && <Tag style={{ fontSize: 10 }}>{row.fileType}</Tag>}
+                        {isRealFilePath(row.filePath) && (
+                          <Tooltip title="Download">
+                            <a href={`/api/v1${row.filePath}`} download>
+                              <Download size={11} style={{ color: '#1677ff' }} />
+                            </a>
+                          </Tooltip>
+                        )}
                       </Space>
                       {row.description && (
                         <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 2 }}>{row.description}</div>
