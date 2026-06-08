@@ -2,21 +2,9 @@ import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 import { send } from '../services/notificationService'
+import { timesOverlap } from '../utils/timeUtils'
 
 const router = Router()
-
-// ─── Time Overlap Helper ──────────────────────────────────────────
-
-function timesOverlap(s1: string, e1: string, s2: string, e2: string): boolean {
-  // "08:00" → minutes since midnight
-  const toMin = (t: string) => {
-    const [h, m] = t.split(':').map(Number)
-    return h * 60 + m
-  }
-  const a1 = toMin(s1), b1 = toMin(e1)
-  const a2 = toMin(s2), b2 = toMin(e2)
-  return a1 < b2 && a2 < b1
-}
 
 // ─── TT-01/02/03: Check conflicts for a proposed slot ────────────
 // POST /conflicts/check
@@ -134,72 +122,6 @@ router.post('/check', authenticate, async (req: AuthRequest, res: Response) => {
     })
   } catch (error) {
     console.error('POST /conflicts/check error:', error)
-    res.status(500).json({ success: false, message: 'Internal server error' })
-  }
-})
-
-// ─── GET /conflicts/scan?semester= — scan all slots for conflicts ─
-router.get('/scan', authenticate, requireRole('admin', 'manager', 'principal', 'hod'), async (req: AuthRequest, res: Response) => {
-  try {
-    const { semester = '2026-S1' } = req.query as { semester?: string }
-
-    const slots = await prisma.timetableSlot.findMany({
-      where: { semester },
-      include: {
-        course: { select: { name: true, code: true } },
-        teacher: { include: { user: { select: { displayName: true } } } },
-      },
-      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
-    })
-
-    const conflicts: Array<{
-      type: 'teacher' | 'room' | 'class'
-      message: string
-      slotA: { id: string; courseName: string; teacherName: string; gradeLevel: string; className: string | null; dayOfWeek: number; startTime: string; endTime: string; room: string | null }
-      slotB: { id: string; courseName: string; teacherName: string; gradeLevel: string; className: string | null; dayOfWeek: number; startTime: string; endTime: string; room: string | null }
-    }> = []
-
-    const seenPairs = new Set<string>()
-
-    for (let i = 0; i < slots.length; i++) {
-      for (let j = i + 1; j < slots.length; j++) {
-        const a = slots[i]
-        const b = slots[j]
-        if (a.dayOfWeek !== b.dayOfWeek) continue
-        if (!timesOverlap(a.startTime, a.endTime, b.startTime, b.endTime)) continue
-
-        const pairKey = `${a.id}-${b.id}`
-        if (seenPairs.has(pairKey)) continue
-
-        const slotAInfo = { id: a.id, courseName: a.course.name, teacherName: a.teacher.user.displayName, gradeLevel: a.gradeLevel, className: a.className, dayOfWeek: a.dayOfWeek, startTime: a.startTime, endTime: a.endTime, room: a.room }
-        const slotBInfo = { id: b.id, courseName: b.course.name, teacherName: b.teacher.user.displayName, gradeLevel: b.gradeLevel, className: b.className, dayOfWeek: b.dayOfWeek, startTime: b.startTime, endTime: b.endTime, room: b.room }
-
-        if (a.teacherId === b.teacherId) {
-          conflicts.push({ type: 'teacher', message: `${a.teacher.user.displayName} is double-booked on Day ${a.dayOfWeek + 1} at ${a.startTime}.`, slotA: slotAInfo, slotB: slotBInfo })
-          seenPairs.add(pairKey)
-        }
-        if (a.room && b.room && a.room.toLowerCase() === b.room.toLowerCase()) {
-          conflicts.push({ type: 'room', message: `Room ${a.room} is double-booked on Day ${a.dayOfWeek + 1} at ${a.startTime}.`, slotA: slotAInfo, slotB: slotBInfo })
-          seenPairs.add(pairKey)
-        }
-        if (a.gradeLevel === b.gradeLevel && a.className === b.className) {
-          conflicts.push({ type: 'class', message: `Class ${a.gradeLevel} ${a.className} is double-scheduled on Day ${a.dayOfWeek + 1} at ${a.startTime}.`, slotA: slotAInfo, slotB: slotBInfo })
-          seenPairs.add(pairKey)
-        }
-      }
-    }
-
-    const summary = {
-      totalSlots: slots.length,
-      totalConflicts: conflicts.length,
-      teacherConflicts: conflicts.filter((c) => c.type === 'teacher').length,
-      roomConflicts: conflicts.filter((c) => c.type === 'room').length,
-      classConflicts: conflicts.filter((c) => c.type === 'class').length,
-    }
-
-    res.json({ success: true, data: { semester, summary, conflicts } })
-  } catch (error) {
-    console.error('GET /conflicts/scan error:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })

@@ -3,6 +3,7 @@ import prisma from '../lib/prisma'
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth'
 import { send } from '../services/notificationService'
 import { broadcast } from './events'
+import { timesOverlap } from '../utils/timeUtils'
 
 const router = Router()
 
@@ -275,6 +276,26 @@ router.post(
       if (!gradeLevel || !className || !semester || !slots?.length) {
         res.status(400).json({ success: false, message: 'gradeLevel, className, semester, slots are required' }); return
       }
+      // Check each proposed slot for teacher/room conflicts with OTHER classes (TT-01, TT-02)
+      const otherSlots = await prisma.timetableSlot.findMany({
+        where: { semester, NOT: { gradeLevel, className } },
+      })
+      const applyConflicts: string[] = []
+      for (const proposed of slots) {
+        for (const other of otherSlots) {
+          if (proposed.dayOfWeek !== other.dayOfWeek) continue
+          if (!timesOverlap(proposed.startTime, proposed.endTime, other.startTime, other.endTime)) continue
+          if (proposed.teacherId === other.teacherId) {
+            applyConflicts.push(`Teacher conflict on Day ${proposed.dayOfWeek + 1} at ${proposed.startTime} (TT-01)`)
+          }
+          if (proposed.room && other.room && proposed.room.toLowerCase() === other.room.toLowerCase()) {
+            applyConflicts.push(`Room "${proposed.room}" conflict on Day ${proposed.dayOfWeek + 1} at ${proposed.startTime} (TT-02)`)
+          }
+        }
+      }
+      if (applyConflicts.length) {
+        res.status(409).json({ success: false, message: `Cannot apply: ${[...new Set(applyConflicts)].join(' | ')}` }); return
+      }
       await prisma.timetableSlot.deleteMany({ where: { gradeLevel, className, semester } })
       await prisma.timetableSlot.createMany({ data: slots.map(s => ({
         courseId: s.courseId, teacherId: s.teacherId, gradeLevel: s.gradeLevel,
@@ -394,14 +415,17 @@ router.post(
       if (!courseId || !teacherId || !gradeLevel || !className || dayOfWeek == null || !startTime || !endTime) {
         res.status(400).json({ success: false, message: 'Missing required fields' }); return
       }
-      const classConflict = await prisma.timetableSlot.findFirst({
-        where: { gradeLevel, className, dayOfWeek, startTime, semester },
-      })
-      if (classConflict) { res.status(409).json({ success: false, message: 'This class already has a lesson at this time.' }); return }
-      const teacherConflict = await prisma.timetableSlot.findFirst({
-        where: { teacherId, dayOfWeek, startTime, semester },
-      })
-      if (teacherConflict) { res.status(409).json({ success: false, message: 'This teacher is already teaching at this time.' }); return }
+      const sameDaySlots = await prisma.timetableSlot.findMany({ where: { dayOfWeek, semester } })
+      const conflictMessages: string[] = []
+      for (const c of sameDaySlots) {
+        if (!timesOverlap(startTime, endTime, c.startTime, c.endTime)) continue
+        if (c.teacherId === teacherId) conflictMessages.push('Teacher is already teaching another class at this time (TT-01)')
+        if (room && c.room && c.room.toLowerCase() === room.toLowerCase()) conflictMessages.push(`Room "${room}" is already booked at this time (TT-02)`)
+        if (c.gradeLevel === gradeLevel && c.className === className) conflictMessages.push('This class already has a lesson scheduled at this time (TT-03)')
+      }
+      if (conflictMessages.length) {
+        res.status(409).json({ success: false, message: conflictMessages.join(' | ') }); return
+      }
       const slot = await prisma.timetableSlot.create({
         data: { courseId, teacherId, gradeLevel, className, dayOfWeek, startTime, endTime, room: room ?? `Classroom ${className}`, semester },
         include: {
@@ -428,14 +452,19 @@ router.patch(
       const { dayOfWeek, startTime, endTime } = req.body as { dayOfWeek: number; startTime: string; endTime: string }
       const existing = await prisma.timetableSlot.findUnique({ where: { id } })
       if (!existing) { res.status(404).json({ success: false, message: 'Slot not found' }); return }
-      const classConflict = await prisma.timetableSlot.findFirst({
-        where: { gradeLevel: existing.gradeLevel, className: existing.className, dayOfWeek, startTime, semester: existing.semester, id: { not: id } },
+      const sameDaySlots = await prisma.timetableSlot.findMany({
+        where: { dayOfWeek, semester: existing.semester, id: { not: id } },
       })
-      if (classConflict) { res.status(409).json({ success: false, message: 'This class already has a lesson at this time.' }); return }
-      const teacherConflict = await prisma.timetableSlot.findFirst({
-        where: { teacherId: existing.teacherId, dayOfWeek, startTime, semester: existing.semester, id: { not: id } },
-      })
-      if (teacherConflict) { res.status(409).json({ success: false, message: 'This teacher is already teaching at this time.' }); return }
+      const conflictMessages: string[] = []
+      for (const c of sameDaySlots) {
+        if (!timesOverlap(startTime, endTime, c.startTime, c.endTime)) continue
+        if (c.teacherId === existing.teacherId) conflictMessages.push('Teacher is already teaching another class at this time (TT-01)')
+        if (existing.room && c.room && c.room.toLowerCase() === existing.room.toLowerCase()) conflictMessages.push(`Room "${existing.room}" is already booked at this time (TT-02)`)
+        if (c.gradeLevel === existing.gradeLevel && c.className === existing.className) conflictMessages.push('This class already has a lesson scheduled at this time (TT-03)')
+      }
+      if (conflictMessages.length) {
+        res.status(409).json({ success: false, message: conflictMessages.join(' | ') }); return
+      }
       const updated = await prisma.timetableSlot.update({
         where: { id },
         data: { dayOfWeek, startTime, endTime },

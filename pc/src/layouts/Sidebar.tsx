@@ -38,7 +38,6 @@ import {
   BookUser,
   FileCheck,
   History,
-  BellDot,
   Shuffle,
   type LucideIcon,
 } from 'lucide-react'
@@ -181,8 +180,7 @@ const Sidebar = () => {
           { key: '/sms/school-profile', label: t('nav.smsSchoolProfile', { defaultValue: 'School Profile' }), icon: icon(School), roles: ['admin', 'manager', 'principal'] },
           { key: '/sms/exams', label: t('nav.smsExams', { defaultValue: 'Exam Management' }), icon: icon(ClipboardList), roles: ['admin', 'manager', 'principal', 'teacher'] },
           { key: '/sms/consent-forms', label: 'Consent Forms', icon: icon(FileCheck), roles: ['admin', 'manager', 'principal'] },
-          { key: '/sms/auto-triggers', label: 'Auto Triggers', icon: icon(BellDot), roles: ['admin', 'manager', 'principal'] },
-          { key: '/sms/timetable-conflicts', label: 'Conflict Detection', icon: icon(Shuffle), roles: ['admin', 'manager', 'principal', 'hod'] },
+          { key: '/sms/timetable-conflicts', label: 'Conflict Prevention', icon: icon(Shuffle), roles: ['admin', 'manager', 'principal', 'hod'] },
         ],
       },
       // EGNC
