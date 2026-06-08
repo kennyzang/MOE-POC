@@ -11,13 +11,9 @@ type Language = 'en' | 'zh' | 'ms'
 type Authority = 'MOE' | 'MORA' | 'PRIVATE' | null
 
 const DEMO_ACCOUNTS = [
-  // ── Core roles (SMHK) ───────────────────────────────────────────────
-  { username: 'admin',           label: 'Admin',              labelZh: '管理员',       labelMs: 'Admin',           password: 'admin123',     school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'principal',       label: 'Principal',          labelZh: '校长',         labelMs: 'Pengetua',       password: 'principal123', school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'hod01',           label: 'HOD',                labelZh: '部门主管',     labelMs: 'Ketua Bidang',  password: 'hod123',       school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'teacher01',       label: 'Form Teacher',       labelZh: '班主任',       labelMs: 'Guru Tingkatan',password: 'teacher123',   school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'student001',      label: 'Yr 7 Student',       labelZh: '七年级学生',   labelMs: 'Pelajar Tahun 7',password: 'student123',  school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'parent.siti',     label: 'Parent',             labelZh: '家长',         labelMs: 'Ibu Bapa',      password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'teacher01',  label: 'Form Teacher',    labelZh: '班主任',        labelMs: 'Guru Tingkatan', password: 'teacher123', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'student001', label: 'Year 7 Student',  labelZh: '七年级学生',    labelMs: 'Pelajar Tahun 7',password: 'student123', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'parent01',   label: 'Parent',          labelZh: '家长',          labelMs: 'Ibu Bapa',      password: 'parent123',  school: 'SMHK', authority: 'MOE' as Authority },
 ]
 
 const AUTHORITY_COLOR: Record<string, string> = {

@@ -313,9 +313,11 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
         where: {
           courseId: { in: enrolledCourseIds },
           id: { notIn: [...gradedItemIds] },
+          dueDate: { gte: new Date() },
         },
         include: { course: { select: { name: true, code: true } } },
         orderBy: { dueDate: 'asc' },
+        take: 10,
       })
 
       // Course schedules

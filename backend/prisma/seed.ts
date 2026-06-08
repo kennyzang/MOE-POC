@@ -735,37 +735,46 @@ async function main() {
     })
   }
 
-  // Grade items for adam/nurul
-  for (const course of courses) {
-    await prisma.gradeItem.createMany({
-      data: [
-        { courseId: course.id, name: 'Quiz 1', type: 'quiz', maxScore: 20, weight: 0.1 },
-        { courseId: course.id, name: 'Midterm Exam', type: 'exam', maxScore: 100, weight: 0.3 },
-        { courseId: course.id, name: 'Assignment 1', type: 'assignment', maxScore: 50, weight: 0.2 },
-        { courseId: course.id, name: 'Final Exam', type: 'exam', maxScore: 100, weight: 0.4 },
-      ],
-    })
-  }
-
-  const legacyGradeItems = await prisma.gradeItem.findMany({
-    where: { name: { in: ['Quiz 1', 'Midterm Exam', 'Assignment 1', 'Final Exam'] } },
-  })
-
-  const legacyScores: Record<string, [number, number]> = {
-    'Quiz 1': [17, 19], 'Midterm Exam': [78, 92], 'Assignment 1': [42, 47], 'Final Exam': [82, 88],
-  }
+  // Grade items per course — specific names + staggered future due dates
   const letterGradeFn = (score: number, max: number) => {
     const pct = (score / max) * 100
     return pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : pct >= 60 ? 'D' : 'F'
   }
 
-  for (const gi of legacyGradeItems) {
-    const scores = legacyScores[gi.name] ?? [75, 80]
-    const adamScore = Math.min(scores[0] + 2, gi.maxScore)
-    const nurulScore = Math.min(scores[1] + 2, gi.maxScore)
+  const courseItemTemplates = [
+    { course: mathCourse, quiz: 'Chapter 3 Algebra Quiz',      assignment: 'Statistics Worksheet',         quizDays: -8,  asgDays: -15 },
+    { course: engCourse,  quiz: 'Reading Comprehension Quiz',  assignment: 'Descriptive Essay',            quizDays: -9,  asgDays: -16 },
+    { course: sciCourse,  quiz: 'Forces & Motion Quiz',        assignment: 'Lab Report: Simple Machines',  quizDays: -10, asgDays: -17 },
+    { course: mibCourse,  quiz: 'MIB Values Assessment',       assignment: 'Reflection Essay',             quizDays: -11, asgDays: -18 },
+    { course: icCourse,   quiz: 'Digital Literacy Quiz',       assignment: 'Spreadsheet Mini-Project',     quizDays: -7,  asgDays: -14 },
+  ]
+
+  const newGradeItemIds: string[] = []
+
+  for (const tmpl of courseItemTemplates) {
+    const [q, me, a, fe] = await Promise.all([
+      prisma.gradeItem.create({ data: { courseId: tmpl.course.id, name: tmpl.quiz,       type: 'quiz',       maxScore: 20,  weight: 0.1,  dueDate: daysAgo(tmpl.quizDays) } }),
+      prisma.gradeItem.create({ data: { courseId: tmpl.course.id, name: 'Midterm Examination', type: 'exam', maxScore: 100, weight: 0.3,  dueDate: daysAgo(-22) } }),
+      prisma.gradeItem.create({ data: { courseId: tmpl.course.id, name: tmpl.assignment, type: 'assignment', maxScore: 50,  weight: 0.2,  dueDate: daysAgo(tmpl.asgDays) } }),
+      prisma.gradeItem.create({ data: { courseId: tmpl.course.id, name: 'Final Examination',   type: 'exam', maxScore: 100, weight: 0.4,  dueDate: new Date('2026-07-10') } }),
+    ])
+    newGradeItemIds.push(q.id, me.id, a.id, fe.id)
+  }
+
+  // Grades for adam/nurul on all new items (so they appear as graded, not upcoming)
+  const newGradeItems = await prisma.gradeItem.findMany({ where: { id: { in: newGradeItemIds } } })
+  const gradeScoresByType: Record<string, { adam: number; nurul: number }> = {
+    quiz:       { adam: 17, nurul: 19 },
+    exam:       { adam: 82, nurul: 91 },
+    assignment: { adam: 43, nurul: 48 },
+  }
+  for (const gi of newGradeItems) {
+    const sc = gradeScoresByType[gi.type] ?? { adam: 75, nurul: 80 }
+    const adamScore  = Math.min(sc.adam,  gi.maxScore)
+    const nurulScore = Math.min(sc.nurul, gi.maxScore)
     await prisma.grade.createMany({
       data: [
-        { studentId: adam.id, gradeItemId: gi.id, score: adamScore, letterGrade: letterGradeFn(adamScore, gi.maxScore), gradedAt: new Date('2026-04-30') },
+        { studentId: adam.id,  gradeItemId: gi.id, score: adamScore,  letterGrade: letterGradeFn(adamScore,  gi.maxScore), gradedAt: new Date('2026-04-30') },
         { studentId: nurul.id, gradeItemId: gi.id, score: nurulScore, letterGrade: letterGradeFn(nurulScore, gi.maxScore), gradedAt: new Date('2026-04-30') },
       ],
     })

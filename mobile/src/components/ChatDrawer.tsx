@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Popup } from 'antd-mobile'
 import { MessageSquare, Bot, Send, ChevronDown, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -46,6 +46,11 @@ export default function ChatDrawer() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const fabRef = useRef<HTMLButtonElement>(null)
+
+  // Draggable FAB position (bottom/right offsets from viewport edges)
+  const [fabPos, setFabPos] = useState({ bottom: 96, right: 16 })
+  const dragState = useRef({ active: false, startX: 0, startY: 0, startBottom: 0, startRight: 0, moved: false })
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -54,6 +59,54 @@ export default function ChatDrawer() {
   useEffect(() => {
     scrollToBottom()
   }, [messages, scrollToBottom])
+
+  // Prevent passive scroll during drag
+  useEffect(() => {
+    const btn = fabRef.current
+    if (!btn) return
+    const onMove = (e: TouchEvent) => {
+      if (dragState.current.active) e.preventDefault()
+    }
+    btn.addEventListener('touchmove', onMove, { passive: false })
+    return () => btn.removeEventListener('touchmove', onMove)
+  }, [])
+
+  const handleFabTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    dragState.current = {
+      active: true,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      startBottom: fabPos.bottom,
+      startRight: fabPos.right,
+      moved: false,
+    }
+  }
+
+  const handleFabTouchMove = (e: React.TouchEvent) => {
+    if (!dragState.current.active) return
+    const touch = e.touches[0]
+    const dx = touch.clientX - dragState.current.startX
+    const dy = touch.clientY - dragState.current.startY
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      dragState.current.moved = true
+      const newRight = Math.max(8, Math.min(window.innerWidth - 56, dragState.current.startRight - dx))
+      const newBottom = Math.max(8, Math.min(window.innerHeight - 56, dragState.current.startBottom + dy))
+      setFabPos({ right: newRight, bottom: newBottom })
+    }
+  }
+
+  const handleFabTouchEnd = () => {
+    if (!dragState.current.moved) {
+      handleOpen()
+    }
+    dragState.current.active = false
+  }
+
+  const fabStyle = useMemo(() => ({
+    bottom: fabPos.bottom,
+    right: fabPos.right,
+  }), [fabPos])
 
   const quickQuestions = QUICK_QUESTIONS[role] ?? QUICK_QUESTIONS.student
 
@@ -180,8 +233,17 @@ export default function ChatDrawer() {
 
   return (
     <>
-      {/* Floating Action Button */}
-      <button className="chat-fab" onClick={handleOpen} aria-label={t('chat.title')}>
+      {/* Floating Action Button — draggable */}
+      <button
+        ref={fabRef}
+        className="chat-fab"
+        style={fabStyle}
+        onTouchStart={handleFabTouchStart}
+        onTouchMove={handleFabTouchMove}
+        onTouchEnd={handleFabTouchEnd}
+        onClick={handleOpen}
+        aria-label={t('chat.title')}
+      >
         <MessageSquare size={22} />
       </button>
 

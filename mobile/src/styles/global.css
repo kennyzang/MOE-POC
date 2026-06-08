@@ -108,8 +108,7 @@ html, body, #root {
 /* === Chat Drawer === */
 .chat-fab {
   position: fixed;
-  bottom: calc(80px + env(safe-area-inset-bottom));
-  right: 16px;
+  /* bottom/right controlled by inline style (draggable) */
   width: 48px;
   height: 48px;
   border-radius: 24px;
@@ -120,12 +119,15 @@ html, body, #root {
   justify-content: center;
   box-shadow: 0 4px 16px rgba(22, 93, 255, 0.35);
   z-index: 999;
-  cursor: pointer;
+  cursor: grab;
   border: none;
-  transition: transform 0.15s ease;
+  transition: box-shadow 0.15s ease;
+  touch-action: none;
+  user-select: none;
 }
 .chat-fab:active {
-  transform: scale(0.92);
+  cursor: grabbing;
+  box-shadow: 0 6px 20px rgba(22, 93, 255, 0.5);
 }
 
 .chat-container {
