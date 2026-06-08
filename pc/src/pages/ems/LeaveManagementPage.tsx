@@ -2,14 +2,14 @@ import { useState } from 'react'
 import {
   Table, Tag, Button, Card, Row, Col, Typography, Space, Modal,
   Descriptions, Alert, Tooltip, message, Spin, Steps, Timeline,
-  Popconfirm, Input, Select, DatePicker, Popover,
+  Popconfirm, Input, Select, DatePicker, Popover, Divider,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays, UserCheck, Users, CheckCircle2, Loader2, Paperclip,
-  XCircle, Clock, Eye,
+  XCircle, Clock, Eye, UserX,
 } from 'lucide-react'
 import api from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
@@ -51,6 +51,39 @@ interface SubstituteSuggestion {
   affectedSlotsDetail: Array<{ day: string; time: string; course: string }>
 }
 
+interface AffectedSlot {
+  slotId: string
+  courseName: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  room: string | null
+  gradeLevel: string
+  className: string | null
+}
+
+interface OnLeaveTeacher {
+  leaveId: string
+  teacherId: string
+  teacherName: string
+  leaveType: string
+  startDate: string
+  endDate: string
+  daysRemaining: number
+  affectedSlots: AffectedSlot[]
+}
+
+interface SlotSubSuggestion {
+  teacherId: string
+  displayName: string
+  designation: string | null
+  department: string | null
+  slotsToday: number
+  todaySlots: Array<{ courseName: string; startTime: string; endTime: string }>
+}
+
+const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
 const STATUS_STEPS: Record<string, number> = {
   PENDING:            0,
   HOD_APPROVED:       1,
@@ -79,6 +112,13 @@ const LeaveManagementPage = () => {
   const [cancelReason, setCancelReason]       = useState('')
   const [assigningId, setAssigningId]         = useState<string | null>(null)
   const [filterStatus, setFilterStatus]       = useState<string | undefined>()
+  const [activeTab, setActiveTab]             = useState<'active' | 'history'>('active')
+
+  // Coverage section state
+  const [coverageModal, setCoverageModal]               = useState(false)
+  const [selectedCoverageTeacher, setSelectedCoverageTeacher] = useState<OnLeaveTeacher | null>(null)
+  const [selectedCoverageSlot, setSelectedCoverageSlot] = useState<AffectedSlot | null>(null)
+  const [coverageAssigningId, setCoverageAssigningId]   = useState<string | null>(null)
 
   const canApproveHod       = ['admin', 'manager', 'hod'].includes(user?.role ?? '')
   const canApprovePrincipal = ['admin', 'manager', 'principal'].includes(user?.role ?? '')
@@ -104,6 +144,52 @@ const LeaveManagementPage = () => {
       return data.data as SubstituteSuggestion[]
     },
     enabled: !!selectedLeave?.id && substituteModal,
+  })
+
+  const { data: teachersOnLeave = [], isLoading: teachersOnLeaveLoading } = useQuery({
+    queryKey: ['teachers-on-leave'],
+    queryFn: async () => {
+      const { data } = await api.get('/conflicts/teacher-on-leave')
+      return data.data as OnLeaveTeacher[]
+    },
+    enabled: ['admin', 'manager', 'principal', 'hod'].includes(user?.role ?? ''),
+    refetchInterval: 30000,
+  })
+
+  const { data: slotSuggestions = [], isLoading: loadingSlotSuggestions } = useQuery({
+    queryKey: ['slot-sub-suggestions', selectedCoverageSlot?.slotId],
+    queryFn: async () => {
+      if (!selectedCoverageSlot || !selectedCoverageTeacher) return []
+      const { data } = await api.get('/conflicts/substitute-suggestions', {
+        params: {
+          teacherId: selectedCoverageTeacher.teacherId,
+          dayOfWeek: selectedCoverageSlot.dayOfWeek,
+          startTime: selectedCoverageSlot.startTime,
+          endTime: selectedCoverageSlot.endTime,
+        },
+      })
+      return data.data as SlotSubSuggestion[]
+    },
+    enabled: !!selectedCoverageSlot && coverageModal,
+  })
+
+  const assignSlotSubMutation = useMutation({
+    mutationFn: async ({ slotId, substituteTeacherId }: { slotId: string; substituteTeacherId: string }) => {
+      const { data } = await api.patch('/conflicts/assign-substitute', { slotId, substituteTeacherId })
+      return data
+    },
+    onSuccess: () => {
+      message.success(t('leave.substituteAssigned', 'Substitute assigned.'))
+      setCoverageModal(false)
+      setSelectedCoverageTeacher(null)
+      setSelectedCoverageSlot(null)
+      setCoverageAssigningId(null)
+      queryClient.invalidateQueries({ queryKey: ['teachers-on-leave'] })
+    },
+    onError: (e: any) => {
+      message.error(e?.response?.data?.message ?? t('leave.assignFailed', 'Assignment failed'))
+      setCoverageAssigningId(null)
+    },
   })
 
   const hodApproveMutation = useMutation({
@@ -197,6 +283,19 @@ const LeaveManagementPage = () => {
         ? <Tag color="success" icon={<CheckCircle2 size={12} />}>{t('leave.assigned', 'Assigned')}</Tag>
         : <Tag color="warning">{t('leave.pending', 'Pending')}</Tag>,
       width: 110,
+    },
+    {
+      title: 'Current Approver',
+      key: 'currentApprover',
+      width: 140,
+      render: (_, record) => {
+        if (record.status === 'PENDING') return <Tag color="gold">HOD</Tag>
+        if (record.status === 'HOD_APPROVED') return <Tag color="blue">Principal</Tag>
+        if (record.status === 'PRINCIPAL_APPROVED') return <Tag color="green">Approved</Tag>
+        if (record.status === 'REJECTED') return <Tag color="red">Rejected</Tag>
+        if (record.status === 'CANCELLED') return <Tag color="orange">Cancelled</Tag>
+        return '—'
+      },
     },
     {
       title: t('leave.actions', 'Actions'),
@@ -306,6 +405,17 @@ const LeaveManagementPage = () => {
   const finalApproved   = leaves.filter(l => l.status === 'PRINCIPAL_APPROVED').length
   const needsSub        = leaves.filter(l => l.status === 'HOD_APPROVED' && !l.substituteId).length
 
+  const ACTIVE_STATUSES  = ['PENDING', 'HOD_APPROVED']
+  const HISTORY_STATUSES = ['PRINCIPAL_APPROVED', 'REJECTED', 'CANCELLED']
+
+  const displayedLeaves = leaves.filter(l => {
+    const inTab = activeTab === 'active'
+      ? ACTIVE_STATUSES.includes(l.status)
+      : HISTORY_STATUSES.includes(l.status)
+    const inStatusFilter = !filterStatus || l.status === filterStatus
+    return inTab && inStatusFilter
+  })
+
   return (
     <div>
       <Row align="middle" justify="space-between" style={{ marginBottom: 16 }}>
@@ -314,21 +424,6 @@ const LeaveManagementPage = () => {
             <CalendarDays size={22} />
             <Title level={4} style={{ margin: 0 }}>{t('leave.leaveManagement', 'Leave & Substitute Management')}</Title>
           </Space>
-        </Col>
-        <Col>
-          <Select
-            allowClear
-            placeholder={t('leave.filterStatus', 'Filter by status')}
-            style={{ width: 200 }}
-            onChange={setFilterStatus}
-            options={[
-              { value: 'PENDING',            label: 'Pending' },
-              { value: 'HOD_APPROVED',       label: 'HOD Approved' },
-              { value: 'PRINCIPAL_APPROVED', label: 'Fully Approved' },
-              { value: 'REJECTED',           label: 'Rejected' },
-              { value: 'CANCELLED',          label: 'Cancelled' },
-            ]}
-          />
         </Col>
       </Row>
 
@@ -359,17 +454,119 @@ const LeaveManagementPage = () => {
         ))}
       </Row>
 
-      <Card>
+      <Card
+        tabList={[
+          { key: 'active', tab: `Active (${leaves.filter(l => ACTIVE_STATUSES.includes(l.status)).length})` },
+          { key: 'history', tab: `History (${leaves.filter(l => HISTORY_STATUSES.includes(l.status)).length})` },
+        ]}
+        activeTabKey={activeTab}
+        onTabChange={k => { setActiveTab(k as 'active' | 'history'); setFilterStatus(undefined) }}
+        tabBarExtraContent={
+          <Select
+            allowClear
+            placeholder={t('leave.filterStatus', 'Filter by status')}
+            style={{ width: 180 }}
+            value={filterStatus}
+            onChange={setFilterStatus}
+            options={activeTab === 'active'
+              ? [
+                  { value: 'PENDING', label: 'Pending' },
+                  { value: 'HOD_APPROVED', label: 'HOD Approved' },
+                ]
+              : [
+                  { value: 'PRINCIPAL_APPROVED', label: 'Fully Approved' },
+                  { value: 'REJECTED', label: 'Rejected' },
+                  { value: 'CANCELLED', label: 'Cancelled' },
+                ]
+            }
+          />
+        }
+      >
         <Table<LeaveApplication>
           rowKey="id"
           columns={columns}
-          dataSource={leaves}
+          dataSource={displayedLeaves}
           loading={isLoading}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           locale={{ emptyText: t('common.noData') }}
-          scroll={{ x: 900 }}
+          scroll={{ x: 1000 }}
         />
       </Card>
+
+      {/* Leave Coverage & Substitutions */}
+      {['admin', 'manager', 'principal', 'hod'].includes(user?.role ?? '') && (
+        <>
+          <Divider style={{ marginTop: 32 }}>
+            <Space>
+              <UserX size={15} />
+              <span>{t('leave.coverageTitle', 'Leave Coverage & Substitutions')}</span>
+            </Space>
+          </Divider>
+
+          {teachersOnLeaveLoading ? (
+            <div style={{ textAlign: 'center', padding: 32 }}><Spin indicator={<Loader2 size={28} />} /></div>
+          ) : teachersOnLeave.length === 0 ? (
+            <Alert
+              type="success" showIcon
+              message={t('leave.noCoverageNeeded', 'No teachers currently on approved leave — all timetable slots are covered.')}
+            />
+          ) : (
+            <Row gutter={[16, 16]}>
+              {teachersOnLeave.map(teacher => (
+                <Col key={teacher.leaveId} xs={24} md={12} xl={8}>
+                  <Card
+                    size="small"
+                    title={
+                      <Space>
+                        <UserX size={14} />
+                        <span>{teacher.teacherName}</span>
+                        <Tag color="orange">{teacher.daysRemaining}d left</Tag>
+                      </Space>
+                    }
+                    extra={<Tag color="warning">{teacher.leaveType}</Tag>}
+                  >
+                    <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                      {new Date(teacher.startDate).toLocaleDateString()} – {new Date(teacher.endDate).toLocaleDateString()}
+                    </Typography.Text>
+                    {teacher.affectedSlots.length === 0 ? (
+                      <Typography.Text type="secondary">{t('leave.noSlotsAffected', 'No timetable slots affected')}</Typography.Text>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {teacher.affectedSlots.map(slot => (
+                          <div key={slot.slotId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <Tag color="blue" style={{ fontSize: 11 }}>
+                                {DAY_LABELS[slot.dayOfWeek]} {slot.startTime}
+                              </Tag>
+                              <Typography.Text style={{ fontSize: 12 }}>{slot.courseName}</Typography.Text>
+                              <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>
+                                {slot.gradeLevel} {slot.className}
+                              </Typography.Text>
+                            </div>
+                            {canAssignSub && (
+                              <Button
+                                size="small" type="primary" ghost
+                                icon={<UserCheck size={12} />}
+                                onClick={() => {
+                                  setSelectedCoverageTeacher(teacher)
+                                  setSelectedCoverageSlot(slot)
+                                  setCoverageModal(true)
+                                }}
+                              >
+                                {t('leave.findSub', 'Find Sub')}
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          )}
+        </>
+      )}
 
       {/* Timeline Modal */}
       <Modal
@@ -613,6 +810,99 @@ const LeaveManagementPage = () => {
               type="info" showIcon style={{ marginTop: 16 }}
               message={t('leave.assignNotice', 'On confirmation: substitute + all affected students and parents will be notified automatically.')}
             />
+          </>
+        )}
+      </Modal>
+      {/* Coverage Substitute Modal */}
+      <Modal
+        open={coverageModal}
+        title={
+          <Space>
+            <Users size={18} />
+            <span>{t('leave.findSubForSlot', 'Find Substitute')} — {selectedCoverageSlot?.courseName}</span>
+          </Space>
+        }
+        onCancel={() => { setCoverageModal(false); setSelectedCoverageTeacher(null); setSelectedCoverageSlot(null); setCoverageAssigningId(null) }}
+        footer={null}
+        width={680}
+        destroyOnHidden
+      >
+        {selectedCoverageSlot && selectedCoverageTeacher && (
+          <>
+            <Descriptions bordered size="small" column={2} style={{ marginBottom: 20 }}>
+              <Descriptions.Item label={t('leave.originalTeacher', 'Original Teacher')}>{selectedCoverageTeacher.teacherName}</Descriptions.Item>
+              <Descriptions.Item label={t('leave.type', 'Leave Type')}>{selectedCoverageTeacher.leaveType}</Descriptions.Item>
+              <Descriptions.Item label={t('leave.slot', 'Slot')}>
+                {DAY_LABELS[selectedCoverageSlot.dayOfWeek]} {selectedCoverageSlot.startTime}–{selectedCoverageSlot.endTime}
+              </Descriptions.Item>
+              <Descriptions.Item label={t('leave.class', 'Class')}>
+                {selectedCoverageSlot.gradeLevel} {selectedCoverageSlot.className}
+              </Descriptions.Item>
+              <Descriptions.Item label={t('leave.course', 'Course')} span={2}>{selectedCoverageSlot.courseName}</Descriptions.Item>
+            </Descriptions>
+
+            <Typography.Title level={5} style={{ marginBottom: 12 }}>
+              {t('leave.availableSubs', 'Available Substitutes')}
+              <Typography.Text type="secondary" style={{ fontSize: 13, fontWeight: 400, marginLeft: 8 }}>
+                {t('leave.sortedByLoad', 'Sorted by current teaching load')}
+              </Typography.Text>
+            </Typography.Title>
+
+            {loadingSlotSuggestions ? (
+              <div style={{ textAlign: 'center', padding: 32 }}>
+                <Spin indicator={<Loader2 size={28} />} />
+              </div>
+            ) : slotSuggestions.length === 0 ? (
+              <Alert type="warning" showIcon message={t('leave.noSlotSubs', 'No available substitutes found for this time slot.')} />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {slotSuggestions.map((s, idx) => (
+                  <Card
+                    key={s.teacherId}
+                    size="small"
+                    style={{
+                      border: idx === 0 ? '2px solid #1677ff' : '1px solid #f0f0f0',
+                      background: idx === 0 ? '#f0f7ff' : undefined,
+                    }}
+                  >
+                    <Row justify="space-between" align="middle">
+                      <Col>
+                        <Space>
+                          <Tag color={idx === 0 ? 'blue' : 'default'}>#{idx + 1}</Tag>
+                          <Typography.Text strong>{s.displayName}</Typography.Text>
+                          <Typography.Text type="secondary">
+                            {t('leave.slotsToday', '{{n}} slot(s) this day', { n: s.slotsToday })}
+                          </Typography.Text>
+                        </Space>
+                        {s.todaySlots.length > 0 && (
+                          <div style={{ marginTop: 4 }}>
+                            {s.todaySlots.map((ts, i) => (
+                              <Tag key={i} style={{ marginBottom: 2, fontSize: 11 }}>
+                                {ts.startTime}–{ts.endTime} {ts.courseName}
+                              </Tag>
+                            ))}
+                          </div>
+                        )}
+                      </Col>
+                      <Col>
+                        <Tooltip title={idx === 0 ? t('leave.leastLoad', 'Lightest schedule today') : ''}>
+                          <Button
+                            type={idx === 0 ? 'primary' : 'default'}
+                            loading={assignSlotSubMutation.isPending && coverageAssigningId === s.teacherId}
+                            onClick={() => {
+                              setCoverageAssigningId(s.teacherId)
+                              assignSlotSubMutation.mutate({ slotId: selectedCoverageSlot.slotId, substituteTeacherId: s.teacherId })
+                            }}
+                          >
+                            {idx === 0 ? t('leave.assignRecommended', 'Assign (Recommended)') : t('leave.assign', 'Assign')}
+                          </Button>
+                        </Tooltip>
+                      </Col>
+                    </Row>
+                  </Card>
+                ))}
+              </div>
+            )}
           </>
         )}
       </Modal>

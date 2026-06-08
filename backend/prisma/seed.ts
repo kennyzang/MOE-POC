@@ -3686,23 +3686,7 @@ async function main() {
     try { await prisma.ccaEnrollment.create({ data: { ccaId: e.ccaId, studentId: e.studentId, status: 'active' } }) } catch (_) { /* skip */ }
   }
 
-  // ── 17. Timetable Conflict Slots (intentional conflicts for demo) ──────────
-  // Conflict A: Teacher conflict — Dr. Siti double-booked Mon 08:00 (Year 9A Math + Year 10B Physics same time)
-  try {
-    await prisma.timetableSlot.create({ data: { courseId: phy10.id, teacherId: drsiti.id, dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1', gradeLevel: 'Year 10', className: '10B', semester: '2026-S1' } })
-  } catch (_) { /* skip */ }
-
-  // Conflict B: Room conflict — Science Lab 1 booked twice Tue 08:00 (Dr. Siti 10A + Hassan 9B)
-  try {
-    await prisma.timetableSlot.create({ data: { courseId: sci9.id, teacherId: hassan.id, dayOfWeek: 1, startTime: '08:00', endTime: '09:30', room: 'Science Lab 1', gradeLevel: 'Year 9', className: '9B', semester: '2026-S1' } })
-  } catch (_) { /* skip */ }
-
-  // Conflict C: Class conflict — 11A has two teachers scheduled Mon 08:00 (teacher01 Math + Hassan Bio)
-  try {
-    await prisma.timetableSlot.create({ data: { courseId: bio11.id, teacherId: hassan.id, dayOfWeek: 0, startTime: '08:00', endTime: '09:30', room: 'Classroom 11B', gradeLevel: 'Year 11', className: '11A', semester: '2026-S1' } })
-  } catch (_) { /* skip */ }
-
-  console.log('  ✓ Trigger logs, risk scores, behavior records, CCA, timetable conflicts — done')
+  console.log('  ✓ Trigger logs, risk scores, behavior records, CCA — done')
   console.log('\n=== ENRICHMENT SUMMARY ===')
   console.log('  Teacher dateOfBirth:     6 teachers updated')
   console.log('  Leave Applications:      6 scenarios (approved/HOD-approved/pending/rejected/cancelled/awaiting-principal)')
@@ -3721,7 +3705,6 @@ async function main() {
   console.log('  MONITOR Risk Scores:     up to 5 new students')
   console.log('  Behavior Records:        6 (merit/demerit mix)')
   console.log('  CCA Activities:          4 clubs, 10 enrollments')
-  console.log('  Timetable Conflicts:     3 intentional conflict slots')
 
   console.log('All new modules seeded successfully.')
 
