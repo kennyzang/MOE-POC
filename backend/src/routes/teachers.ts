@@ -183,7 +183,13 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       return
     }
 
-    res.json({ success: true, data: teacher })
+    // Include form class (class roster where this teacher is the form teacher)
+    const formClass = await prisma.classRoster.findFirst({
+      where: { formTeacherId: teacher.id },
+      select: { className: true, gradeLevel: true, programme: true, academicYear: true },
+    })
+
+    res.json({ success: true, data: { ...teacher, formClass: formClass ?? null } })
   } catch (error) {
     console.error('Error getting teacher:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })

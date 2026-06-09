@@ -167,6 +167,12 @@ function OverviewTab({ teacher }: { teacher: any }) {
             <Descriptions.Item label="Department">{teacher.department ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="Qualification">{teacher.qualification ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="Subjects">{teacher.subjects ?? '-'}</Descriptions.Item>
+            <Descriptions.Item label="Form Class">
+              {teacher.formClass
+                ? <Tag color="purple">{teacher.formClass.className}</Tag>
+                : <Text type="secondary">—</Text>
+              }
+            </Descriptions.Item>
             <Descriptions.Item label="Join Date">
               {teacher.joinDate ? new Date(teacher.joinDate).toLocaleDateString() : '-'}
             </Descriptions.Item>
@@ -704,6 +710,14 @@ export default function TeacherDetailPage() {
                     <>
                       <Text type="secondary">·</Text>
                       <Text type="secondary" style={{ fontSize: 13 }}>{teacher.department}</Text>
+                    </>
+                  )}
+                  {teacher.formClass && (
+                    <>
+                      <Text type="secondary">·</Text>
+                      <Tag color="purple" style={{ margin: 0, fontSize: 12 }}>
+                        Form: {teacher.formClass.className}
+                      </Tag>
                     </>
                   )}
                 </Space>

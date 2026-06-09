@@ -1,4 +1,6 @@
 import { Router, Response } from 'express'
+import path from 'path'
+import fs from 'fs'
 import prisma from '../lib/prisma'
 import { authenticate, requireRole, schoolFilter, type AuthRequest } from '../middleware/auth'
 import { sendMany } from '../services/notificationService'
@@ -400,6 +402,42 @@ router.patch(
       res.json({ success: true, data: updated })
     } catch (error) {
       console.error('PATCH /admissions/documents/:docId error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
+// ─── GET /documents/:docId/download — serve AdmissionDocument file ───
+router.get(
+  '/documents/:docId/download',
+  authenticate,
+  requireRole('admin', 'manager', 'admissions', 'principal'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const doc = await prisma.admissionDocument.findUnique({ where: { id: req.params.docId as string } })
+      if (!doc) {
+        res.status(404).json({ success: false, message: 'Document not found' })
+        return
+      }
+      if (!doc.filePath) {
+        res.status(404).json({ success: false, message: 'No file attached to this document record' })
+        return
+      }
+
+      // filePath may be absolute or relative to process.cwd()
+      const fullPath = doc.filePath.startsWith('/') && fs.existsSync(doc.filePath)
+        ? doc.filePath
+        : path.join(process.cwd(), doc.filePath)
+
+      if (!fs.existsSync(fullPath)) {
+        res.status(404).json({ success: false, message: 'File not found on server' })
+        return
+      }
+
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.filename)}"`)
+      res.sendFile(fullPath)
+    } catch (error) {
+      console.error('GET /admissions/documents/:docId/download error:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   },

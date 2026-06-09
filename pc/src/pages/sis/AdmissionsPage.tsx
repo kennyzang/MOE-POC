@@ -46,9 +46,11 @@ import {
   MailQuestion,
   ExternalLink,
   UserCheck,
+  Download,
 } from 'lucide-react'
 import FileUploader from '../../components/FileUploader'
 import FileList from '../../components/FileList'
+import { downloadFile } from '../../lib/download'
 import SyncBadge from '../../components/SyncBadge'
 import dayjs from 'dayjs'
 import api from '../../lib/api'
@@ -89,6 +91,7 @@ interface AdmissionDoc {
   id: string
   type: string
   filename: string
+  filePath?: string | null
   docStatus: string       // pending | verified | rejected | required
   rejectionReason?: string
   uploadedAt: string
@@ -1038,6 +1041,19 @@ const AdmissionsPage = () => {
                             return (
                               <List.Item
                                 actions={[
+                                  doc.filePath && (
+                                    <Tooltip title="Download document">
+                                      <Button
+                                        size="small"
+                                        type="link"
+                                        icon={<Download size={13} />}
+                                        onClick={() =>
+                                          downloadFile(`/api/v1/admissions/documents/${doc.id}/download`, doc.filename)
+                                            .catch(() => message.error('File not available'))
+                                        }
+                                      />
+                                    </Tooltip>
+                                  ),
                                   doc.docStatus !== 'verified' && (
                                     <Tooltip title="Verify">
                                       <Button
@@ -1100,16 +1116,18 @@ const AdmissionsPage = () => {
                       )}
                       <div style={{ marginTop: 12 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Paperclip size={12} /> Attach Additional Documents
+                          <Paperclip size={12} /> Uploaded Files (applicant &amp; staff)
                         </div>
-                        <FileUploader
-                          entityType="admission"
-                          entityId={selectedAdmission.id}
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          description="Application document"
-                          label="Upload document"
-                        />
                         <FileList entityType="admission" entityId={selectedAdmission.id} canDelete />
+                        <div style={{ marginTop: 8 }}>
+                          <FileUploader
+                            entityType="admission"
+                            entityId={selectedAdmission.id}
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                            description="Application document"
+                            label="Attach document"
+                          />
+                        </div>
                       </div>
                       <Button
                         icon={<MailQuestion size={14} />}

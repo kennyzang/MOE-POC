@@ -345,13 +345,46 @@ function AttendanceTab({ records }: { records: any[] }) {
   const excused = records.filter((r) => r.status === 'excused').length
   const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 0
 
-  // Group by course
+  // Separate daily roll call records from subject-specific records
+  const isRollCall = (r: any) => (r.session?.topic as string | undefined)?.startsWith('Daily Roll Call')
+  const rollCallRecords = records.filter(isRollCall)
+  const subjectRecords = records.filter((r) => !isRollCall(r))
+
+  // Group subject records by course name
   const byCourse: Record<string, any[]> = {}
-  for (const r of records) {
+  for (const r of subjectRecords) {
     const courseName = r.session?.course?.name ?? r.session?.courseId ?? 'Unknown'
     if (!byCourse[courseName]) byCourse[courseName] = []
     byCourse[courseName].push(r)
   }
+
+  const rollCallColumns: ColumnsType<any> = [
+    {
+      title: 'Date',
+      render: (_, r) => r.session?.date ? new Date(r.session.date).toLocaleDateString() : '-',
+      width: 120,
+      sorter: (a, b) => new Date(a.session?.date).getTime() - new Date(b.session?.date).getTime(),
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      width: 110,
+      render: (val: string) => (
+        <Tag color={val === 'present' ? 'green' : val === 'late' ? 'orange' : val === 'excused' ? 'blue' : 'red'}>
+          {val}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Absence Reason',
+      render: (_, r) => r.absenceReason ?? (r.parentNote ? `Parent: ${r.parentNote}` : '-'),
+    },
+    {
+      title: 'Checked In',
+      render: (_, r) => r.checkedInAt ? new Date(r.checkedInAt).toLocaleTimeString() : '-',
+      width: 110,
+    },
+  ]
 
   const recordColumns: ColumnsType<any> = [
     {
@@ -409,7 +442,41 @@ function AttendanceTab({ records }: { records: any[] }) {
         ))}
       </Row>
 
-      {/* Per-course breakdown */}
+      {/* Daily Roll Call section */}
+      {rollCallRecords.length > 0 && (() => {
+        const rcTotal = rollCallRecords.length
+        const rcPresent = rollCallRecords.filter((r) => r.status === 'present' || r.status === 'late').length
+        const rcRate = rcTotal > 0 ? Math.round((rcPresent / rcTotal) * 100) : 0
+        return (
+          <Card
+            size="small"
+            title={
+              <Space>
+                <Text strong>Daily Roll Call</Text>
+                <Progress
+                  percent={rcRate}
+                  size="small"
+                  style={{ width: 120 }}
+                  status={rcRate < 75 ? 'exception' : rcRate < 85 ? 'active' : 'success'}
+                  format={(p) => `${p}%`}
+                />
+                <Text type="secondary" style={{ fontSize: 12 }}>{rcPresent}/{rcTotal} days</Text>
+              </Space>
+            }
+            style={{ marginBottom: 12 }}
+          >
+            <Table
+              rowKey="id"
+              columns={rollCallColumns}
+              dataSource={rollCallRecords}
+              pagination={{ pageSize: 10, size: 'small' }}
+              size="small"
+            />
+          </Card>
+        )
+      })()}
+
+      {/* Per-subject breakdown */}
       {Object.entries(byCourse).map(([courseName, courseRecords]) => {
         const cTotal = courseRecords.length
         const cPresent = courseRecords.filter((r) => r.status === 'present' || r.status === 'late').length
