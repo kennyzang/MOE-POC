@@ -68,3 +68,4 @@
 | 2026-06-09 15:30 | [260609-1530.md](260609-1530.md) | 招生文件下载端点、教师详情显示班主任班级、修复学生考勤点名记录误放科目分组 | ~15k |
 | 2026-06-09 16:00 | [260609-1600.md](260609-1600.md) | Fix daily roll call mis-categorization (DAILY001 endpoint + isRollCall strengthened); seed bulk grades for 28 Y7A students + Year 8 grade items + ~60 Y8 student enrollments/grades | ~35k |
 | 2026-06-09 19:08 | [260609-1908.md](260609-1908.md) | Staff Attendance Dashboard 全面修复：Anomaly View按钮、部门图表/表格点击、Stat卡片弹窗数据源、新增教师详情页+2个后端接口 | ~12k |
+| 2026-06-09 20:30 | [260609-2030.md](260609-2030.md) | 修复Teaching Workload无数据(schoolFilter误用于无schoolId的TimetableSlot)、Staff Attendance计数不合计(absent改为从total推算) | ~8k |
