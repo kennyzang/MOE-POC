@@ -309,6 +309,12 @@ const en = {
     subject: 'Subject',
     teacher: 'Teacher',
     parent: 'Parent',
+    newMessage: 'New Message',
+    sent: 'Message sent',
+    tapToCompose: 'Tap + to message a teacher',
+    subjectPlaceholder: 'e.g. About homework assignment',
+    message: 'Message',
+    send: 'Send',
   },
   checkIn: {
     title: "Today's Attendance",

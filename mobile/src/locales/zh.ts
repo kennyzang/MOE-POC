@@ -309,6 +309,12 @@ const zh = {
     subject: '主题',
     teacher: '教师',
     parent: '家长',
+    newMessage: '新消息',
+    sent: '消息已发送',
+    tapToCompose: '点击 + 给老师发消息',
+    subjectPlaceholder: '例如：关于家庭作业',
+    message: '消息内容',
+    send: '发送',
   },
   checkIn: {
     title: '今日考勤',

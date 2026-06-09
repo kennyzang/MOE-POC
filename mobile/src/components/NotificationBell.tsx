@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Badge, Popup } from 'antd-mobile'
 import { Bell, Info, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { useNotificationStore } from '@/stores/notificationStore'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -28,6 +29,7 @@ export default function NotificationBell() {
   } = useNotificationStore()
 
   const [popupOpen, setPopupOpen] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const stop = startPolling()
@@ -46,6 +48,10 @@ export default function NotificationBell() {
   const handleItemClick = (item: Notification) => {
     if (!item.read) {
       markAsRead(item.id)
+    }
+    if (item.link) {
+      setPopupOpen(false)
+      navigate(item.link)
     }
   }
 

@@ -37,7 +37,7 @@ export default function ParentConsentFormsPage() {
   const { data: forms = [], isLoading, refetch } = useQuery({
     queryKey: ['parent-consent-forms'],
     queryFn: async () => {
-      const { data } = await api.get('/parent/consent-forms')
+      const { data } = await api.get('/communications/consent-forms')
       return data.data as ConsentFormItem[]
     },
   })
@@ -51,7 +51,7 @@ export default function ParentConsentFormsPage() {
 
   const ackMutation = useMutation({
     mutationFn: async (formId: string) => {
-      const { data } = await api.post(`/parent/consent-forms/${formId}/acknowledge`, {})
+      const { data } = await api.post(`/communications/consent-forms/${formId}/acknowledge`, {})
       return data
     },
     onSuccess: () => {

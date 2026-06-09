@@ -309,6 +309,12 @@ const ms = {
     subject: 'Subjek',
     teacher: 'Guru',
     parent: 'Ibu Bapa',
+    newMessage: 'Mesej Baharu',
+    sent: 'Mesej dihantar',
+    tapToCompose: 'Ketik + untuk menghantar mesej kepada guru',
+    subjectPlaceholder: 'cth. Mengenai tugasan kerja rumah',
+    message: 'Mesej',
+    send: 'Hantar',
   },
   checkIn: {
     title: 'Kehadiran Hari Ini',

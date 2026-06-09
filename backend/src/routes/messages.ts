@@ -144,7 +144,21 @@ router.get('/threads/:id', authenticate, async (req: AuthRequest, res: Response)
       data: { readAt: new Date() },
     })
 
-    res.json({ success: true, data: thread })
+    // Enrich with participant names
+    const participants = await prisma.user.findMany({
+      where: { id: { in: [thread.parentUserId, thread.teacherUserId] } },
+      select: { id: true, displayName: true },
+    })
+    const nameMap = new Map(participants.map((u) => [u.id, u.displayName]))
+
+    res.json({
+      success: true,
+      data: {
+        ...thread,
+        parentName: nameMap.get(thread.parentUserId) ?? 'Parent',
+        teacherName: nameMap.get(thread.teacherUserId) ?? 'Teacher',
+      },
+    })
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
