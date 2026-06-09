@@ -66,3 +66,4 @@
 | 2026-06-08 16:20 | [260608-1620.md](260608-1620.md) | Counselor案例：干预负责人选人(staff下拉+通知)、会话记录文件上传、My Interventions页面（被分配者提交结果→反通知辅导员） | ~15k |
 | 2026-06-09 10:30 | [260609-1030.md](260609-1030.md) | 修复部署后接口请求localhost：10个文件的hardcoded localhost:4000 fallback全部改为相对路径/api/v1或共享api实例 | ~8k |
 | 2026-06-09 15:30 | [260609-1530.md](260609-1530.md) | 招生文件下载端点、教师详情显示班主任班级、修复学生考勤点名记录误放科目分组 | ~15k |
+| 2026-06-09 16:00 | [260609-1600.md](260609-1600.md) | Fix daily roll call mis-categorization (DAILY001 endpoint + isRollCall strengthened); seed bulk grades for 28 Y7A students + Year 8 grade items + ~60 Y8 student enrollments/grades | ~35k |
