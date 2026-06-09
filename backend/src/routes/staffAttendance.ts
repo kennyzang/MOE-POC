@@ -289,7 +289,8 @@ router.get('/school-summary', authenticate, async (req: AuthRequest, res: Respon
 
     const present = records.filter(r => r.status === 'PRESENT').length
     const late = records.filter(r => r.status === 'LATE').length
-    const absent = records.filter(r => r.status === 'ABSENT').length
+    // Derive absent so that present + late + absent + onLeave always = totalStaff
+    const absent = totalTeachers - present - late - onLeaveCount
 
     // Department breakdown
     const deptMap: Record<string, { present: number; late: number; absent: number }> = {}

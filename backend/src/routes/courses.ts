@@ -294,8 +294,11 @@ router.get(
         res.json({ success: true, mode: 'timetable', data: slots })
       } else {
         // Summary across all teachers
+        // TimetableSlot has no schoolId — filter via teacher relation instead
+        const sf = schoolFilter(req)
+        const teacherSchoolFilter = sf.schoolId ? { teacher: { schoolId: sf.schoolId } } : {}
         const slots = await prisma.timetableSlot.findMany({
-          where: { ...schoolFilter(req), ...semesterFilter },
+          where: { ...teacherSchoolFilter, ...semesterFilter },
           include: {
             course: { select: { id: true, code: true, name: true, creditHours: true } },
             teacher: { include: { user: { select: { displayName: true } } } },
