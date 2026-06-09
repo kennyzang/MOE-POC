@@ -12,6 +12,7 @@ import {
   AlertTriangle, ChevronRight, Play,
 } from 'lucide-react'
 import dayjs, { Dayjs } from 'dayjs'
+import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -32,6 +33,7 @@ interface TeacherRecord {
   id: string
   teacherId: string
   teacherName: string
+  department: string
   status: 'PRESENT' | 'LATE' | 'ABSENT'
   checkInAt: string | null
   checkOutAt: string | null
@@ -85,9 +87,19 @@ const anomalyBadge: Record<Anomaly['ruleTriggered'], { color: string; label: str
 
 // ─── Department table ─────────────────────────────────────────────
 
-function DeptBreakdownTable({ data }: { data: SummaryData['byDepartment'] }) {
+function DeptBreakdownTable({
+  data, onDeptClick,
+}: {
+  data: SummaryData['byDepartment']
+  onDeptClick: (dept: string) => void
+}) {
   const columns: ColumnsType<(typeof data)[number]> = [
-    { title: 'Department', dataIndex: 'dept', key: 'dept', width: 180 },
+    {
+      title: 'Department', dataIndex: 'dept', key: 'dept', width: 180,
+      render: (v: string) => (
+        <Button type="link" style={{ padding: 0 }} onClick={() => onDeptClick(v)}>{v}</Button>
+      ),
+    },
     { title: 'Present', dataIndex: 'present', key: 'present', render: v => <Text style={{ color: '#52c41a' }}>{v}</Text> },
     { title: 'Late', dataIndex: 'late', key: 'late', render: v => <Text style={{ color: '#faad14' }}>{v}</Text> },
     { title: 'Absent', dataIndex: 'absent', key: 'absent', render: v => <Text style={{ color: '#ff4d4f' }}>{v}</Text> },
@@ -99,6 +111,7 @@ function DeptBreakdownTable({ data }: { data: SummaryData['byDepartment'] }) {
       rowKey="dept"
       size="small"
       pagination={false}
+      onRow={row => ({ onClick: () => onDeptClick(row.dept), style: { cursor: 'pointer' } })}
     />
   )
 }
@@ -106,14 +119,21 @@ function DeptBreakdownTable({ data }: { data: SummaryData['byDepartment'] }) {
 // ─── Teacher list modal ───────────────────────────────────────────
 
 function TeacherListModal({
-  open, onClose, records, filter,
+  open, onClose, records, filter, title, onViewTeacher,
 }: {
   open: boolean; onClose: () => void
   records: TeacherRecord[]; filter: string | null
+  title: string
+  onViewTeacher: (teacherId: string) => void
 }) {
   const filtered = filter ? records.filter(r => r.status === filter) : records
   const columns: ColumnsType<TeacherRecord> = [
-    { title: 'Name', dataIndex: 'teacherName', key: 'teacherName' },
+    {
+      title: 'Name', dataIndex: 'teacherName', key: 'teacherName',
+      render: (v: string, row) => (
+        <Button type="link" style={{ padding: 0 }} onClick={() => onViewTeacher(row.teacherId)}>{v}</Button>
+      ),
+    },
     {
       title: 'Status', dataIndex: 'status', key: 'status',
       render: s => {
@@ -135,10 +155,17 @@ function TeacherListModal({
       open={open}
       onCancel={onClose}
       footer={null}
-      title={`Staff — ${filter ?? 'All'}`}
-      width={680}
+      title={title}
+      width={720}
     >
-      <Table columns={columns} dataSource={filtered} rowKey="id" size="small" pagination={{ pageSize: 10 }} />
+      <Table
+        columns={columns}
+        dataSource={filtered}
+        rowKey="id"
+        size="small"
+        pagination={{ pageSize: 10 }}
+        onRow={row => ({ onClick: () => onViewTeacher(row.teacherId), style: { cursor: 'pointer' } })}
+      />
     </Modal>
   )
 }
@@ -149,11 +176,14 @@ export default function StaffAttendanceDashboard() {
   const { t } = useTranslation()
   const { user } = useAuthStore()
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const role = user?.role ?? ''
 
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs())
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
   const [teacherModalOpen, setTeacherModalOpen] = useState(false)
+  const [modalTitle, setModalTitle] = useState('Staff')
+  const [deptFilter, setDeptFilter] = useState<string | null>(null)
 
   const dateStr = selectedDate.format('YYYY-MM-DD')
 
@@ -168,14 +198,25 @@ export default function StaffAttendanceDashboard() {
     enabled: ['admin', 'manager', 'principal', 'hod'].includes(role),
   })
 
-  // Department detail (for teacher list)
-  const { data: deptData } = useQuery<{ records: TeacherRecord[] }>({
-    queryKey: ['staffDeptDetail', dateStr],
+  // Daily records for teacher list modal (admin/manager/principal)
+  const { data: dailyData } = useQuery<{ records: TeacherRecord[] }>({
+    queryKey: ['staffDailyRecords', dateStr],
     queryFn: async () => {
-      const r = await api.get(`/staff-attendance/department-summary?date=${dateStr}`)
+      const r = await api.get(`/staff-attendance/daily-records?date=${dateStr}`)
       return r.data.data as { records: TeacherRecord[] }
     },
-    enabled: teacherModalOpen,
+    enabled: teacherModalOpen && role !== 'hod',
+  })
+
+  // Dept records for HOD or dept-filtered modal
+  const { data: deptData } = useQuery<{ records: TeacherRecord[] }>({
+    queryKey: ['staffDeptDetail', dateStr, deptFilter],
+    queryFn: async () => {
+      const deptParam = deptFilter ? `&dept=${encodeURIComponent(deptFilter)}` : ''
+      const r = await api.get(`/staff-attendance/department-summary?date=${dateStr}${deptParam}`)
+      return r.data.data as { records: TeacherRecord[] }
+    },
+    enabled: teacherModalOpen && (role === 'hod' || deptFilter !== null),
   })
 
   // Anomalies
@@ -207,10 +248,31 @@ export default function StaffAttendanceDashboard() {
     Absent: d.absent,
   }))
 
-  const handleStatClick = (filter: string) => {
-    setActiveFilter(prev => prev === filter ? null : filter)
+  const openStatModal = (filter: string | null, label: string) => {
+    setActiveFilter(filter)
+    setDeptFilter(null)
+    setModalTitle(`Staff — ${label}`)
     setTeacherModalOpen(true)
   }
+
+  const openDeptModal = (dept: string) => {
+    setActiveFilter(null)
+    setDeptFilter(dept)
+    setModalTitle(`Department: ${dept}`)
+    setTeacherModalOpen(true)
+  }
+
+  const handleViewTeacher = (teacherId: string) => {
+    setTeacherModalOpen(false)
+    navigate(`/attendance/staff/${teacherId}`)
+  }
+
+  // Determine which records to show in modal
+  const modalRecords: TeacherRecord[] = (() => {
+    if (deptFilter !== null) return deptData?.records ?? []
+    if (role === 'hod') return deptData?.records ?? []
+    return dailyData?.records ?? []
+  })()
 
   return (
     <div style={{ padding: 24 }}>
@@ -258,8 +320,8 @@ export default function StaffAttendanceDashboard() {
                 value={summary?.totalStaff ?? 0}
                 icon={<Users size={14} />}
                 color="#1677ff"
-                onClick={() => { setActiveFilter(null); setTeacherModalOpen(true) }}
-                active={teacherModalOpen && activeFilter === null}
+                onClick={() => openStatModal(null, 'All')}
+                active={teacherModalOpen && activeFilter === null && deptFilter === null}
               />
             </Col>
             <Col xs={12} sm={8} md={4}>
@@ -268,7 +330,7 @@ export default function StaffAttendanceDashboard() {
                 value={summary?.present ?? 0}
                 icon={<UserCheck size={14} />}
                 color="#52c41a"
-                onClick={() => handleStatClick('PRESENT')}
+                onClick={() => openStatModal('PRESENT', 'Present')}
                 active={activeFilter === 'PRESENT'}
               />
             </Col>
@@ -278,7 +340,7 @@ export default function StaffAttendanceDashboard() {
                 value={summary?.late ?? 0}
                 icon={<Clock size={14} />}
                 color="#faad14"
-                onClick={() => handleStatClick('LATE')}
+                onClick={() => openStatModal('LATE', 'Late')}
                 active={activeFilter === 'LATE'}
               />
             </Col>
@@ -288,7 +350,7 @@ export default function StaffAttendanceDashboard() {
                 value={summary?.absent ?? 0}
                 icon={<UserX size={14} />}
                 color="#ff4d4f"
-                onClick={() => handleStatClick('ABSENT')}
+                onClick={() => openStatModal('ABSENT', 'Absent')}
                 active={activeFilter === 'ABSENT'}
               />
             </Col>
@@ -298,7 +360,7 @@ export default function StaffAttendanceDashboard() {
                 value={summary?.onLeave ?? 0}
                 icon={<CalendarOff size={14} />}
                 color="#722ed1"
-                onClick={() => { setActiveFilter('ON_LEAVE'); setTeacherModalOpen(true) }}
+                onClick={() => openStatModal('ON_LEAVE', 'On Leave')}
                 active={activeFilter === 'ON_LEAVE'}
               />
             </Col>
@@ -311,10 +373,18 @@ export default function StaffAttendanceDashboard() {
                 title={t('attendance.deptBreakdown', 'Department Breakdown')}
                 bordered={false}
                 style={{ borderRadius: 12 }}
+                extra={<Text type="secondary" style={{ fontSize: 12 }}>Click a bar to drill down</Text>}
               >
                 {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={240}>
-                    <BarChart data={chartData} barSize={16}>
+                    <BarChart
+                      data={chartData}
+                      barSize={16}
+                      onClick={e => {
+                        if (e?.activeLabel) openDeptModal(e.activeLabel as string)
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <XAxis dataKey="dept" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip />
@@ -334,8 +404,9 @@ export default function StaffAttendanceDashboard() {
                 title={t('attendance.byDepartment', 'By Department')}
                 bordered={false}
                 style={{ borderRadius: 12 }}
+                extra={<Text type="secondary" style={{ fontSize: 12 }}>Click a row to drill down</Text>}
               >
-                <DeptBreakdownTable data={summary?.byDepartment ?? []} />
+                <DeptBreakdownTable data={summary?.byDepartment ?? []} onDeptClick={openDeptModal} />
               </Card>
             </Col>
           </Row>
@@ -374,6 +445,7 @@ export default function StaffAttendanceDashboard() {
                           size="small"
                           type="link"
                           icon={<ChevronRight size={14} />}
+                          onClick={() => navigate(`/attendance/staff/${item.teacherId}`)}
                         >
                           View
                         </Button>
@@ -405,8 +477,10 @@ export default function StaffAttendanceDashboard() {
       <TeacherListModal
         open={teacherModalOpen}
         onClose={() => setTeacherModalOpen(false)}
-        records={deptData?.records ?? []}
-        filter={activeFilter}
+        records={modalRecords}
+        filter={deptFilter !== null ? null : activeFilter}
+        title={modalTitle}
+        onViewTeacher={handleViewTeacher}
       />
     </div>
   )

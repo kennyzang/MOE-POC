@@ -427,6 +427,101 @@ router.get('/anomalies', authenticate, async (req: AuthRequest, res: Response) =
   }
 })
 
+// ─── GET /daily-records?date=YYYY-MM-DD ──────────────────────────
+
+router.get('/daily-records', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'principal', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Insufficient permissions' }); return
+    }
+
+    const dateStr = req.query.date as string | undefined
+    const date = dateStr ? new Date(dateStr) : todayMidnightUTC()
+    date.setHours(0, 0, 0, 0)
+
+    const records = await prisma.staffAttendanceRecord.findMany({
+      where: { date },
+      include: {
+        teacher: {
+          include: { user: { select: { displayName: true } } },
+        },
+      },
+      orderBy: { teacher: { user: { displayName: 'asc' } } },
+    })
+
+    const formatted = records.map(r => ({
+      id: r.id,
+      teacherId: r.teacherId,
+      teacherName: r.teacher.user?.displayName ?? 'Unknown',
+      department: r.teacher.department ?? 'Unknown',
+      status: r.status,
+      checkInAt: r.checkInAt,
+      checkOutAt: r.checkOutAt,
+      lateMinutes: r.lateMinutes,
+    }))
+
+    res.json({ success: true, data: { date, records: formatted } })
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// ─── GET /teacher-history/:teacherId?period=week|month|term ──────
+
+router.get('/teacher-history/:teacherId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = req.user!
+    if (!['admin', 'manager', 'principal', 'hod'].includes(role)) {
+      res.status(403).json({ success: false, message: 'Insufficient permissions' }); return
+    }
+
+    const { teacherId } = req.params
+    const period = (req.query.period as string) ?? 'month'
+
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: teacherId },
+      include: { user: { select: { displayName: true } } },
+    })
+    if (!teacher) { res.status(404).json({ success: false, message: 'Teacher not found' }); return }
+
+    const now = new Date()
+    let from: Date
+    if (period === 'month') {
+      from = new Date(now.getFullYear(), now.getMonth(), 1)
+    } else if (period === 'term') {
+      from = new Date(now)
+      from.setMonth(from.getMonth() - 3)
+    } else {
+      from = new Date(now)
+      from.setDate(from.getDate() - 6)
+    }
+    from.setHours(0, 0, 0, 0)
+
+    const records = await prisma.staffAttendanceRecord.findMany({
+      where: { teacherId, date: { gte: from } },
+      orderBy: { date: 'desc' },
+    })
+
+    const present = records.filter(r => r.status === 'PRESENT').length
+    const late = records.filter(r => r.status === 'LATE').length
+    const absent = records.filter(r => r.status === 'ABSENT').length
+    const total = records.length
+    const attendancePct = total > 0 ? Math.round(((present + late) / total) * 100) : 0
+
+    res.json({
+      success: true,
+      data: {
+        teacher: { id: teacher.id, name: teacher.user?.displayName ?? 'Unknown', department: teacher.department },
+        records,
+        stats: { present, late, absent, total, attendancePct },
+      },
+    })
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
 // ─── POST /run-daily-close ────────────────────────────────────────
 
 router.post('/run-daily-close', authenticate, async (req: AuthRequest, res: Response) => {

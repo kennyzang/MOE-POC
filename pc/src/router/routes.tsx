@@ -60,9 +60,10 @@ const CpdWorkshopDetailPage = lazy(() => import('@/pages/ems/CpdWorkshopDetailPa
 const PostingsPage        = lazy(() => import('@/pages/ems/PostingsPage'))
 
 // Attendance
-const StaffCheckInPage           = lazy(() => import('@/pages/attendance/StaffCheckInPage'))
-const StaffAttendanceHistoryPage = lazy(() => import('@/pages/attendance/StaffAttendanceHistoryPage'))
-const StaffAttendanceDashboard   = lazy(() => import('@/pages/attendance/StaffAttendanceDashboard'))
+const StaffCheckInPage             = lazy(() => import('@/pages/attendance/StaffCheckInPage'))
+const StaffAttendanceHistoryPage   = lazy(() => import('@/pages/attendance/StaffAttendanceHistoryPage'))
+const StaffAttendanceDashboard     = lazy(() => import('@/pages/attendance/StaffAttendanceDashboard'))
+const StaffAttendanceDetailPage    = lazy(() => import('@/pages/attendance/StaffAttendanceDetailPage'))
 
 // Retirement
 const MyRetirementPage    = lazy(() => import('@/pages/ems/MyRetirementPage'))
@@ -270,6 +271,7 @@ export const router = createBrowserRouter([
       { path: 'attendance/staff-check-in', element: r(['teacher', 'hod'], <StaffCheckInPage />) },
       { path: 'attendance/staff-history', element: r(['teacher', 'hod'], <StaffAttendanceHistoryPage />) },
       { path: 'attendance/staff-dashboard', element: r(['admin', 'manager', 'principal', 'hod'], <StaffAttendanceDashboard />) },
+      { path: 'attendance/staff/:teacherId', element: r(['admin', 'manager', 'principal', 'hod'], <StaffAttendanceDetailPage />) },
 
       // SMS
       { path: 'sen/students', element: r(['admin', 'manager', 'principal', 'hod', 'counselor'], <SenStudentsPage />) },
