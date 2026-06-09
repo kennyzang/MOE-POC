@@ -87,7 +87,7 @@ const ParentAttendancePage = () => {
   // SSE: refresh when attendance is marked
   useEffect(() => {
     if (!token) return
-    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000/api/v1'
+    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1'
     const es = new EventSource(`${base}/events/stream?topics=dashboard&token=${token}`)
     const handler = () => {
       void queryClient.invalidateQueries({ queryKey: ['parent-attendance-records'] })

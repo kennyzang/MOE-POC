@@ -37,7 +37,7 @@ export default function ThresholdsPage() {
   // SSE listener for threshold changes
   useEffect(() => {
     if (!token) return
-    const base = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1'
+    const base = import.meta.env.VITE_API_URL ?? '/api/v1'
     const es = new EventSource(`${base}/events/stream?topics=system&token=${token}`)
     es.addEventListener('system.thresholds.changed', (e: MessageEvent) => {
       try {

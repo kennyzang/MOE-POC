@@ -92,7 +92,7 @@ const CounselorDashboardPage = () => {
   // SSE: refresh when risk scores change or thresholds change
   useEffect(() => {
     if (!token) return
-    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000/api/v1'
+    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1'
     const es = new EventSource(`${base}/events/stream?topics=dashboard&token=${token}`)
     const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ['counselor-dashboard'] }) }
     es.addEventListener('dashboard.risk.changed', invalidate)
