@@ -45,13 +45,11 @@ import {
   ArrowRight,
   Copy,
 } from 'lucide-react'
-import axios from 'axios'
+import api from '@/lib/api'
 import dayjs from 'dayjs'
 
 const { Title, Text, Paragraph } = Typography
 const { Option } = Select
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 const GRADE_OPTIONS = [
   'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6',
@@ -107,7 +105,7 @@ export default function RegistrationPortalPage() {
   const loadSchools = async () => {
     if (schoolsLoaded) return
     try {
-      const res = await axios.get(`${API}/api/v1/registration/schools`)
+      const res = await api.get('/registration/schools')
       setSchools(res.data.data)
       setSchoolsLoaded(true)
     } catch {
@@ -150,7 +148,7 @@ export default function RegistrationPortalPage() {
         documentFilenames,
       }
 
-      const res = await axios.post(`${API}/api/v1/registration/submit`, payload)
+      const res = await api.post('/registration/submit', payload)
       setResult({
         applicationNumber: res.data.data.applicationNumber,
         applicantName: formData.applicantName || '',

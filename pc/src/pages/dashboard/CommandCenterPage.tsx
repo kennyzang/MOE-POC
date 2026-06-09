@@ -96,7 +96,7 @@ export default function CommandCenterPage() {
     const token = authToken
     if (!token) return
 
-    const base = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1'
+    const base = import.meta.env.VITE_API_URL ?? '/api/v1'
     const url = `${base}/events/stream?topics=dashboard`
 
     try {

@@ -16,11 +16,9 @@ import {
   Col,
 } from 'antd'
 import { Search, FileText, CheckCircle, XCircle, Clock, AlertCircle, UserCheck, Copy } from 'lucide-react'
-import axios from 'axios'
+import api from '@/lib/api'
 
 const { Title, Text, Paragraph } = Typography
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
   draft:                { color: 'default',   label: 'Draft',                       icon: <Clock size={14} /> },
@@ -92,7 +90,7 @@ export default function RegistrationStatusPage() {
       setError(null)
       setAppStatus(null)
 
-      const res = await axios.get(`${API}/api/v1/registration/status`, {
+      const res = await api.get('/registration/status', {
         params: { appId: values.appId, parentIc: values.parentIc },
       })
       setAppStatus(res.data.data)
