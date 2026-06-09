@@ -80,13 +80,7 @@ const FormTeacherPage = () => {
     },
   })
 
-  const { data: myCourses = [] } = useQuery({
-    queryKey: ['teacher-my-courses'],
-    queryFn: async () => {
-      const { data } = await api.get('/courses')
-      return (data.data as { id: string; code: string; name: string; gradeLevel: string }[]) ?? []
-    },
-  })
+
 
   const postNoticeMutation = useMutation({
     mutationFn: async (values: Record<string, unknown>) => {
@@ -122,19 +116,15 @@ const FormTeacherPage = () => {
     mutationFn: async () => {
       const formRoster = data?.roster
       const formStudents = data?.students ?? []
-      const formCourse = myCourses.find(c => c.gradeLevel === formRoster?.gradeLevel) ?? myCourses[0]
-      if (!formCourse) throw new Error('No course found for roll call')
-      const { data: sessionData } = await api.post('/attendance/sessions', {
-        courseId: formCourse.id,
-        date: rollCallDate.format('YYYY-MM-DD'),
-        topic: `Daily Roll Call — ${formRoster?.className ?? 'Form Class'}`,
-      })
-      const sessionId = sessionData.data.id
       const records = formStudents.map((s) => ({
         studentId: s.id,
         status: rollCallMap[s.id] ?? 'present',
       }))
-      await api.post('/attendance/records', { sessionId, records })
+      await api.post('/attendance/roll-call', {
+        date: rollCallDate.format('YYYY-MM-DD'),
+        className: formRoster?.className ?? 'Form Class',
+        records,
+      })
     },
     onSuccess: () => {
       message.success(`Roll call submitted for ${rollCallDate.format('DD/MM/YYYY')}`)

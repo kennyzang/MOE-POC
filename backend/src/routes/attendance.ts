@@ -149,6 +149,56 @@ router.post(
   },
 )
 
+// POST /roll-call — form teacher daily roll call (always uses the DAILY001 course)
+router.post(
+  '/roll-call',
+  authenticate,
+  requireRole('teacher'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { date, className, records } = req.body as {
+        date: string
+        className?: string
+        records: { studentId: string; status: string }[]
+      }
+
+      if (!date || !Array.isArray(records) || records.length === 0) {
+        res.status(400).json({ success: false, message: 'date and records are required' })
+        return
+      }
+
+      const rollCallCourse = await prisma.course.findFirst({ where: { code: 'DAILY001' } })
+      if (!rollCallCourse) {
+        res.status(500).json({ success: false, message: 'Daily Roll Call course not configured (DAILY001 missing)' })
+        return
+      }
+
+      const session = await prisma.attendanceSession.create({
+        data: {
+          courseId: rollCallCourse.id,
+          date: new Date(date),
+          topic: `Daily Roll Call — ${className ?? 'Form Class'}`,
+          status: 'completed',
+        },
+      })
+
+      await prisma.attendanceRecord.createMany({
+        data: records.map((r) => ({
+          sessionId: session.id,
+          studentId: r.studentId,
+          status: r.status,
+          checkedInAt: r.status !== 'absent' ? new Date() : null,
+        })),
+      })
+
+      res.json({ success: true, data: session })
+    } catch (error) {
+      console.error('POST /attendance/roll-call error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
 // GET /records — list attendance records
 router.get('/records', authenticate, async (req: AuthRequest, res: Response) => {
   try {

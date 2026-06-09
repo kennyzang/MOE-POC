@@ -780,6 +780,40 @@ async function main() {
     })
   }
 
+  // ─── Bulk grades for Year 7A extra students (MATH701 + SCI701) ──────────────
+  // 28 students are enrolled but have no grades — fill with realistic varied scores
+
+  const math7Items = await prisma.gradeItem.findMany({ where: { courseId: mathCourse.id } })
+  const sci7Items  = await prisma.gradeItem.findMany({ where: { courseId: sciCourse.id  } })
+
+  // Performance tiers: A(20%) B(30%) C(30%) D(15%) F(5%)
+  function y7Tier(i: number): string {
+    const r = i % 20
+    return r < 4 ? 'A' : r < 10 ? 'B' : r < 16 ? 'C' : r < 19 ? 'D' : 'F'
+  }
+  const TIER_BASE: Record<string, number> = { A: 0.93, B: 0.84, C: 0.74, D: 0.63, F: 0.47 }
+
+  const y7BulkGrades: Array<{ studentId: string; gradeItemId: string; score: number; letterGrade: string; gradedAt: Date }> = []
+  for (let i = 0; i < y7aExtraIds.length; i++) {
+    const sid  = y7aExtraIds[i]
+    const tier = y7Tier(i)
+    const base = TIER_BASE[tier]
+    const jitter = ((i * 7 + 3) % 11 - 5) * 0.01   // ±5% deterministic noise
+
+    for (const items of [math7Items, sci7Items]) {
+      for (const gi of items) {
+        if (gi.name === 'Final Examination') continue   // not graded yet
+        const raw   = Math.round((base + jitter) * gi.maxScore)
+        const score = Math.max(0, Math.min(gi.maxScore, raw))
+        const pct   = (score / gi.maxScore) * 100
+        const lg    = pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : pct >= 60 ? 'D' : 'F'
+        y7BulkGrades.push({ studentId: sid, gradeItemId: gi.id, score, letterGrade: lg, gradedAt: daysAgo(14 - (i % 7)) })
+      }
+    }
+  }
+  await prisma.grade.createMany({ data: y7BulkGrades })
+  console.log(`  ✓ Year 7A bulk grades: ${y7BulkGrades.length} records for ${y7aExtraIds.length} students`)
+
   // ─── Ahmad's attendance history (term absences = 2 in last 14 days) ───────
   // Per spec: Ahmad has exactly 2 absences in the last 14 days (before today's session)
   // Create sessions over past 10 weeks. Last 14 days = days 1-14 ago.
@@ -889,7 +923,7 @@ async function main() {
   todayDate.setHours(7, 30, 0, 0)
 
   const todaySession = await prisma.attendanceSession.create({
-    data: { courseId: rollCallCourse.id, date: todayDate, topic: 'Daily Morning Roll Call', status: 'completed' },
+    data: { courseId: rollCallCourse.id, date: todayDate, topic: 'Daily Roll Call — School Wide', status: 'completed' },
   })
 
   // Gather ALL 3,456 enrolled student IDs
@@ -2018,6 +2052,47 @@ async function main() {
     }
     return out
   }
+
+  // Year 8 grade items
+  const gi8Math = await makeGradeItems(math8.id, false)
+  const gi8Eng  = await makeGradeItems(eng8.id,  false)
+  const gi8Sci  = await makeGradeItems(sci8.id,  false)
+  const gi8Mib  = await makeGradeItems(mib8.id,  false)
+  const gi8Ict  = await makeGradeItems(ict8.id,  false)
+
+  // Enroll Year 8A & 8B students and seed their grades (makes Year 8 courses non-empty)
+  const y8ABStudents = await prisma.student.findMany({
+    where: { gradeLevel: 'Year 8', className: { in: ['8A', '8B'] } },
+    take: 60,
+    orderBy: { createdAt: 'asc' },
+  })
+  const y8CourseMap: Array<{ course: { id: string }; items: { id: string; maxScore: number }[] }> = [
+    { course: math8, items: gi8Math },
+    { course: eng8,  items: gi8Eng  },
+    { course: sci8,  items: gi8Sci  },
+    { course: mib8,  items: gi8Mib  },
+    { course: ict8,  items: gi8Ict  },
+  ]
+  const y8BulkGrades: Array<{ studentId: string; gradeItemId: string; score: number; letterGrade: string; gradedAt: Date }> = []
+  for (let i = 0; i < y8ABStudents.length; i++) {
+    const student = y8ABStudents[i]
+    const tier    = y7Tier(i)    // reuse same tier distribution
+    const base    = TIER_BASE[tier]
+    const jitter  = ((i * 11 + 5) % 13 - 6) * 0.01
+    for (const { course, items } of y8CourseMap) {
+      await prisma.enrollment.create({ data: { studentId: student.id, courseId: course.id, semester: '2026-S1' } })
+      for (const gi of items) {
+        if (gi.name === 'Final Exam') continue
+        const raw   = Math.round((base + jitter) * gi.maxScore)
+        const score = Math.max(0, Math.min(gi.maxScore, raw))
+        const pct   = (score / gi.maxScore) * 100
+        const lg    = pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : pct >= 60 ? 'D' : 'F'
+        y8BulkGrades.push({ studentId: student.id, gradeItemId: gi.id, score, letterGrade: lg, gradedAt: daysAgo(10 - (i % 5)) })
+      }
+    }
+  }
+  await prisma.grade.createMany({ data: y8BulkGrades })
+  console.log(`  ✓ Year 8 bulk grades: ${y8BulkGrades.length} records for ${y8ABStudents.length} students`)
 
   // Year 9 items
   const gi9Math = await makeGradeItems(math9.id, false)

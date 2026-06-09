@@ -345,8 +345,11 @@ function AttendanceTab({ records }: { records: any[] }) {
   const excused = records.filter((r) => r.status === 'excused').length
   const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 0
 
-  // Separate daily roll call records from subject-specific records
-  const isRollCall = (r: any) => (r.session?.topic as string | undefined)?.startsWith('Daily Roll Call')
+  // Separate daily roll call records from subject-specific records.
+  // Primary check: DAILY001 course code; fallback: topic prefix for forward-compat.
+  const isRollCall = (r: any) =>
+    r.session?.course?.code === 'DAILY001' ||
+    (r.session?.topic as string | undefined)?.startsWith('Daily Roll Call')
   const rollCallRecords = records.filter(isRollCall)
   const subjectRecords = records.filter((r) => !isRollCall(r))
 
