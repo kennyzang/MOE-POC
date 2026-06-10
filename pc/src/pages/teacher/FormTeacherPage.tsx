@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import {
   Card, Row, Col, Statistic, Table, Tag, Space, Button, Typography, Spin,
-  Alert, Modal, Form, Input, Select, message, Tabs, DatePicker, Badge, List, Avatar,
+  Alert, Modal, Form, Input, Select, message, DatePicker, List, Avatar,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
-  UserSquare2, Award, BookOpen, Users, Bell, ShieldAlert, Plus,
-  TrendingDown, CalendarCheck, ClipboardList,
+  UserSquare2, Award, BookOpen, Users, Bell, ShieldAlert,
+  TrendingDown, CalendarCheck, ClipboardList, CheckCircle2, AlertCircle,
 } from 'lucide-react'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
@@ -42,6 +42,17 @@ interface AttendanceSession {
   course: { id: string; code: string; name: string }
   presentCount?: number
   absentCount?: number
+}
+
+interface TodayRollCall {
+  id: string
+  date: string
+  createdAt: string
+  status: string
+  totalCount: number
+  presentCount: number
+  absentCount: number
+  lateCount: number
 }
 
 const STANDING_COLOR: Record<string, string> = {
@@ -79,6 +90,28 @@ const FormTeacherPage = () => {
       return ((data.data as AttendanceSession[]) ?? []).slice(0, 8)
     },
   })
+
+  const { data: todayRollCall, isLoading: todayLoading } = useQuery({
+    queryKey: ['today-roll-call'],
+    queryFn: async () => {
+      const { data } = await api.get('/attendance/roll-call/today')
+      return (data.data as TodayRollCall | null) ?? null
+    },
+  })
+
+  const handleOpenRollCall = () => {
+    if (todayRollCall) {
+      Modal.confirm({
+        title: 'Roll Call Already Submitted',
+        content: `Today's roll call was submitted at ${dayjs(todayRollCall.createdAt).format('HH:mm')}. Do you want to edit it?`,
+        okText: 'Edit',
+        cancelText: 'Cancel',
+        onOk: () => setRollCallOpen(true),
+      })
+    } else {
+      setRollCallOpen(true)
+    }
+  }
 
 
 
@@ -131,6 +164,7 @@ const FormTeacherPage = () => {
       setRollCallOpen(false)
       setRollCallMap({})
       void queryClient.invalidateQueries({ queryKey: ['teacher-recent-sessions'] })
+      void queryClient.invalidateQueries({ queryKey: ['today-roll-call'] })
     },
     onError: () => message.error('Failed to submit roll call. Please try again.'),
   })
@@ -283,7 +317,7 @@ const FormTeacherPage = () => {
             </div>
           </Space>
           <Space>
-            <Button icon={<BookOpen size={14} />} onClick={() => setRollCallOpen(true)}>
+            <Button icon={<BookOpen size={14} />} onClick={handleOpenRollCall}>
               Daily Roll Call
             </Button>
             <Button icon={<Bell size={14} />} onClick={() => setNoticeOpen(true)}>
@@ -292,6 +326,52 @@ const FormTeacherPage = () => {
           </Space>
         </div>
       </Card>
+
+      {/* Today's Roll Call Status Banner */}
+      {!todayLoading && (
+        todayRollCall ? (
+          <Card size="small" style={{ borderLeft: '4px solid #52c41a', background: '#f6ffed' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Space>
+                <span style={{ color: '#52c41a' }}><CheckCircle2 size={18} /></span>
+                <div>
+                  <span style={{ fontWeight: 600, color: '#237804' }}>Today's Roll Call Submitted</span>
+                  <span style={{ color: '#52c41a', marginLeft: 8, fontSize: 13 }}>
+                    at {dayjs(todayRollCall.createdAt).format('HH:mm')}
+                  </span>
+                  <span style={{ color: '#8c8c8c', marginLeft: 16, fontSize: 12 }}>
+                    Present {todayRollCall.presentCount} · Absent {todayRollCall.absentCount} · Late {todayRollCall.lateCount}
+                  </span>
+                </div>
+              </Space>
+              <Space>
+                <Button
+                  size="small"
+                  type="link"
+                  onClick={() => navigate(`/sis/attendance?sessionId=${todayRollCall.id}`)}
+                >
+                  View Details
+                </Button>
+                <Button size="small" onClick={() => setRollCallOpen(true)}>
+                  Edit
+                </Button>
+              </Space>
+            </div>
+          </Card>
+        ) : (
+          <Card size="small" style={{ borderLeft: '4px solid #faad14', background: '#fffbe6' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Space>
+                <span style={{ color: '#faad14' }}><AlertCircle size={18} /></span>
+                <span style={{ fontWeight: 600, color: '#ad6800' }}>Today's Roll Call Not Yet Submitted</span>
+              </Space>
+              <Button type="primary" size="small" icon={<BookOpen size={13} />} onClick={handleOpenRollCall}>
+                Take Roll Call
+              </Button>
+            </div>
+          </Card>
+        )
+      )}
 
       {/* KPI Cards — clickable */}
       <Row gutter={[16, 16]}>

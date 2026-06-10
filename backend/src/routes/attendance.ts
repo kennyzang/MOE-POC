@@ -149,7 +149,73 @@ router.post(
   },
 )
 
+// GET /roll-call/today — check if today's roll call has been submitted
+router.get(
+  '/roll-call/today',
+  authenticate,
+  requireRole('teacher'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const rollCallCourse = await prisma.course.findFirst({ where: { code: 'DAILY001' } })
+      if (!rollCallCourse) {
+        res.json({ success: true, data: null })
+        return
+      }
+
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date()
+      todayEnd.setHours(23, 59, 59, 999)
+
+      const session = await prisma.attendanceSession.findFirst({
+        where: {
+          courseId: rollCallCourse.id,
+          date: { gte: todayStart, lte: todayEnd },
+        },
+        include: {
+          _count: {
+            select: {
+              records: true,
+            },
+          },
+          records: {
+            select: { status: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      if (!session) {
+        res.json({ success: true, data: null })
+        return
+      }
+
+      const presentCount = session.records.filter((r) => r.status === 'present').length
+      const absentCount = session.records.filter((r) => r.status === 'absent').length
+      const lateCount = session.records.filter((r) => r.status === 'late').length
+
+      res.json({
+        success: true,
+        data: {
+          id: session.id,
+          date: session.date,
+          createdAt: session.createdAt,
+          status: session.status,
+          totalCount: session._count.records,
+          presentCount,
+          absentCount,
+          lateCount,
+        },
+      })
+    } catch (error) {
+      console.error('GET /attendance/roll-call/today error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  },
+)
+
 // POST /roll-call — form teacher daily roll call (always uses the DAILY001 course)
+// Idempotent: if a session already exists for the same date, update it instead of creating a duplicate.
 router.post(
   '/roll-call',
   authenticate,
@@ -173,14 +239,34 @@ router.post(
         return
       }
 
-      const session = await prisma.attendanceSession.create({
-        data: {
+      const dateStart = new Date(date)
+      dateStart.setHours(0, 0, 0, 0)
+      const dateEnd = new Date(date)
+      dateEnd.setHours(23, 59, 59, 999)
+
+      // Check for existing session on this date (idempotent)
+      const existing = await prisma.attendanceSession.findFirst({
+        where: {
           courseId: rollCallCourse.id,
-          date: new Date(date),
-          topic: `Daily Roll Call — ${className ?? 'Form Class'}`,
-          status: 'completed',
+          date: { gte: dateStart, lte: dateEnd },
         },
       })
+
+      let session
+      if (existing) {
+        // Update existing session: delete old records and replace
+        await prisma.attendanceRecord.deleteMany({ where: { sessionId: existing.id } })
+        session = existing
+      } else {
+        session = await prisma.attendanceSession.create({
+          data: {
+            courseId: rollCallCourse.id,
+            date: new Date(date),
+            topic: `Daily Roll Call — ${className ?? 'Form Class'}`,
+            status: 'completed',
+          },
+        })
+      }
 
       await prisma.attendanceRecord.createMany({
         data: records.map((r) => ({
