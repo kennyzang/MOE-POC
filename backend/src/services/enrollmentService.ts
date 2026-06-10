@@ -129,7 +129,7 @@ export async function acceptOffer(
 
   await prisma.admission.update({
     where: { id: admissionId },
-    data: { status: 'offer_accepted', decidedAt: new Date() },
+    data: { status: 'offer_accepted', decidedAt: new Date(), tempPassword },
   })
 
   // Fee invoice generation — non-fatal

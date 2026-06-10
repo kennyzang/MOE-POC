@@ -259,31 +259,46 @@ router.post('/submit', async (req: Request, res: Response) => {
 })
 
 // ─── GET /status — public status check (no auth) ─────────────────
-// SR-05: lookup by applicationNumber + parentIcNumber
+// Lookup by applicationNumber or enrolled studentId
 router.get('/status', async (req: Request, res: Response) => {
   try {
-    const { appId, parentIc } = req.query as { appId?: string; parentIc?: string }
+    const { appId } = req.query as { appId?: string }
 
-    if (!appId || !parentIc) {
-      res.status(400).json({ success: false, message: 'appId and parentIc are required' })
+    if (!appId) {
+      res.status(400).json({ success: false, message: 'Application ID or Student ID is required' })
       return
     }
 
-    const application = await prisma.admission.findFirst({
-      where: {
-        applicationNumber: appId.trim().toUpperCase(),
-        parentIcNumber: parentIc.trim(),
-      },
+    const id = appId.trim().toUpperCase()
+
+    // Try to find by application number first
+    let application = await prisma.admission.findFirst({
+      where: { applicationNumber: id },
       include: {
         documents: { select: { id: true, type: true, filename: true, docStatus: true, rejectionReason: true, uploadedAt: true } },
       },
     })
 
-    // When enrolled, look up the new student record for credentials display
-    let enrolledStudent: { studentId: string; className: string; gradeLevel: string; username: string } | null = null
-    if (application && application.status === 'offer_accepted' && application.icNumber) {
+    // If not found by app number, try to find by enrolled studentId
+    if (!application) {
       const student = await prisma.student.findFirst({
-        where: { icNumber: application.icNumber },
+        where: { studentId: id },
+      })
+      if (student && student.icNumber) {
+        application = await prisma.admission.findFirst({
+          where: { icNumber: student.icNumber, status: 'offer_accepted' },
+          include: {
+            documents: { select: { id: true, type: true, filename: true, docStatus: true, rejectionReason: true, uploadedAt: true } },
+          },
+        })
+      }
+    }
+
+    // When enrolled, look up the new student record for credentials display
+    let enrolledStudent: { studentId: string; className: string; gradeLevel: string; username: string; password: string } | null = null
+    if (application && application.status === 'offer_accepted') {
+      const student = await prisma.student.findFirst({
+        where: { icNumber: application.icNumber! },
         include: { user: { select: { username: true } } },
       })
       if (student) {
@@ -292,6 +307,7 @@ router.get('/status', async (req: Request, res: Response) => {
           className: student.className ?? '',
           gradeLevel: student.gradeLevel ?? '',
           username: student.user.username,
+          password: application.tempPassword ?? null,
         }
       }
     }
@@ -299,7 +315,7 @@ router.get('/status', async (req: Request, res: Response) => {
     if (!application) {
       res.status(404).json({
         success: false,
-        message: 'No application found with that ID and Parent IC combination. Please check your details.',
+        message: 'No application found with that ID. Please check your details.',
       })
       return
     }

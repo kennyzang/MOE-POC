@@ -64,6 +64,7 @@ interface ApplicationStatus {
     className: string
     gradeLevel: string
     username: string
+    password: string | null
   }
   documents: Array<{
     id: string
@@ -91,12 +92,12 @@ export default function RegistrationStatusPage() {
       setAppStatus(null)
 
       const res = await api.get('/registration/status', {
-        params: { appId: values.appId, parentIc: values.parentIc },
+        params: { appId: values.appId },
       })
       setAppStatus(res.data.data)
     } catch (err: any) {
       if (err.response?.status === 404) {
-        setError('No application found with that ID and Parent IC combination. Please check your details.')
+        setError('No application found with that ID. Please check your details.')
       } else if (err.isAxiosError) {
         setError(err.response?.data?.message || 'Failed to fetch application status.')
       }
@@ -119,30 +120,17 @@ export default function RegistrationStatusPage() {
         {/* Lookup Form */}
         <Card style={{ marginBottom: 24 }}>
           <Form form={form} layout="vertical" onFinish={handleSearch}>
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="appId"
-                  label="Application ID"
-                  rules={[{ required: true, message: 'Enter your Application ID' }]}
-                >
-                  <Input
-                    placeholder="e.g. APP-2026-0001"
-                    style={{ textTransform: 'uppercase' }}
-                    onChange={e => form.setFieldValue('appId', e.target.value.toUpperCase())}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="parentIc"
-                  label="Parent / Guardian IC Number"
-                  rules={[{ required: true, message: 'Enter your IC number' }]}
-                >
-                  <Input placeholder="As entered during registration" />
-                </Form.Item>
-              </Col>
-            </Row>
+            <Form.Item
+              name="appId"
+              label="Application ID or Student ID"
+              rules={[{ required: true, message: 'Enter your Application ID or Student ID' }]}
+            >
+              <Input
+                placeholder="e.g. APP-2026-0001 or STU2026001"
+                style={{ textTransform: 'uppercase' }}
+                onChange={e => form.setFieldValue('appId', e.target.value.toUpperCase())}
+              />
+            </Form.Item>
             <Button
               type="primary"
               htmlType="submit"
@@ -224,26 +212,46 @@ export default function RegistrationStatusPage() {
                     </Col>
                   </Row>
                   <Divider style={{ margin: '8px 0' }} />
-                  <Text type="secondary" style={{ fontSize: 12 }}>Student Login Username</Text>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Text code style={{ fontSize: 15 }}>{appStatus.enrolledStudent.username}</Text>
-                    <Button
-                      size="small"
-                      icon={<Copy size={12} />}
-                      onClick={() => {
-                        navigator.clipboard.writeText(appStatus.enrolledStudent!.username)
-                        setCopiedUser(true)
-                        setTimeout(() => setCopiedUser(false), 2000)
-                      }}
-                      type={copiedUser ? 'primary' : 'default'}
-                    >
-                      {copiedUser ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
+                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Student Login</Text>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Text strong style={{ fontSize: 14 }}>Username:</Text>
+                      <Text code style={{ fontSize: 15 }}>{appStatus.enrolledStudent.username}</Text>
+                      <Button
+                        size="small"
+                        icon={<Copy size={12} />}
+                        onClick={() => {
+                          navigator.clipboard.writeText(appStatus.enrolledStudent!.username)
+                          setCopiedUser(true)
+                          setTimeout(() => setCopiedUser(false), 2000)
+                        }}
+                        type={copiedUser ? 'primary' : 'default'}
+                      >
+                        {copiedUser ? 'Copied!' : 'Copy'}
+                      </Button>
+                    </div>
+                    {appStatus.enrolledStudent.password && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Text strong style={{ fontSize: 14 }}>Password:</Text>
+                        <Text code style={{ fontSize: 15 }}>{appStatus.enrolledStudent.password}</Text>
+                        <Button
+                          size="small"
+                          icon={<Copy size={12} />}
+                          onClick={() => {
+                            navigator.clipboard.writeText(appStatus.enrolledStudent!.password!)
+                            message.success('Password copied')
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    )}
+                  </Space>
+                  <Divider style={{ margin: '8px 0' }} />
                   <Alert
                     type="info"
                     showIcon
-                    message={`A temporary password has been sent to ${appStatus.parentEmail ?? 'your registered email'}. Please log in and change your password on first use.`}
+                    message={`Login credentials have also been sent to ${appStatus.parentEmail ?? 'your registered email'}.`}
                   />
                   <Button type="primary" href="/login">
                     Go to Student Login

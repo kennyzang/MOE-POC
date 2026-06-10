@@ -426,6 +426,18 @@ const LoginPage = () => {
               </Form.Item>
             </Form>
 
+            {/* ── Public Portal Links ── */}
+            <div style={{ textAlign: 'center', marginTop: -8 }}>
+              <Space size={16} split={<span style={{ color: '#d9d9d9' }}>|</span>}>
+                <a href="/register" style={{ fontSize: 12, color: '#165DFF' }}>
+                  Register New Student
+                </a>
+                <a href="/register/status" style={{ fontSize: 12, color: '#165DFF' }}>
+                  Check Application Status
+                </a>
+              </Space>
+            </div>
+
             {/* ── SSO Buttons ── */}
             <Divider style={{ margin: '4px 0', fontSize: 12, color: '#bfbfbf' }}>
               {t('auth.orSignInWith')}

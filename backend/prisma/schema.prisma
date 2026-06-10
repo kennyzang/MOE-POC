@@ -514,6 +514,7 @@ model Admission {
   documentsRequiredNote String?  // admin note when requesting more documents
   previousAcademicAvg Float?   // 0-100, from report card
   offerLetterPath     String?  // path to generated PDF
+  tempPassword        String?  // plaintext temporary password for student login (POC only, email not yet configured)
   submittedAt         DateTime?
   decidedAt           DateTime?
   remarks             String?

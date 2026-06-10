@@ -175,7 +175,9 @@ const ParentMessagesPage = () => {
                           <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                             <Trash2
                               size={13}
-                              style={{ color: '#bfbfbf', cursor: 'pointer', flexShrink: 0 }}
+                              style={{ color: '#ff4d4f', cursor: 'pointer', flexShrink: 0, opacity: 0.6 }}
+                              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                              onMouseLeave={e => e.currentTarget.style.opacity = '0.6'}
                             />
                           </span>
                         </Popconfirm>

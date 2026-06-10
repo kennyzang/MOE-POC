@@ -1419,27 +1419,43 @@ async function main() {
       await prisma.assignment.create({ data: hw })
     }
 
-    // Submissions for Ahmad for all past assignments
-    const ahmadEnrolledCourseIds = (await prisma.enrollment.findMany({ where: { studentId: ahmadStudentRecord.id, status: 'enrolled' }, select: { courseId: true } })).map(e => e.courseId)
+    // Submissions for ALL Year 7A enrolled students for past assignments
+    const year7aCourseIds = year7Courses.map(c => c.id)
     const pastHwAsgns = await prisma.assignment.findMany({
-      where: { courseId: { in: ahmadEnrolledCourseIds }, dueDate: { lte: new Date() } },
+      where: { courseId: { in: year7aCourseIds }, dueDate: { lte: new Date() } },
       orderBy: { dueDate: 'asc' },
     })
-    const hwGrades = [85, 72, 91, 68, 78, 88, 95, 73, 82, 77, 90, 65, 83, 79, 94, 87, 71, 93, 76, 88, 84, 69, 92, 75, 89]
-    for (let i = 0; i < pastHwAsgns.length; i++) {
-      const a = pastHwAsgns[i]
-      const g = hwGrades[i % hwGrades.length]
-      const isLate = i % 7 === 3
-      await prisma.assignmentSubmission.create({
-        data: {
-          assignmentId: a.id, studentId: ahmadStudentRecord.id,
+    // Get all students enrolled in Year 7A courses
+    const year7aEnrollments = await prisma.enrollment.findMany({
+      where: { courseId: { in: year7aCourseIds }, status: 'enrolled' },
+      select: { studentId: true },
+      distinct: ['studentId'],
+    })
+    const year7aStudentIds = year7aEnrollments.map(e => e.studentId)
+
+    const hwGradePool = [85, 72, 91, 68, 78, 88, 95, 73, 82, 77, 90, 65, 83, 79, 94, 87, 71, 93, 76, 88, 84, 69, 92, 75, 89]
+    const hwSubmissions: Array<{
+      assignmentId: string; studentId: string; submittedAt: Date;
+      isLate: boolean; score: number; status: string; feedback: string;
+    }> = []
+    for (let si = 0; si < year7aStudentIds.length; si++) {
+      const sid = year7aStudentIds[si]
+      for (let ai = 0; ai < pastHwAsgns.length; ai++) {
+        const a = pastHwAsgns[ai]
+        // Vary grades by student index + assignment index for realism
+        const g = hwGradePool[(si * 3 + ai * 7) % hwGradePool.length]
+        const isLate = (si + ai) % 9 === 3
+        const scaledScore = Math.round(g * a.maxScore / 100)
+        hwSubmissions.push({
+          assignmentId: a.id, studentId: sid,
           submittedAt: weeksAgo(Math.max(0, Math.ceil(((Date.now() - (a.dueDate?.getTime() ?? 0)) / 86400000) / 7) - 1)),
-          isLate, score: g, status: 'graded',
+          isLate, score: scaledScore, status: 'graded',
           feedback: g >= 80 ? 'Good work! Keep it up.' : g >= 65 ? 'Needs improvement in a few areas — see comments.' : 'Please review this topic and see me for support.',
-        },
-      })
+        })
+      }
     }
-    console.log(`  Created ${hwToCreate.length} assignments + ${pastHwAsgns.length} submissions`)
+    await prisma.assignmentSubmission.createMany({ data: hwSubmissions })
+    console.log(`  Created ${hwToCreate.length} assignments + ${hwSubmissions.length} submissions for ${year7aStudentIds.length} students`)
   }
 
   // ─── Notifications ─────────────────────────────────────────────────────────

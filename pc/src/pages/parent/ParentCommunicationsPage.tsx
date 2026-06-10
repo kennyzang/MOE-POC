@@ -47,7 +47,16 @@ export default function ParentCommunicationsPage() {
   }
 
   const tabIcon = (icon: React.ReactNode, count?: number) =>
-    count ? <Badge count={count} size="small">{icon}</Badge> : icon
+    count ? (
+      <Badge
+        count={count}
+        size="small"
+        overflowCount={99}
+        style={{ backgroundColor: '#165DFF' }}
+      >
+        {icon}
+      </Badge>
+    ) : icon
 
   const items = [
     {

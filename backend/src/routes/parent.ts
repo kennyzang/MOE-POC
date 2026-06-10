@@ -160,12 +160,22 @@ router.get(
         where: { id: { in: childIds }, enrollmentStatus: 'enrolled' },
         include: { user: { select: { displayName: true } } },
       })
-      const data = students.map((s) => ({
+      let data = students.map((s) => ({
         id: s.id,
         displayName: s.user.displayName,
         gradeLevel: s.gradeLevel,
         classSection: s.className,
       }))
+      // Sort: demo students (Ahmad, Hafiz) first for easier demonstration
+      const priorityNames = ['Ahmad Bin Abdullah', 'Hafiz Bin Abdullah']
+      data.sort((a, b) => {
+        const aIdx = priorityNames.indexOf(a.displayName)
+        const bIdx = priorityNames.indexOf(b.displayName)
+        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx
+        if (aIdx !== -1) return -1
+        if (bIdx !== -1) return 1
+        return a.displayName.localeCompare(b.displayName)
+      })
       res.json({ success: true, data })
     } catch (error) {
       console.error('GET /parent/children error:', error)
@@ -424,7 +434,14 @@ router.get(
           if (!existing.courses.includes(e.course.name)) existing.courses.push(e.course.name)
         }
       }
-      res.json({ success: true, data: Array.from(teacherMap.values()) })
+      const teachers = Array.from(teacherMap.values())
+      // Sort: put the demo teacher (teacher01 / Ms. Aminah) first
+      teachers.sort((a, b) => {
+        if (a.teacherName.startsWith('Ms. Aminah')) return -1
+        if (b.teacherName.startsWith('Ms. Aminah')) return 1
+        return a.teacherName.localeCompare(b.teacherName)
+      })
+      res.json({ success: true, data: teachers })
     } catch (error) {
       console.error('GET /parent/meetings/teachers error:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })

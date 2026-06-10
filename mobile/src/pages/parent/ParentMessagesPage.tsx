@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { PullToRefresh, Skeleton, Badge, Popup, Form, Input, TextArea, Button, Toast, Selector, Dialog } from 'antd-mobile'
+import { PullToRefresh, Skeleton, Badge, Popup, Form, Input, TextArea, Button, Toast, Dialog } from 'antd-mobile'
 import { MessageSquare, ChevronRight, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -40,6 +40,8 @@ function ComposePopup({ visible, onClose, onSent }: {
   const [teacherUserId, setTeacherUserId] = useState('')
   const [subject, setSubject] = useState('')
   const [firstMessage, setFirstMessage] = useState('')
+  const [teacherPickerOpen, setTeacherPickerOpen] = useState(false)
+  const [teacherSearch, setTeacherSearch] = useState('')
 
   const { data: teachers = [] } = useQuery({
     queryKey: ['parent-teachers'],
@@ -67,8 +69,14 @@ function ComposePopup({ visible, onClose, onSent }: {
   })
 
   const canSubmit = !!teacherUserId && !!subject.trim() && !!firstMessage.trim()
+  const selectedTeacher = teachers.find(t => t.teacherUserId === teacherUserId)
+  const filteredTeachers = teachers.filter(t =>
+    t.teacherName.toLowerCase().includes(teacherSearch.toLowerCase()) ||
+    t.courses.some(c => c.toLowerCase().includes(teacherSearch.toLowerCase()))
+  )
 
   return (
+    <>
     <Popup
       visible={visible}
       onMaskClick={onClose}
@@ -87,15 +95,18 @@ function ComposePopup({ visible, onClose, onSent }: {
 
       <Form layout="vertical">
         <Form.Item label={t('messages.teacher', 'Teacher')} style={{ marginBottom: 12 }}>
-          <Selector
-            options={teachers.map(tc => ({
-              label: tc.teacherName + (tc.courses.length ? ` (${tc.courses.slice(0, 2).join(', ')})` : ''),
-              value: tc.teacherUserId,
-            }))}
-            value={teacherUserId ? [teacherUserId] : []}
-            onChange={(v) => setTeacherUserId(v[0] ?? '')}
-            style={{ '--border-radius': '8px', '--padding': '6px 12px' } as React.CSSProperties}
-          />
+          <div
+            onClick={() => { setTeacherSearch(''); setTeacherPickerOpen(true) }}
+            style={{
+              padding: '10px 14px', borderRadius: 8, border: '1px solid #e5e5e5',
+              fontSize: 14, color: selectedTeacher ? '#1d1d1f' : '#c9cdd4',
+              cursor: 'pointer', background: '#fafafa',
+            }}
+          >
+            {selectedTeacher
+              ? `${selectedTeacher.teacherName} (${selectedTeacher.courses.slice(0, 2).join(', ')})`
+              : t('messages.selectTeacher', 'Select a teacher')}
+          </div>
         </Form.Item>
 
         <Form.Item label={t('messages.subject', 'Subject')} style={{ marginBottom: 12 }}>
@@ -138,6 +149,55 @@ function ComposePopup({ visible, onClose, onSent }: {
         </div>
       </Form>
     </Popup>
+
+    {/* Teacher picker popup with search */}
+    <Popup
+      visible={teacherPickerOpen}
+      onMaskClick={() => setTeacherPickerOpen(false)}
+      position="bottom"
+      bodyStyle={{
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        maxHeight: '60vh',
+        padding: '16px 0',
+      }}
+    >
+      <div style={{ padding: '0 16px 12px' }}>
+        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 10 }}>
+          {t('messages.teacher', 'Select Teacher')}
+        </div>
+        <Input
+          placeholder={t('messages.searchTeacher', 'Search teachers...')}
+          value={teacherSearch}
+          onChange={setTeacherSearch}
+          style={{ '--border-radius': '8px', '--font-size': '14px' } as React.CSSProperties}
+        />
+      </div>
+      <div style={{ maxHeight: '40vh', overflowY: 'auto', padding: '0 16px' }}>
+        {filteredTeachers.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 20, color: '#c9cdd4', fontSize: 13 }}>
+            No teachers found
+          </div>
+        ) : (
+          filteredTeachers.map(tc => (
+            <div
+              key={tc.teacherUserId}
+              onClick={() => { setTeacherUserId(tc.teacherUserId); setTeacherPickerOpen(false) }}
+              style={{
+                padding: '10px 12px', borderRadius: 8, marginBottom: 4, cursor: 'pointer',
+                background: tc.teacherUserId === teacherUserId ? '#e6f4ff' : 'transparent',
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#1d1d1f' }}>{tc.teacherName}</div>
+              {tc.courses.length > 0 && (
+                <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>{tc.courses.join(', ')}</div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </Popup>
+    </>
   )
 }
 

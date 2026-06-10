@@ -3,7 +3,7 @@
 **Target Duration:** ~55–60 minutes (excluding Q&A)  
 **Demo Date:** 2026-06-11 (Thursday)  
 **Audience:** MOE Brunei leadership, school principals, IT stakeholders  
-**System:** http://localhost:3000 (PC) / http://localhost:5173 (Mobile H5)
+**System:** http://localhost:3000 (PC) / http://localhost:3001 (Mobile H5)
 
 ---
 
@@ -12,14 +12,16 @@
 - Run `cd backend && npm run db:reset` on demo morning (seeds 3,456 students + all modules)
 - Start backend: `cd backend && npm run dev` (port 4000)
 - Start PC frontend: `cd pc && npm run dev` (port 3000)
-- Start mobile: `cd mobile && npm run dev` (port 5173)
-- Open two browser windows: Window A (PC at localhost:3000), Window B (Mobile H5 at localhost:5173 in Chrome DevTools mobile emulation)
-- Pre-login `admin / admin123` in a separate PC tab (keep it ready for later)
+- Start mobile: `cd mobile && npm run dev` (port 3001)
+- Open two browser windows: Window A (PC at localhost:3000), Window B (Mobile H5 at localhost:3001 in Chrome DevTools mobile emulation)
+- Pre-login `admin / Demo@2026` in a separate PC tab (keep it ready for later)
 - Have the login page open in Window A as the starting screen
 
 ---
 
 ## OPENING (2 min)
+
+**> ⚠️ All demo passwords have been unified to `Demo@2026`**  
 
 **[Screen shows: Login page with the Demo Accounts panel on the right]**
 
@@ -87,7 +89,7 @@
 
 ## ACT 3: A TEACHER'S MORNING — FORM CLASS & DAILY ROLL CALL (6 min)
 
-**[⟳ Switch account: `teacher01 / teacher123` — Ms. Aminah Binti Hassan, Form Teacher of Year 7A]**
+**[⟳ Switch account: `teacher01 / Demo@2026` — Ms. Aminah Binti Hassan, Form Teacher of Year 7A]**
 
 > "I'm now Ms. Aminah — she's a Mathematics and Science teacher, and the form teacher for Year 7A."
 
@@ -117,7 +119,7 @@
 
 ## ACT 4: TEACHING — ASSIGNMENTS & GRADE MANAGEMENT (5 min)
 
-**[Still logged in as `teacher01 / teacher123` — Ms. Aminah]**
+**[Still logged in as `teacher01 / Demo@2026` — Ms. Aminah]**
 
 **[Navigate to Teacher Portal → Assignments]**
 
@@ -216,7 +218,7 @@
 
 ## ACT 7: STAFF ATTENDANCE & ANOMALY DETECTION (3 min)
 
-**[⟳ Switch to PC, login as `admin / admin123`]**
+**[⟳ Switch to PC, login as `admin / Demo@2026`]**
 
 **[Navigate to Attendance → Staff Dashboard]**
 
@@ -230,7 +232,7 @@
 
 ## ACT 8: EDUCATOR MANAGEMENT — PERFORMANCE, CPD & LEAVE (7 min)
 
-**[⟳ Switch account: `hod01 / hod123` — Dr. Azman Bin Ishak, Head of Department for Science & Mathematics]**
+**[⟳ Switch account: `hod01 / Demo@2026` — Dr. Azman Bin Ishak, Head of Department for Science & Mathematics]**
 
 > "I'm now Dr. Azman, the HOD. The EMS — Educator Management System — gives him full visibility into his team."
 
@@ -297,7 +299,7 @@
 
 ## ACT 9: HEAD OF DEPARTMENT — OVERSIGHT & APPROVALS (3 min)
 
-**[Still logged in as `hod01 / hod123`]**
+**[Still logged in as `hod01 / Demo@2026`]**
 
 **[Navigate to HOD Dashboard]**
 
@@ -313,7 +315,7 @@
 
 ## ACT 10: SCHOOL MANAGEMENT — TIMETABLE, CALENDAR & RESOURCES (5 min)
 
-**[⟳ Switch account: `admin / admin123`]**
+**[⟳ Switch account: `admin / Demo@2026`]**
 
 **[Navigate to SMS → Timetable]**
 
@@ -351,7 +353,7 @@
 
 ## ACT 11: THE STUDENT EXPERIENCE (3 min)
 
-**[⟳ Switch account: `student001 / student123` — Ahmad Bin Abdullah]**
+**[⟳ Switch account: `student001 / Demo@2026` — Ahmad Bin Abdullah]**
 
 > "Now let's see what Ahmad — our Year 9 student — sees when he logs in."
 
@@ -402,7 +404,7 @@
 
 ## ACT 13: RISK DETECTION — THE EARLY WARNING SYSTEM (4 min)
 
-**[⟳ Switch account: `admin / admin123`]**
+**[⟳ Switch account: `admin / Demo@2026`]**
 
 **[Navigate to At-Risk Students page]**
 
@@ -429,7 +431,7 @@
 
 ## ACT 14: THE PRINCIPAL'S COMMAND CENTER — LIVE KPI DASHBOARD (5 min)
 
-**[⟳ Switch account: `principal / principal123` — Hjh Rashidah Binti Mohamad]**
+**[⟳ Switch account: `principal / Demo@2026` — Hjh Rashidah Binti Mohamad]**
 
 > "Finally, let's see where it all comes together — the Principal's Command Center."
 
@@ -467,7 +469,7 @@
 
 ## ACT 15: MULTI-SCHOOL & SYSTEM ADMINISTRATION (3 min)
 
-**[⟳ Switch account: `sysadmin / sysadmin123`]**
+**[⟳ Switch account: `sysadmin / Demo@2026`]**
 
 > "Before I close, let me show you that SERPS isn't limited to a single school."
 
@@ -475,7 +477,7 @@
 
 > "The System Administrator can see all four schools: SMHK Secondary, SRPB Primary, SMAB Religious, and ISB International. Each school is completely data-isolated — a teacher at one school cannot see students from another."
 
-**[⟳ Switch account: `admin / admin123` → Navigate to Private Education → Oversight Dashboard]**
+**[⟳ Switch account: `admin / Demo@2026` → Navigate to Private Education → Oversight Dashboard]**
 
 > "We also have a Private Education oversight module. The Department of Private Education can monitor all private schools from a centralised dashboard — send compliance circulars, track acknowledgement deadlines, and monitor performance metrics. Circulars can target all private schools, a specific district, or individual institutions."
 
@@ -514,16 +516,16 @@
 |-------|------|----------|----------|-----------|---------------|
 | — | (Public) | *(no login)* | — | Any visitor | ACT 1: Registration portal |
 | 1 | Admissions | `admissions` | `Demo@2026` | Admissions Officer | ACT 2: Process application |
-| 2 | Teacher | `teacher01` | `teacher123` | Ms. Aminah (Form 7A, Math & Science) | ACT 3–4: Roll call, grades |
+| 2 | Teacher | `teacher01` | `Demo@2026` | Ms. Aminah (Form 7A, Math & Science) | ACT 3–4: Roll call, grades |
 | 3 | Parent | `parent.siti` | `Demo@2026` | Mrs. Siti (mother of Ahmad + Hafiz) | ACT 5: Children, fees, comms |
 | 4 | Teacher | `drsiti` | `Demo@2026` | Dr. Siti Nurhaliza (Physics) | ACT 6: Messages, mobile demo |
-| 5 | Admin | `admin` | `admin123` | School Administrator | ACT 7: Staff attendance |
-| 6 | HOD | `hod01` | `hod123` | Dr. Azman (Science & Maths HOD) | ACT 8–9: EMS, approvals |
-| 7 | Student | `student001` | `student123` | Ahmad Bin Abdullah (Year 9) | ACT 11: Student portal |
+| 5 | Admin | `admin` | `Demo@2026` | School Administrator | ACT 7: Staff attendance |
+| 6 | HOD | `hod01` | `Demo@2026` | Dr. Azman (Science & Maths HOD) | ACT 8–9: EMS, approvals |
+| 7 | Student | `student001` | `Demo@2026` | Ahmad Bin Abdullah (Year 9) | ACT 11: Student portal |
 | 8 | Counselor | `farah` | `Demo@2026` | Ms. Farah (School Counselor) | ACT 12: Cases, SEN |
-| 9 | Admin | `admin` | `admin123` | School Administrator | ACT 13: Risk dashboard |
-| 10 | Principal | `principal` | `principal123` | Hjh Rashidah (Principal) | ACT 14: Command center |
-| 11 | Sysadmin | `sysadmin` | `sysadmin123` | System Administrator | ACT 15: Multi-school |
+| 9 | Admin | `admin` | `Demo@2026` | School Administrator | ACT 13: Risk dashboard |
+| 10 | Principal | `principal` | `Demo@2026` | Hjh Rashidah (Principal) | ACT 14: Command center |
+| 11 | Sysadmin | `sysadmin` | `Demo@2026` | System Administrator | ACT 15: Multi-school |
 
 ---
 

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
   PullToRefresh, Skeleton, Badge, Toast, Input, Button,
-  DotLoading, NavBar, Popup, Form, TextArea, Selector, Dialog,
+  DotLoading, NavBar, Popup, Form, TextArea, Dialog,
 } from 'antd-mobile'
 import { MessageSquare, Send, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import dayjs from 'dayjs'
@@ -44,6 +44,8 @@ function ComposePopup({ visible, onClose, onSent }: {
   const [recipientUserId, setRecipientUserId] = useState('')
   const [subject, setSubject] = useState('')
   const [firstMessage, setFirstMessage] = useState('')
+  const [contactPickerOpen, setContactPickerOpen] = useState(false)
+  const [contactSearch, setContactSearch] = useState('')
 
   const { data: contacts = [] } = useQuery({
     queryKey: ['teacher-contacts'],
@@ -71,8 +73,14 @@ function ComposePopup({ visible, onClose, onSent }: {
   })
 
   const canSubmit = !!recipientUserId && !!subject.trim() && !!firstMessage.trim()
+  const selectedContact = contacts.find(c => c.userId === recipientUserId)
+  const filteredContacts = contacts.filter(c =>
+    c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    (c.studentName && c.studentName.toLowerCase().includes(contactSearch.toLowerCase()))
+  )
 
   return (
+    <>
     <Popup
       visible={visible}
       onMaskClick={onClose}
@@ -91,17 +99,20 @@ function ComposePopup({ visible, onClose, onSent }: {
 
       <Form layout="vertical">
         <Form.Item label={t('messages.recipient', 'Recipient')} style={{ marginBottom: 12 }}>
-          <Selector
-            options={contacts.map(c => ({
-              label: c.type === 'parent'
-                ? `${c.name} (${t('messages.parentOf', 'Parent of')} ${c.studentName ?? ''})`
-                : `${c.name} (${t('role.student', 'Student')})`,
-              value: c.userId,
-            }))}
-            value={recipientUserId ? [recipientUserId] : []}
-            onChange={(v) => setRecipientUserId(v[0] ?? '')}
-            style={{ '--border-radius': '8px', '--padding': '6px 12px' } as React.CSSProperties}
-          />
+          <div
+            onClick={() => { setContactSearch(''); setContactPickerOpen(true) }}
+            style={{
+              padding: '10px 14px', borderRadius: 8, border: '1px solid #e5e5e5',
+              fontSize: 14, color: selectedContact ? '#1d1d1f' : '#c9cdd4',
+              cursor: 'pointer', background: '#fafafa',
+            }}
+          >
+            {selectedContact
+              ? selectedContact.type === 'parent'
+                ? `${selectedContact.name} (${t('messages.parentOf', 'Parent of')} ${selectedContact.studentName ?? ''})`
+                : `${selectedContact.name} (${t('role.student', 'Student')})`
+              : t('messages.selectRecipient', 'Select a recipient')}
+          </div>
         </Form.Item>
 
         <Form.Item label={t('messages.subject', 'Subject')} style={{ marginBottom: 12 }}>
@@ -140,6 +151,57 @@ function ComposePopup({ visible, onClose, onSent }: {
         </div>
       </Form>
     </Popup>
+
+    {/* Contact picker popup with search */}
+    <Popup
+      visible={contactPickerOpen}
+      onMaskClick={() => setContactPickerOpen(false)}
+      position="bottom"
+      bodyStyle={{
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        maxHeight: '60vh',
+        padding: '16px 0',
+      }}
+    >
+      <div style={{ padding: '0 16px 12px' }}>
+        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 10 }}>
+          {t('messages.selectRecipient', 'Select Recipient')}
+        </div>
+        <Input
+          placeholder={t('messages.searchRecipient', 'Search parents or students...')}
+          value={contactSearch}
+          onChange={setContactSearch}
+          style={{ '--border-radius': '8px', '--font-size': '14px' } as React.CSSProperties}
+        />
+      </div>
+      <div style={{ maxHeight: '40vh', overflowY: 'auto', padding: '0 16px' }}>
+        {filteredContacts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 20, color: '#c9cdd4', fontSize: 13 }}>
+            No contacts found
+          </div>
+        ) : (
+          filteredContacts.map(c => (
+            <div
+              key={c.userId}
+              onClick={() => { setRecipientUserId(c.userId); setContactPickerOpen(false) }}
+              style={{
+                padding: '10px 12px', borderRadius: 8, marginBottom: 4, cursor: 'pointer',
+                background: c.userId === recipientUserId ? '#e6f4ff' : 'transparent',
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#1d1d1f' }}>{c.name}</div>
+              <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>
+                {c.type === 'parent'
+                  ? `${t('messages.parentOf', 'Parent of')} ${c.studentName ?? ''}`
+                  : t('role.student', 'Student')}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </Popup>
+    </>
   )
 }
 

@@ -209,7 +209,24 @@ router.get('/teacher-contacts', authenticate, requireRole('teacher', 'hod', 'adm
       }
     }
 
-    res.json({ success: true, data: Array.from(contactMap.values()) })
+    // Sort: parents first (teachers primarily message parents), then students alphabetically
+    // Priority parents (demo) go before all other parents
+    const contacts = Array.from(contactMap.values())
+    const priorityParentNames = ['Hj Abdullah Bin Mahmud', 'Siti Binti Mohamed']
+    contacts.sort((a, b) => {
+      // Parents before students
+      if (a.type !== b.type) return a.type === 'parent' ? -1 : 1
+      // Among parents, priority ones first
+      if (a.type === 'parent') {
+        const aIdx = priorityParentNames.indexOf(a.name)
+        const bIdx = priorityParentNames.indexOf(b.name)
+        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx
+        if (aIdx !== -1) return -1
+        if (bIdx !== -1) return 1
+      }
+      return a.name.localeCompare(b.name)
+    })
+    res.json({ success: true, data: contacts })
   } catch (error) {
     console.error('GET /messages/teacher-contacts error:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
