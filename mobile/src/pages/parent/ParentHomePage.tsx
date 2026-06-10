@@ -120,7 +120,7 @@ export default function ParentHomePage() {
 
       {/* Quick Access Grid */}
       <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span>{t('common.quickAccess')}</span>
+        <span>{t('auth.quickAccess')}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
         {[

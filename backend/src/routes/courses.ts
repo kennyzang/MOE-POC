@@ -63,6 +63,90 @@ router.get(
   }
 )
 
+// GET /courses/workload-timetable
+// Returns timetable slot data for the workload page.
+// ?teacherId=<id>&semester=<s>
+// No teacherId → aggregate workload summary (all teachers)
+// With teacherId  → full slot list for that teacher (for grid display)
+router.get(
+  '/workload-timetable',
+  authenticate,
+  requireRole('admin', 'manager', 'hod', 'principal', 'teacher'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { teacherId, semester } = req.query as { teacherId?: string; semester?: string }
+      const { role, userId } = req.user!
+
+      // Teachers can only query their own timetable
+      let resolvedTeacherId = teacherId
+      if (role === 'teacher') {
+        const me = await prisma.teacher.findUnique({ where: { userId }, select: { id: true } })
+        resolvedTeacherId = me?.id
+      }
+
+      const semesterFilter = semester ? { semester: semester as string } : {}
+
+      if (resolvedTeacherId) {
+        // Slot-level view for a specific teacher
+        const slots = await prisma.timetableSlot.findMany({
+          where: { teacherId: resolvedTeacherId, ...semesterFilter },
+          include: {
+            course: { select: { id: true, code: true, name: true, creditHours: true } },
+            teacher: { include: { user: { select: { displayName: true } } } },
+          },
+          orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+        })
+        res.json({ success: true, mode: 'timetable', data: slots })
+      } else {
+        // Summary across all teachers
+        // TimetableSlot has no schoolId — filter via teacher relation instead
+        const sf = schoolFilter(req)
+        const teacherSchoolFilter = sf.schoolId ? { teacher: { schoolId: sf.schoolId } } : {}
+        const slots = await prisma.timetableSlot.findMany({
+          where: { ...teacherSchoolFilter, ...semesterFilter },
+          include: {
+            course: { select: { id: true, code: true, name: true, creditHours: true } },
+            teacher: { include: { user: { select: { displayName: true } } } },
+          },
+        })
+
+        // Aggregate by teacher
+        const map = new Map<string, { teacherId: string; teacherName: string; department: string; slots: typeof slots; totalPeriods: number; subjects: Set<string> }>()
+        for (const s of slots) {
+          const tid = s.teacherId
+          if (!map.has(tid)) {
+            map.set(tid, {
+              teacherId: tid,
+              teacherName: s.teacher.user.displayName,
+              department: s.teacher.department ?? '',
+              slots: [],
+              totalPeriods: 0,
+              subjects: new Set(),
+            })
+          }
+          const entry = map.get(tid)!
+          entry.slots.push(s)
+          entry.totalPeriods++
+          entry.subjects.add(s.course.name)
+        }
+
+        const summary = [...map.values()].map(e => ({
+          teacherId: e.teacherId,
+          teacherName: e.teacherName,
+          department: e.department,
+          totalPeriods: e.totalPeriods,
+          subjects: [...e.subjects],
+        })).sort((a, b) => b.totalPeriods - a.totalPeriods)
+
+        res.json({ success: true, mode: 'summary', data: summary })
+      }
+    } catch (error) {
+      console.error('GET /courses/workload-timetable error:', error)
+      res.status(500).json({ success: false, message: 'Internal server error' })
+    }
+  }
+)
+
 // GET /courses/:id — full course detail
 router.get(
   '/:id',
@@ -253,90 +337,6 @@ router.delete(
       res.json({ success: true, data: { id } })
     } catch (error) {
       console.error('Error deleting course:', error)
-      res.status(500).json({ success: false, message: 'Internal server error' })
-    }
-  }
-)
-
-// GET /courses/workload-timetable
-// Returns timetable slot data for the workload page.
-// ?teacherId=<id>&semester=<s>
-// No teacherId → aggregate workload summary (all teachers)
-// With teacherId  → full slot list for that teacher (for grid display)
-router.get(
-  '/workload-timetable',
-  authenticate,
-  requireRole('admin', 'manager', 'hod', 'principal', 'teacher'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const { teacherId, semester } = req.query as { teacherId?: string; semester?: string }
-      const { role, userId } = req.user!
-
-      // Teachers can only query their own timetable
-      let resolvedTeacherId = teacherId
-      if (role === 'teacher') {
-        const me = await prisma.teacher.findUnique({ where: { userId }, select: { id: true } })
-        resolvedTeacherId = me?.id
-      }
-
-      const semesterFilter = semester ? { semester: semester as string } : {}
-
-      if (resolvedTeacherId) {
-        // Slot-level view for a specific teacher
-        const slots = await prisma.timetableSlot.findMany({
-          where: { teacherId: resolvedTeacherId, ...semesterFilter },
-          include: {
-            course: { select: { id: true, code: true, name: true, creditHours: true } },
-            teacher: { include: { user: { select: { displayName: true } } } },
-          },
-          orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
-        })
-        res.json({ success: true, mode: 'timetable', data: slots })
-      } else {
-        // Summary across all teachers
-        // TimetableSlot has no schoolId — filter via teacher relation instead
-        const sf = schoolFilter(req)
-        const teacherSchoolFilter = sf.schoolId ? { teacher: { schoolId: sf.schoolId } } : {}
-        const slots = await prisma.timetableSlot.findMany({
-          where: { ...teacherSchoolFilter, ...semesterFilter },
-          include: {
-            course: { select: { id: true, code: true, name: true, creditHours: true } },
-            teacher: { include: { user: { select: { displayName: true } } } },
-          },
-        })
-
-        // Aggregate by teacher
-        const map = new Map<string, { teacherId: string; teacherName: string; department: string; slots: typeof slots; totalPeriods: number; subjects: Set<string> }>()
-        for (const s of slots) {
-          const tid = s.teacherId
-          if (!map.has(tid)) {
-            map.set(tid, {
-              teacherId: tid,
-              teacherName: s.teacher.user.displayName,
-              department: s.teacher.department ?? '',
-              slots: [],
-              totalPeriods: 0,
-              subjects: new Set(),
-            })
-          }
-          const entry = map.get(tid)!
-          entry.slots.push(s)
-          entry.totalPeriods++
-          entry.subjects.add(s.course.name)
-        }
-
-        const summary = [...map.values()].map(e => ({
-          teacherId: e.teacherId,
-          teacherName: e.teacherName,
-          department: e.department,
-          totalPeriods: e.totalPeriods,
-          subjects: [...e.subjects],
-        })).sort((a, b) => b.totalPeriods - a.totalPeriods)
-
-        res.json({ success: true, mode: 'summary', data: summary })
-      }
-    } catch (error) {
-      console.error('GET /courses/workload-timetable error:', error)
       res.status(500).json({ success: false, message: 'Internal server error' })
     }
   }
