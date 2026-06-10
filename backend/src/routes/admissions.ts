@@ -40,7 +40,7 @@ router.get(
 
       const admissions = await prisma.admission.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ submittedAt: 'desc' }, { createdAt: 'desc' }],
       })
 
       res.json({ success: true, data: admissions })
@@ -546,6 +546,7 @@ router.patch(
           title: 'Admission Status Updated',
           message: `Application for ${admission.applicantName} changed to "${admission.status}".`,
           type: 'info',
+          link: '/sis/admissions',
         },
       )
 

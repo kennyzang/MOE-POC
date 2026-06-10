@@ -13,19 +13,23 @@ import type { LoginRequest, LoginResponse } from '@/types'
 const { Title, Text } = Typography
 
 const DEMO_ACCOUNTS = [
+  // ── Demo Script Order (SMHK — MOE Secondary) ────────────────────────
+  { username: 'admin',           label: 'Admin',                password: 'admin123',     school: 'SMHK', authority: 'MOE' },
+  { username: 'principal',       label: 'Principal',            password: 'principal123', school: 'SMHK', authority: 'MOE' },
+  { username: 'hod01',           label: 'HOD',                  password: 'hod123',       school: 'SMHK', authority: 'MOE' },
+  { username: 'teacher01',       label: 'Form Teacher',         password: 'teacher123',   school: 'SMHK', authority: 'MOE' },
+  { username: 'drsiti',          label: 'Subject Teacher',      password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
+  { username: 'admission',       label: 'Admissions Officer',   password: 'admission123', school: 'SMHK', authority: 'MOE' },
+  { username: 'parent01',        label: 'Parent',               password: 'parent123',    school: 'SMHK', authority: 'MOE' },
+  { username: 'student001',      label: 'Yr 7 Student (Ahmad)', password: 'student123',   school: 'SMHK', authority: 'MOE' },
+  { username: 'farah',           label: 'Counselor',            password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
   // ── System ──────────────────────────────────────────────────────────
-  { username: 'sysadmin',        label: 'System Admin',      password: 'sysadmin123',  school: null,   authority: null },
-  // ── SMHK — MOE Secondary ────────────────────────────────────────────
-  { username: 'admin',           label: 'Admin',              password: 'admin123',     school: 'SMHK', authority: 'MOE' },
-  { username: 'principal',       label: 'Principal',          password: 'principal123', school: 'SMHK', authority: 'MOE' },
-  { username: 'hod01',           label: 'HOD',                password: 'hod123',       school: 'SMHK', authority: 'MOE' },
-  { username: 'farah',           label: 'Counselor',          password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
-  { username: 'teacher01',       label: 'Form Teacher',       password: 'teacher123',   school: 'SMHK', authority: 'MOE' },
-  { username: 'student001',      label: 'Yr 7 Student (Ahmad)', password: 'student123',  school: 'SMHK', authority: 'MOE' },
-  { username: 'adam',            label: 'Yr 7 Student',       password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
-  { username: 'parent.siti',     label: 'Parent (SMHK)',      password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
+  { username: 'sysadmin',        label: 'System Admin',         password: 'sysadmin123',  school: null,   authority: null },
+  // ── Other SMHK accounts ─────────────────────────────────────────────
+  { username: 'adam',            label: 'Yr 7 Student',         password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
+  { username: 'parent.siti',     label: 'Parent (SMHK)',        password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
   // ── SMHK — Additional Student (Yr 10) ───────────────────────────────
-  { username: 'nadia_y10',       label: 'Yr 10 Student',      password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
+  { username: 'nadia_y10',       label: 'Yr 10 Student',        password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
   // ── SRPB — MOE Primary ──────────────────────────────────────────────
   { username: 'admin.srpb',      label: 'Primary Admin',      password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' },
   { username: 'principal.srpb',  label: 'Primary Principal',  password: 'Demo@2026',    school: 'SRPB', authority: 'MOE' },

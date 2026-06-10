@@ -204,6 +204,7 @@ router.post('/submit', async (req: Request, res: Response) => {
           title: 'New Registration Application',
           message: `${applicantName} has submitted an enrolment application (${appNumber}) for ${gradeApplied}.`,
           type: 'info',
+          link: '/sis/admissions',
         },
       )
     }
