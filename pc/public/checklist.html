@@ -181,11 +181,10 @@ const I18N = {
     ],
     regMock:[
       {l:'Full Name',v:'Nurul Amina Binti Hassan'},{l:'IC Number',v:'001218-12-5678'},{l:'Date of Birth',v:'2018-12-01'},
-      {l:'Gender',v:'Female'},{l:'Nationality',v:'Bruneian'},{l:'Previous School',v:'Sekolah Rendah Keriam, Tutong'},
+      {l:'Previous School',v:'Sekolah Rendah Keriam, Tutong'},
       {l:'Last Exam Results',v:'PSR: 4A 1B (Merit)'},{l:'SEN Status',v:'None'},{l:'Guardian Name',v:'Hassan Bin Osman'},
-      {l:'Guardian Relation',v:'Father'},{l:'Guardian Phone',v:'+673 8881234'},{l:'Guardian Email',v:'hassan.osman@email.com'},
-      {l:'Guardian IC',v:'750315-08-1234'},{l:'Address',v:'Jln Pasar Baru, SPG 2215, Kampong Penanjong, Tutong'},
-      {l:'Preferred School',v:'Sekolah Menengah Arab Kampong Rimba'}
+      {l:'Guardian Phone',v:'8881234'},{l:'Guardian Email',v:'hassan.osman@email.com'},
+      {l:'Guardian IC',v:'750315-08-1234'},{l:'Address',v:'Jln Pasar Baru, SPG 2215, Kampong Penanjong, Tutong'}
     ],
     acts:[
       {id:0,t:'登录页 & Demo 账号面板',m:'无需登录 — 演示起始页',lc:null,
@@ -194,11 +193,11 @@ const I18N = {
               {s:'0.3',d:'点击 Sign In 按钮',e:'成功跳转到对应角色的默认首页'}]},
       {id:1,t:'公共注册门户',m:'5 步向导 — 无需登录',lc:null,
        items:[{s:'1.1',p:'/register',d:'打开注册页',e:'显示「Student Registration」5 步向导，Step 1 高亮'},
-              {s:'1.2',d:'Step 1：填写学生信息',ms:[0,5],e:'选择出生日期后，Year Level 自动计算'},
+              {s:'1.2',d:'Step 1：填写学生信息',ms:[0,3],e:'选择出生日期后，Year Level 自动计算'},
               {s:'1.3',d:'点击 Next → Step 2',e:'Academic Background 表单：Previous School / Last Results / SEN 字段'},
-              {s:'1.4',d:'Step 2 填写学术背景',ms:[5,8],e:'Previous School、Last Exam Results、SEN 可正常填写'},
+              {s:'1.4',d:'Step 2 填写学术背景',ms:[3,6],e:'Previous School、Last Exam Results、SEN 可正常填写'},
               {s:'1.5',d:'点击 Next → Step 3',e:'Guardian Details 表单：手机号有国家码选择器（+673 默认）'},
-              {s:'1.6',d:'Step 3 填写监护人信息',ms:[8,14],e:'监护人姓名、关系、手机号、邮箱、IC、地址均可填写'},
+              {s:'1.6',d:'Step 3 填写监护人信息',ms:[6,11],e:'监护人姓名、手机号、邮箱、IC、地址均可填写'},
               {s:'1.7',d:'点击 Next → Step 4 文档上传',e:'文档上传页：Birth Cert / Student IC / Parent IC / Photo 标记为 Required 必填'},
               {s:'1.8',d:'不传文档直接点 Next',e:'校验拦截，提示「Please upload required documents」'},
               {s:'1.9',d:'上传文件后点 Next → Step 5 Review',e:'Review 页面汇总显示所有已填信息 + Submit 提交按钮'}]},
@@ -289,11 +288,10 @@ const I18N = {
     ],
     regMock:[
       {l:'Full Name',v:'Nurul Amina Binti Hassan'},{l:'IC Number',v:'001218-12-5678'},{l:'Date of Birth',v:'2018-12-01'},
-      {l:'Gender',v:'Female'},{l:'Nationality',v:'Bruneian'},{l:'Previous School',v:'Sekolah Rendah Keriam, Tutong'},
+      {l:'Previous School',v:'Sekolah Rendah Keriam, Tutong'},
       {l:'Last Exam Results',v:'PSR: 4A 1B (Merit)'},{l:'SEN Status',v:'None'},{l:'Guardian Name',v:'Hassan Bin Osman'},
-      {l:'Guardian Relation',v:'Father'},{l:'Guardian Phone',v:'+673 8881234'},{l:'Guardian Email',v:'hassan.osman@email.com'},
-      {l:'Guardian IC',v:'750315-08-1234'},{l:'Address',v:'Jln Pasar Baru, SPG 2215, Kampong Penanjong, Tutong'},
-      {l:'Preferred School',v:'Sekolah Menengah Arab Kampong Rimba'}
+      {l:'Guardian Phone',v:'8881234'},{l:'Guardian Email',v:'hassan.osman@email.com'},
+      {l:'Guardian IC',v:'750315-08-1234'},{l:'Address',v:'Jln Pasar Baru, SPG 2215, Kampong Penanjong, Tutong'}
     ],
     acts:[
       {id:0,t:'Login Page & Demo Accounts Panel',m:'No login required — Starting point',lc:null,
@@ -302,11 +300,11 @@ const I18N = {
               {s:'0.3',d:'Click Sign In button',e:'Successfully redirects to the default home page for that role'}]},
       {id:1,t:'Public Registration Portal',m:'5-step wizard — No login required',lc:null,
        items:[{s:'1.1',p:'/register',d:'Open registration page',e:'Shows "Student Registration" 5-step wizard with Step 1 highlighted'},
-              {s:'1.2',d:'Step 1: Fill student information',ms:[0,5],e:'After selecting date of birth, Year Level is auto-calculated'},
+              {s:'1.2',d:'Step 1: Fill student information',ms:[0,3],e:'After selecting date of birth, Year Level is auto-calculated'},
               {s:'1.3',d:'Click Next → Step 2',e:'Academic Background form: Previous School / Last Results / SEN fields'},
-              {s:'1.4',d:'Step 2: Fill academic background',ms:[5,8],e:'Previous School, Last Exam Results, SEN can be filled normally'},
+              {s:'1.4',d:'Step 2: Fill academic background',ms:[3,6],e:'Previous School, Last Exam Results, SEN can be filled normally'},
               {s:'1.5',d:'Click Next → Step 3',e:'Guardian Details form: Phone number has country code selector (+673 default)'},
-              {s:'1.6',d:'Step 3: Fill guardian details',ms:[8,14],e:'Guardian name, relation, phone, email, IC, address are all fillable'},
+              {s:'1.6',d:'Step 3: Fill guardian details',ms:[6,11],e:'Guardian name, phone, email, IC, address are all fillable'},
               {s:'1.7',d:'Click Next → Step 4 Document Upload',e:'Document upload page: Birth Cert / Student IC / Parent IC / Photo marked as Required'},
               {s:'1.8',d:'Click Next without uploading documents',e:'Validation blocks it, showing "Please upload required documents"'},
               {s:'1.9',d:'Upload files then click Next → Step 5 Review',e:'Review page shows summary of all filled info + Submit button'}]},
