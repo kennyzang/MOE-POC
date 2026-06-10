@@ -90,7 +90,7 @@
   .mock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
   .mock-field{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e1d8;border-radius:6px;padding:6px 9px;font-size:12px}
   .mock-field-label{font-weight:600;color:var(--fg-muted);min-width:72px;font-size:11px}
-  .mock-field-val{flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fg);word-break:break-all}
+  .mock-field-val{flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fg);word-break:break-all;cursor:pointer;padding:2px 4px;margin:-2px -4px;border-radius:4px;transition:background .15s}.mock-field-val:hover{background:var(--accent-glow)}
   .copy-btn{flex-shrink:0;width:24px;height:24px;border:none;border-radius:5px;background:#eee;color:var(--fg-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;padding:0}.copy-btn:hover{background:var(--accent);color:#fff}.copy-btn.copied{background:var(--check-fg);color:#fff}
   .copy-all-btn{margin-top:8px;padding:6px 14px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--fg);transition:all .2s;display:inline-flex;align-items:center;gap:5px}.copy-all-btn:hover{border-color:var(--accent);color:var(--accent)}
   .actions{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap}
@@ -454,7 +454,7 @@ function render(){
       }
       let mockHtml='';
       if(item.ms){
-        const fields=t.regMock.slice(item.ms[0],item.ms[1]).map(m=>`<div class="mock-field"><span class="mock-field-label">${m.l}</span><span class="mock-field-val">${m.v}</span><button class="copy-btn" onclick="event.stopPropagation();copyToClipboard('${m.v.replace(/'/g,"\\'")}',this)" title="${t.copied}${m.l}"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg></button></div>`).join('');
+        const fields=t.regMock.slice(item.ms[0],item.ms[1]).map(m=>`<div class="mock-field"><span class="mock-field-label">${m.l}</span><span class="mock-field-val" onclick="event.stopPropagation();copyToClipboard('${m.v.replace(/'/g,"\\'")}',this)" title="${t.copied}${m.l}">${m.v}</span><button class="copy-btn" onclick="event.stopPropagation();copyToClipboard('${m.v.replace(/'/g,"\\'")}',this)" title="${t.copied}${m.l}"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg></button></div>`).join('');
         const allVals=t.regMock.slice(item.ms[0],item.ms[1]).map(m=>`${m.l}: ${m.v}`).join('\n');
         mockHtml=`<div class="mock-panel"><div class="mock-panel-title"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>${t.mockTitle}</div><div class="mock-grid">${fields}</div><button class="copy-all-btn" onclick="event.stopPropagation();copyToClipboard(\`${allVals.replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`,this)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>${t.copyAll}</button></div>`;
       }
