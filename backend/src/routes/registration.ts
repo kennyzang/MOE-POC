@@ -189,14 +189,14 @@ router.post('/submit', async (req: Request, res: Response) => {
       })
     }
 
-    // SR-06: Notify admissions officers at the target school
-    const admissionsUsers = await prisma.user.findMany({
-      where: {
-        role: 'admissions',
-        ...(schoolId ? { schoolId } : {}),
-      },
-      select: { id: true },
-    })
+    // SR-06: Notify admissions officers — try school-specific first, fall back to all
+    let admissionsUsers = schoolId
+      ? await prisma.user.findMany({ where: { role: 'admissions', schoolId }, select: { id: true } })
+      : []
+    if (admissionsUsers.length === 0) {
+      // No school-specific officers found — notify all admissions users
+      admissionsUsers = await prisma.user.findMany({ where: { role: 'admissions' }, select: { id: true } })
+    }
     if (admissionsUsers.length > 0) {
       await sendMany(
         admissionsUsers.map(u => u.id),

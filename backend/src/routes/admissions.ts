@@ -20,7 +20,10 @@ router.get(
   async (req: AuthRequest, res: Response) => {
     try {
       const { status, search } = req.query as { status?: string; search?: string }
-      const filter = schoolFilter(req)
+      // Admissions officers see ALL applications regardless of school (cross-school intake role)
+      // Other roles (admin, manager, principal) are scoped to their school
+      const isAdmissionsRole = req.user?.role === 'admissions'
+      const filter = isAdmissionsRole ? {} : schoolFilter(req)
 
       // schoolId on Admission is the target school; seeded records may have null.
       // Include records for this school OR unassigned (null) when school-scoped.
