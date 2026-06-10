@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { PullToRefresh, Skeleton, Badge, Popup, Form, Input, TextArea, Button, Toast, Selector } from 'antd-mobile'
-import { MessageSquare, ChevronRight, Plus, RefreshCw } from 'lucide-react'
+import { PullToRefresh, Skeleton, Badge, Popup, Form, Input, TextArea, Button, Toast, Selector, Dialog } from 'antd-mobile'
+import { MessageSquare, ChevronRight, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -148,15 +148,27 @@ export default function ParentMessagesPage() {
   const queryClient = useQueryClient()
   const [composeOpen, setComposeOpen] = useState(false)
 
-  const { data, isLoading, refetch, isError, error } = useQuery({
+  const { data, isLoading, refetch, isError } = useQuery({
     queryKey: ['message-threads'],
     queryFn: async () => {
       const { data } = await api.get<ApiResponse<MessageThread[]>>('/messages/threads')
       return data.data ?? []
     },
     refetchOnMount: true,
-    refetchOnFocus: true,
     staleTime: 0,
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (threadId: string) => {
+      await api.delete(`/messages/threads/${threadId}`)
+    },
+    onSuccess: () => {
+      Toast.show({ icon: 'success', content: 'Thread deleted' })
+      void queryClient.invalidateQueries({ queryKey: ['message-threads'] })
+    },
+    onError: () => {
+      Toast.show({ icon: 'fail', content: 'Failed to delete' })
+    },
   })
 
   const threads = data ?? []
@@ -182,7 +194,7 @@ export default function ParentMessagesPage() {
         ) : isError ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#86909c' }}>
             <div style={{ fontSize: 14, color: '#f53f3f', marginBottom: 12 }}>Failed to load messages</div>
-            <Button size="small" color="primary" onClick={() => refetch()}><RefreshCw size={14} /> Retry</Button>
+            <Button size="small" color="primary" onClick={() => { void refetch() }}><RefreshCw size={14} /> Retry</Button>
           </div>
         ) : threads.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#86909c' }}>
@@ -243,7 +255,7 @@ export default function ParentMessagesPage() {
                   )}
                 </div>
 
-                {/* Unread badge + chevron */}
+                {/* Unread badge + chevron + delete */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
                   {hasUnread && (
                     <Badge
@@ -251,6 +263,20 @@ export default function ParentMessagesPage() {
                       style={{ '--right': '0', '--top': '0' } as React.CSSProperties}
                     />
                   )}
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      Dialog.confirm({
+                        content: 'Delete this conversation?',
+                        confirmText: 'Delete',
+                        cancelText: 'Cancel',
+                        onConfirm: () => deleteMutation.mutate(thread.id),
+                      })
+                    }}
+                    style={{ display: 'inline-flex', padding: 4 }}
+                  >
+                    <Trash2 size={14} color="#ff4d4f" />
+                  </span>
                   <ChevronRight size={16} color="#c9cdd4" />
                 </div>
               </div>
@@ -265,7 +291,7 @@ export default function ParentMessagesPage() {
         aria-label={t('messages.newMessage', 'New Message')}
         style={{
           position: 'fixed',
-          right: 20,
+          left: 20,
           bottom: 'calc(56px + env(safe-area-inset-bottom) + 16px)',
           width: 52,
           height: 52,

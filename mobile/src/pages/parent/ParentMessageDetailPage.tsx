@@ -59,12 +59,14 @@ export default function ParentMessageDetailPage() {
 
   return (
     <AppLayout title={otherName ?? t('messages.detail')} showBack>
-      {/* Full height layout — override page-content padding with negative margins */}
+      {/* Full height layout — position absolute to escape page-content padding */}
       <div style={{
+        position: 'absolute',
+        left: 0, right: 0, bottom: 0,
+        top: 45, // NavHeader height
         display: 'flex', flexDirection: 'column',
-        height: 'calc(100vh - 45px)',
-        margin: -12,
         overflow: 'hidden',
+        paddingBottom: 50, // keep above tab bar
       }}>
         {/* Message scroll area */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>

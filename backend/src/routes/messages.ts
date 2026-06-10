@@ -77,18 +77,50 @@ router.get('/threads', authenticate, requireRole('parent', 'teacher', 'hod', 'ad
   }
 })
 
-// POST /messages/threads — start a new thread (parent initiates)
-router.post('/threads', authenticate, requireRole('parent', 'admin', 'manager'), async (req: AuthRequest, res: Response) => {
+// POST /messages/threads — start a new thread (parent or teacher initiates)
+router.post('/threads', authenticate, requireRole('parent', 'teacher', 'admin', 'manager'), async (req: AuthRequest, res: Response) => {
   try {
-    const { teacherUserId, studentId, subject, firstMessage } = req.body as {
-      teacherUserId: string; studentId?: string; subject: string; firstMessage: string
+    const role = req.user!.role
+    const { subject, firstMessage, studentId } = req.body as {
+      subject: string; firstMessage: string; studentId?: string
+      teacherUserId?: string; parentUserId?: string
+    }
+
+    let resolvedTeacherUserId: string
+    let resolvedParentUserId: string
+    let notifyUserId: string
+    let notifyTitle: string
+    let notifyMessage: string
+    let notifyLink: string
+
+    if (role === 'teacher') {
+      // Teacher initiates to a parent/student
+      const { parentUserId } = req.body as { parentUserId: string }
+      resolvedTeacherUserId = req.user!.userId
+      resolvedParentUserId = parentUserId
+      notifyUserId = parentUserId
+      const teacher = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { displayName: true } })
+      const recipient = await prisma.user.findUnique({ where: { id: parentUserId }, select: { role: true } })
+      notifyTitle = 'New Message from Teacher'
+      notifyMessage = `${teacher?.displayName ?? 'A teacher'} sent you a message: "${subject}"`
+      notifyLink = recipient?.role === 'student' ? '/student/messages' : '/parent/messages'
+    } else {
+      // Parent / admin / manager initiates to a teacher
+      const { teacherUserId } = req.body as { teacherUserId: string }
+      resolvedTeacherUserId = teacherUserId
+      resolvedParentUserId = req.user!.userId
+      notifyUserId = teacherUserId
+      const sender = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { displayName: true } })
+      notifyTitle = 'New Message'
+      notifyMessage = `${sender?.displayName ?? 'A parent'} sent you a message: "${subject}"`
+      notifyLink = '/teacher/messages'
     }
 
     const thread = await prisma.messageThread.create({
       data: {
         subject,
-        parentUserId: req.user!.userId,
-        teacherUserId,
+        parentUserId: resolvedParentUserId,
+        teacherUserId: resolvedTeacherUserId,
         studentId: studentId ?? null,
         messages: {
           create: {
@@ -99,19 +131,87 @@ router.post('/threads', authenticate, requireRole('parent', 'admin', 'manager'),
       },
     })
 
-    // Notify teacher
-    const parent = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { displayName: true } })
     await send({
-      userId: teacherUserId,
-      title: 'New Message',
-      message: `${parent?.displayName ?? 'A parent'} sent you a message: "${subject}"`,
+      userId: notifyUserId,
+      title: notifyTitle,
+      message: notifyMessage,
       type: 'info',
-      link: '/teacher/messages',
+      link: notifyLink,
     })
 
     res.status(201).json({ success: true, data: thread })
   } catch (error) {
     console.error('POST /messages/threads error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// GET /messages/teacher-contacts — parents and students the teacher can message
+router.get('/teacher-contacts', authenticate, requireRole('teacher', 'hod', 'admin', 'manager'), async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId
+    // Find teacher record
+    const teacher = await prisma.teacher.findFirst({ where: { userId } })
+    if (!teacher) { res.json({ success: true, data: [] }); return }
+
+    // Get courses this teacher is assigned to
+    const assignments = await prisma.courseAssignment.findMany({
+      where: { teacherId: teacher.id },
+      include: {
+        course: {
+          include: {
+            enrollments: {
+              where: { status: 'enrolled' },
+              include: {
+                student: {
+                  include: {
+                    user: { select: { id: true, displayName: true } },
+                    parentLinks: {
+                      include: {
+                        parent: { include: { user: { select: { id: true, displayName: true } } } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    const contactMap = new Map<string, { userId: string; name: string; type: 'parent' | 'student'; studentName?: string }>()
+
+    for (const a of assignments) {
+      for (const e of a.course.enrollments) {
+        const s = e.student
+        // Add parent contacts
+        for (const link of s.parentLinks) {
+          const pUserId = link.parent.user.id
+          if (!contactMap.has(pUserId)) {
+            contactMap.set(pUserId, {
+              userId: pUserId,
+              name: link.parent.user.displayName,
+              type: 'parent',
+              studentName: s.user.displayName,
+            })
+          }
+        }
+        // Also add student contacts
+        const sUserId = s.user.id
+        if (!contactMap.has(sUserId)) {
+          contactMap.set(sUserId, {
+            userId: sUserId,
+            name: s.user.displayName,
+            type: 'student',
+          })
+        }
+      }
+    }
+
+    res.json({ success: true, data: Array.from(contactMap.values()) })
+  } catch (error) {
+    console.error('GET /messages/teacher-contacts error:', error)
     res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })
