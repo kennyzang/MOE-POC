@@ -179,7 +179,7 @@ router.get(
             },
           },
           records: {
-            select: { status: true },
+            select: { studentId: true, status: true },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -205,6 +205,7 @@ router.get(
           presentCount,
           absentCount,
           lateCount,
+          records: session.records.map((r) => ({ studentId: r.studentId, status: r.status })),
         },
       })
     } catch (error) {

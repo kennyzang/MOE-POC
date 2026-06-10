@@ -1,7 +1,13 @@
 import { Router, Request, Response } from 'express'
+import path from 'path'
+import fs from 'fs'
+import { randomUUID } from 'crypto'
 import prisma from '../lib/prisma'
 import { sendMany } from '../services/notificationService'
 import { broadcast } from './events'
+
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads', 'admission-docs')
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true })
 
 const router = Router()
 
@@ -177,16 +183,28 @@ router.post('/submit', async (req: Request, res: Response) => {
       },
     })
 
-    // Create document placeholders from filenames list (SR-03)
+    // Create document records from uploaded files (SR-03)
     if (Array.isArray(documentFilenames) && documentFilenames.length > 0) {
-      await prisma.admissionDocument.createMany({
-        data: documentFilenames.map((f: { type: string; filename: string }) => ({
-          admissionId: application.id,
-          type: f.type || 'OTHER',
-          filename: f.filename,
-          docStatus: 'pending',
-        })),
-      })
+      const docs = await Promise.all(
+        documentFilenames.map(async (f: { type: string; filename: string; data?: string; mimeType?: string }) => {
+          let filePath: string | null = null
+          if (f.data) {
+            const ext = path.extname(f.filename) || '.bin'
+            const savedName = `${randomUUID()}${ext}`
+            const fullPath = path.join(UPLOADS_DIR, savedName)
+            fs.writeFileSync(fullPath, Buffer.from(f.data, 'base64'))
+            filePath = fullPath
+          }
+          return {
+            admissionId: application.id,
+            type: f.type || 'OTHER',
+            filename: f.filename,
+            filePath,
+            docStatus: 'pending',
+          }
+        }),
+      )
+      await prisma.admissionDocument.createMany({ data: docs })
     }
 
     // SR-06: Notify admissions officers — try school-specific first, fall back to all

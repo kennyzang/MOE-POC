@@ -129,21 +129,21 @@ async function main() {
   // ─── System Admin (no school — cross-school access) ───────────────────────
 
   await prisma.user.create({
-    data: { username: 'sysadmin', password: hash('sysadmin123'), displayName: 'System Administrator', email: 'sysadmin@moe.gov.bn', role: 'admin', systemAdmin: true },
+    data: { username: 'sysadmin', password: hash('Demo@2026'), displayName: 'System Administrator', email: 'sysadmin@moe.gov.bn', role: 'admin', systemAdmin: true },
   })
 
   // ─── Named users (SMHK school) ────────────────────────────────────────────
 
   const adminUser = await prisma.user.create({
-    data: { username: 'admin', password: hash('admin123'), displayName: 'SMHK Admin', email: 'admin@smhk.edu.bn', role: 'admin', schoolId: smhk.id },
+    data: { username: 'admin', password: hash('Demo@2026'), displayName: 'SMHK Admin', email: 'admin@smhk.edu.bn', role: 'admin', schoolId: smhk.id },
   })
 
   const principalUser = await prisma.user.create({
-    data: { username: 'principal', password: hash('principal123'), displayName: 'Hjh Rashidah Binti Mohamad', email: 'principal@smhk.edu.bn', role: 'principal', schoolId: smhk.id },
+    data: { username: 'principal', password: hash('Demo@2026'), displayName: 'Hjh Rashidah Binti Mohamad', email: 'principal@smhk.edu.bn', role: 'principal', schoolId: smhk.id },
   })
 
   const hodUser = await prisma.user.create({
-    data: { username: 'hod01', password: hash('hod123'), displayName: 'Dr. Azman Bin Ishak', email: 'azman@smhk.edu.bn', role: 'hod', schoolId: smhk.id },
+    data: { username: 'hod01', password: hash('Demo@2026'), displayName: 'Dr. Azman Bin Ishak', email: 'azman@smhk.edu.bn', role: 'hod', schoolId: smhk.id },
   })
 
   await prisma.user.create({
@@ -173,7 +173,7 @@ async function main() {
 
   // teacher01 = Ms. Aminah (CPD 18h)
   const teacher01User = await prisma.user.create({
-    data: { username: 'teacher01', password: hash('teacher123'), displayName: 'Ms. Aminah Binti Hassan', email: 'aminah@smhk.edu.bn', role: 'teacher', schoolId: smhk.id },
+    data: { username: 'teacher01', password: hash('Demo@2026'), displayName: 'Ms. Aminah Binti Hassan', email: 'aminah@smhk.edu.bn', role: 'teacher', schoolId: smhk.id },
   })
 
   // Counselor - Ms. Farah
@@ -192,7 +192,7 @@ async function main() {
 
   // Students (SMHK)
   const student001User = await prisma.user.create({
-    data: { username: 'student001', password: hash('student123'), displayName: 'Ahmad Bin Abdullah', email: 'ahmad@student.smhk.edu.bn', role: 'student', schoolId: smhk.id },
+    data: { username: 'student001', password: hash('Demo@2026'), displayName: 'Ahmad Bin Abdullah', email: 'ahmad@student.smhk.edu.bn', role: 'student', schoolId: smhk.id },
   })
 
   const adamUser = await prisma.user.create({
@@ -227,7 +227,7 @@ async function main() {
 
   // Parents
   const parent01User = await prisma.user.create({
-    data: { username: 'parent01', password: hash('parent123'), displayName: 'Hj Abdullah Bin Mahmud', email: 'abdullah@email.com', role: 'parent', schoolId: smhk.id },
+    data: { username: 'parent01', password: hash('Demo@2026'), displayName: 'Hj Abdullah Bin Mahmud', email: 'abdullah@email.com', role: 'parent', schoolId: smhk.id },
   })
 
   const fatimahUser = await prisma.user.create({

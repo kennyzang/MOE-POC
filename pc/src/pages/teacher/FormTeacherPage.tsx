@@ -53,6 +53,7 @@ interface TodayRollCall {
   presentCount: number
   absentCount: number
   lateCount: number
+  records?: { studentId: string; status: string }[]
 }
 
 const STANDING_COLOR: Record<string, string> = {
@@ -100,16 +101,33 @@ const FormTeacherPage = () => {
   })
 
   const handleOpenRollCall = () => {
-    if (todayRollCall) {
-      Modal.confirm({
-        title: 'Roll Call Already Submitted',
-        content: `Today's roll call was submitted at ${dayjs(todayRollCall.createdAt).format('HH:mm')}. Do you want to edit it?`,
-        okText: 'Edit',
-        cancelText: 'Cancel',
-        onOk: () => setRollCallOpen(true),
+    if (todayRollCall?.records) {
+      // Pre-fill from existing roll call records for editing
+      const existingMap: Record<string, string> = {}
+      todayRollCall.records.forEach((r) => {
+        existingMap[r.studentId] = r.status
       })
+      setRollCallMap(existingMap)
     } else {
-      setRollCallOpen(true)
+      setRollCallMap({})
+    }
+    setRollCallDate(dayjs())
+    setRollCallOpen(true)
+  }
+
+  const handleRollCallDateChange = (d: dayjs.Dayjs | null) => {
+    if (!d) return
+    setRollCallDate(d)
+    // If user changed to a different date, clear the map (start fresh)
+    if (!d.isSame(dayjs(), 'day')) {
+      setRollCallMap({})
+    } else if (todayRollCall?.records) {
+      // Back to today — re-load existing records if any
+      const existingMap: Record<string, string> = {}
+      todayRollCall.records.forEach((r) => {
+        existingMap[r.studentId] = r.status
+      })
+      setRollCallMap(existingMap)
     }
   }
 
@@ -352,7 +370,7 @@ const FormTeacherPage = () => {
                 >
                   View Details
                 </Button>
-                <Button size="small" onClick={() => setRollCallOpen(true)}>
+                <Button size="small" onClick={handleOpenRollCall}>
                   Edit
                 </Button>
               </Space>
@@ -471,18 +489,20 @@ const FormTeacherPage = () => {
         title={
           <Space>
             <BookOpen size={16} />
-            Daily Roll Call — {rollCallDate.format('DD/MM/YYYY')}
+            {todayRollCall?.records && todayRollCall.records.length > 0
+              ? `Edit Roll Call — ${rollCallDate.format('DD/MM/YYYY')}`
+              : `Daily Roll Call — ${rollCallDate.format('DD/MM/YYYY')}`}
           </Space>
         }
         open={rollCallOpen}
         onCancel={() => setRollCallOpen(false)}
         onOk={() => rollCallMutation.mutate()}
-        okText="Submit Roll Call"
+        okText={todayRollCall?.records && todayRollCall.records.length > 0 ? 'Update Roll Call' : 'Submit Roll Call'}
         width={600}
       >
         <DatePicker
           value={rollCallDate}
-          onChange={(d) => d && setRollCallDate(d)}
+          onChange={handleRollCallDateChange}
           style={{ marginBottom: 16 }}
           format="DD/MM/YYYY"
         />

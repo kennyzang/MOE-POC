@@ -220,7 +220,7 @@ export default function TeacherHomePage() {
 
   return (
     <AppLayout title={t('teacher.title')} showLogout>
-      <PushNotificationBanner showTest />
+      <PushNotificationBanner />
       <div className="welcome-card">
         <div className="welcome-name">
           {t('teacher.welcome')}, {user?.displayName?.split(' ')[0]}

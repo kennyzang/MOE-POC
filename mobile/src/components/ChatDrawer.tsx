@@ -49,7 +49,8 @@ export default function ChatDrawer() {
   const fabRef = useRef<HTMLButtonElement>(null)
 
   // Draggable FAB position (bottom/right offsets from viewport edges)
-  const [fabPos, setFabPos] = useState({ bottom: 96, right: 16 })
+  // Initial bottom: tab bar (~50px) + safe-area (~34px max) + margin (20px) = 104px
+  const [fabPos, setFabPos] = useState({ bottom: 110, right: 16 })
   const dragState = useRef({ active: false, startX: 0, startY: 0, startBottom: 0, startRight: 0, moved: false })
 
   const scrollToBottom = useCallback(() => {
@@ -91,7 +92,9 @@ export default function ChatDrawer() {
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
       dragState.current.moved = true
       const newRight = Math.max(8, Math.min(window.innerWidth - 56, dragState.current.startRight - dx))
-      const newBottom = Math.max(8, Math.min(window.innerHeight - 56, dragState.current.startBottom + dy))
+      // bottom increases when dragging UP (dy < 0), so negate dy
+      const tabBarHeight = 80 // conservative: tab bar ~50px + safe-area-inset-bottom
+      const newBottom = Math.max(tabBarHeight, Math.min(window.innerHeight - 60, dragState.current.startBottom - dy))
       setFabPos({ right: newRight, bottom: newBottom })
     }
   }

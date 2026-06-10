@@ -135,10 +135,29 @@ export default function RegistrationPortalPage() {
   const handleSubmit = async () => {
     setSubmitting(true)
     try {
-      const documentFilenames = fileList.map(f => ({
-        type: (f as any).docType || 'OTHER',
-        filename: f.name,
-      }))
+      const documentFilenames = await Promise.all(
+        fileList.map(f => new Promise<{ type: string; filename: string; data: string; mimeType: string }>((resolve, reject) => {
+          const file = (f as any).originFileObj as File
+          if (!file) {
+            resolve({ type: (f as any).docType || 'OTHER', filename: f.name, data: '', mimeType: '' })
+            return
+          }
+          const reader = new FileReader()
+          reader.onload = () => {
+            const result = reader.result as string
+            // strip "data:...;base64," prefix
+            const base64 = result.split(',')[1]
+            resolve({
+              type: (f as any).docType || 'OTHER',
+              filename: f.name,
+              data: base64,
+              mimeType: file.type,
+            })
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })),
+      )
 
       const payload = {
         ...formData,

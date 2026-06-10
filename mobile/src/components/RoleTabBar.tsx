@@ -31,7 +31,7 @@ export default function RoleTabBar() {
       { key: '/teacher/home', title: t('teacher.home'), icon: <Home size={20} /> },
       { key: '/teacher/courses', title: t('teacher.classes'), icon: <CalendarDays size={20} /> },
       { key: '/teacher/grades', title: t('teacher.gradesTab', 'Grades'), icon: <FileText size={20} /> },
-      { key: '/teacher/announcements', title: t('announcements.title'), icon: <Megaphone size={20} /> },
+      { key: '/teacher/messages', title: t('messages.title'), icon: <MessageSquare size={20} /> },
       { key: '/teacher/attendance', title: t('teacher.attendance'), icon: <CalendarCheck size={20} /> },
     ],
   }

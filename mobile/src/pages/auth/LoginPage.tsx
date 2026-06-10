@@ -11,9 +11,14 @@ type Language = 'en' | 'zh' | 'ms'
 type Authority = 'MOE' | 'MORA' | 'PRIVATE' | null
 
 const DEMO_ACCOUNTS = [
-  { username: 'teacher01',  label: 'Form Teacher',    labelZh: '班主任',        labelMs: 'Guru Tingkatan', password: 'teacher123', school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'student001', label: 'Year 7 Student',  labelZh: '七年级学生',    labelMs: 'Pelajar Tahun 7',password: 'student123', school: 'SMHK', authority: 'MOE' as Authority },
-  { username: 'parent01',   label: 'Parent',          labelZh: '家长',          labelMs: 'Ibu Bapa',      password: 'parent123',  school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'teacher01',  label: 'Form Teacher (7A)',    labelZh: '班主任（7A）',   labelMs: 'Guru Tingkatan (7A)', password: 'Demo@2026', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'parent.siti',label: 'Parent (Mrs Siti)',    labelZh: '家长（Siti女士）',labelMs: 'Ibu Bapa (Pn Siti)',  password: 'Demo@2026', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'drsiti',     label: 'Teacher (Dr Siti)',    labelZh: '教师（Siti博士）',labelMs: 'Guru (Dr Siti)',     password: 'Demo@2026', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'student001', label: 'Student (Ahmad)',      labelZh: '学生（Ahmad）',  labelMs: 'Pelajar (Ahmad)',   password: 'Demo@2026', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'fatimah',    label: 'Parent (Fatimah)',     labelZh: '家长（Fatimah）',labelMs: 'Ibu Bapa (Fatimah)', password: 'Demo@2026', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'admin',      label: 'Admin',                labelZh: '管理员',         labelMs: 'Pentadbir',         password: 'Demo@2026', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'hod01',      label: 'HOD (Dr Azman)',       labelZh: '主任（Azman博士）',labelMs: 'KJ (Dr Azman)',   password: 'Demo@2026', school: 'SMHK', authority: 'MOE' as Authority },
+  { username: 'principal',  label: 'Principal',            labelZh: '校长',           labelMs: 'Pengetua',          password: 'Demo@2026', school: 'SMHK', authority: 'MOE' as Authority },
 ]
 
 const AUTHORITY_COLOR: Record<string, string> = {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { PullToRefresh, Skeleton, Badge, Popup, Form, Input, TextArea, Button, Toast, Selector } from 'antd-mobile'
-import { MessageSquare, ChevronRight, Plus } from 'lucide-react'
+import { MessageSquare, ChevronRight, Plus, RefreshCw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -148,12 +148,15 @@ export default function ParentMessagesPage() {
   const queryClient = useQueryClient()
   const [composeOpen, setComposeOpen] = useState(false)
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, isError, error } = useQuery({
     queryKey: ['message-threads'],
     queryFn: async () => {
       const { data } = await api.get<ApiResponse<MessageThread[]>>('/messages/threads')
       return data.data ?? []
     },
+    refetchOnMount: true,
+    refetchOnFocus: true,
+    staleTime: 0,
   })
 
   const threads = data ?? []
@@ -176,6 +179,11 @@ export default function ParentMessagesPage() {
               </div>
             ))}
           </>
+        ) : isError ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#86909c' }}>
+            <div style={{ fontSize: 14, color: '#f53f3f', marginBottom: 12 }}>Failed to load messages</div>
+            <Button size="small" color="primary" onClick={() => refetch()}><RefreshCw size={14} /> Retry</Button>
+          </div>
         ) : threads.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#86909c' }}>
             <MessageSquare size={48} color="#c9cdd4" style={{ display: 'block', margin: '0 auto 12px' }} />
@@ -258,7 +266,7 @@ export default function ParentMessagesPage() {
         style={{
           position: 'fixed',
           right: 20,
-          bottom: 80,
+          bottom: 'calc(56px + env(safe-area-inset-bottom) + 16px)',
           width: 52,
           height: 52,
           borderRadius: 26,

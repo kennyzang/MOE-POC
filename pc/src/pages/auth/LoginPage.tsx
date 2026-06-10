@@ -14,19 +14,19 @@ const { Title, Text } = Typography
 
 const DEMO_ACCOUNTS = [
   // ── Demo Script Order ────────────────────────────────────────────────
+  { username: 'teacher01',       label: 'Form Teacher (7A)',    password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },  // ACT 3-4
   { username: 'admissions',      label: 'Admissions Officer',   password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },  // ACT 2
-  { username: 'teacher01',       label: 'Form Teacher (7A)',    password: 'teacher123',   school: 'SMHK', authority: 'MOE' },  // ACT 3-4
   { username: 'parent.siti',     label: 'Parent (Mrs Siti)',    password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },  // ACT 5
   { username: 'drsiti',          label: 'Teacher (Dr Siti)',    password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },  // ACT 6
-  { username: 'admin',           label: 'Admin',                password: 'admin123',     school: 'SMHK', authority: 'MOE' },  // ACT 7,10,13,15
-  { username: 'hod01',           label: 'HOD (Dr Azman)',       password: 'hod123',       school: 'SMHK', authority: 'MOE' },  // ACT 8-9
-  { username: 'student001',      label: 'Student (Ahmad)',      password: 'student123',   school: 'SMHK', authority: 'MOE' },  // ACT 11
+  { username: 'admin',           label: 'Admin',                password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },  // ACT 7,10,13,15
+  { username: 'hod01',           label: 'HOD (Dr Azman)',       password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },  // ACT 8-9
+  { username: 'student001',      label: 'Student (Ahmad)',      password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },  // ACT 11
   { username: 'farah',           label: 'Counselor',            password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },  // ACT 12
-  { username: 'principal',       label: 'Principal',            password: 'principal123', school: 'SMHK', authority: 'MOE' },  // ACT 14
-  { username: 'sysadmin',        label: 'System Admin',         password: 'sysadmin123',  school: null,   authority: null  },  // ACT 15
+  { username: 'principal',       label: 'Principal',            password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },  // ACT 14
+  { username: 'sysadmin',        label: 'System Admin',         password: 'Demo@2026',    school: null,   authority: null  },  // ACT 15
   // ── Other accounts ──────────────────────────────────────────────────
   { username: 'adam',            label: 'Yr 7 Student',         password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
-  { username: 'parent01',        label: 'Parent',               password: 'parent123',    school: 'SMHK', authority: 'MOE' },
+  { username: 'parent01',        label: 'Parent',               password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
   // ── SMHK — Additional Student (Yr 10) ───────────────────────────────
   { username: 'nadia_y10',       label: 'Yr 10 Student',        password: 'Demo@2026',    school: 'SMHK', authority: 'MOE' },
   // ── SRPB — MOE Primary ──────────────────────────────────────────────
