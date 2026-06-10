@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import {
   Card, List, Typography, Space, Badge, Input, Button, Avatar, Modal, Form,
-  Select, Spin, Empty, message,
+  Select, Spin, Empty, Popconfirm, message,
 } from 'antd'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MessageSquare, Send, Plus } from 'lucide-react'
+import { MessageSquare, Send, Plus, Trash2 } from 'lucide-react'
 import dayjs from 'dayjs'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
@@ -103,6 +103,20 @@ const ParentMessagesPage = () => {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async (threadId: string) => {
+      await api.delete(`/messages/threads/${threadId}`)
+    },
+    onSuccess: () => {
+      message.success('Thread deleted')
+      void queryClient.invalidateQueries({ queryKey: ['parent-message-threads'] }).then(() => {
+        // Clear selection if the deleted thread was selected
+        setSelectedThreadId(null)
+      })
+    },
+    onError: () => message.error('Failed to delete thread'),
+  })
+
   const selectedThread = threads.find((t) => t.id === selectedThreadId)
 
   return (
@@ -148,7 +162,24 @@ const ParentMessagesPage = () => {
                   <div style={{ width: '100%' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text strong style={{ fontSize: 13 }}>{thread.teacherName}</Text>
-                      {thread.unreadCount > 0 && <Badge count={thread.unreadCount} size="small" />}
+                      <Space size={4}>
+                        {thread.unreadCount > 0 && <Badge count={thread.unreadCount} size="small" />}
+                        <Popconfirm
+                          title="Delete this thread?"
+                          description="This will permanently delete all messages in this conversation."
+                          onConfirm={() => deleteMutation.mutate(thread.id)}
+                          okText="Delete"
+                          cancelText="Cancel"
+                          okButtonProps={{ danger: true }}
+                        >
+                          <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                            <Trash2
+                              size={13}
+                              style={{ color: '#bfbfbf', cursor: 'pointer', flexShrink: 0 }}
+                            />
+                          </span>
+                        </Popconfirm>
+                      </Space>
                     </div>
                     <div style={{ fontSize: 12, color: '#165DFF', fontWeight: 500, marginTop: 2 }}>{thread.subject}</div>
                     {thread.messages[0] && (

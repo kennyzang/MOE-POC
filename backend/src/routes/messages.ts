@@ -207,4 +207,27 @@ router.post('/threads/:id/reply', authenticate, async (req: AuthRequest, res: Re
   }
 })
 
+// DELETE /messages/threads/:id — delete a thread and all its messages
+router.delete('/threads/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId
+    const id = req.params['id'] as string
+    const thread = await prisma.messageThread.findUnique({ where: { id } })
+    if (!thread) { res.status(404).json({ success: false, message: 'Thread not found' }); return }
+
+    // Only participants or admins can delete
+    if (thread.parentUserId !== userId && thread.teacherUserId !== userId &&
+      !['admin', 'manager'].includes(req.user!.role)) {
+      res.status(403).json({ success: false, message: 'Access denied' }); return
+    }
+
+    await prisma.directMessage.deleteMany({ where: { threadId: id } })
+    await prisma.messageThread.delete({ where: { id } })
+    res.json({ success: true, message: 'Thread deleted' })
+  } catch (error) {
+    console.error('DELETE /messages/threads/:id error:', error)
+    res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
 export default router
