@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOE SERPS POC — 人工验收清单</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f4f1eb;--bg-card:#fff;--fg:#1a1a2e;--fg-muted:#6b7280;--accent:#0d6e6e;--accent-light:#14b8a6;--accent-glow:rgba(13,110,110,.08);--check-bg:#ecfdf5;--check-fg:#059669;--check-strike:#9ca3af;--border:#e5e1d8;--shadow-sm:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.02);--shadow-md:0 4px 12px rgba(0,0,0,.06),0 2px 4px rgba(0,0,0,.03);--shadow-lg:0 12px 32px rgba(0,0,0,.08);--radius:10px;--radius-lg:16px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--fg);line-height:1.65;min-height:100vh;background-image:radial-gradient(circle at 20% 50%,rgba(13,110,110,.03) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(20,184,166,.03) 0%,transparent 50%)}
+  .header{background:linear-gradient(135deg,#0d3b3b 0%,#0d6e6e 50%,#117864 100%);color:#fff;padding:44px 24px 36px;position:relative;overflow:hidden}
+  .header::before{content:'';position:absolute;top:-60%;right:-20%;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.06) 0%,transparent 70%)}
+  .header::after{content:'';position:absolute;bottom:-30%;left:-10%;width:350px;height:350px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.04) 0%,transparent 70%)}
+  .header-inner{max-width:1000px;margin:0 auto;position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .header-left{flex:1;min-width:280px}
+  .header-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;letter-spacing:.06em;margin-bottom:14px;border:1px solid rgba(255,255,255,.15)}
+  .header-badge .dot{width:7px;height:7px;border-radius:50%;background:#34d399;animation:pulse-dot 2s ease-in-out infinite}
+  @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+  h1{font-size:25px;font-weight:700;letter-spacing:-.01em;margin-bottom:5px}
+  .header-sub{font-size:13.5px;opacity:.78}
+  .header-meta{display:flex;gap:22px;margin-top:16px;flex-wrap:wrap}
+  .meta-item{display:flex;align-items:center;gap:6px;font-size:12.5px;opacity:.82}
+
+  /* Lang Switcher */
+  .lang-switcher{display:inline-flex;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:2px;backdrop-filter:blur(8px);flex-shrink:0}
+  .lang-btn{padding:7px 14px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:rgba(255,255,255,.65);background:transparent;transition:all .25s;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px}
+  .lang-btn.active{background:rgba(255,255,255,.18);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+  .lang-btn:hover:not(.active){color:rgba(255,255,255,.9)}
+
+  .progress-section{max-width:1000px;margin:-22px auto 0;position:relative;z-index:2;padding:0 24px}
+  .progress-card{background:var(--bg-card);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:18px 22px;border:1px solid var(--border)}
+  .progress-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .progress-label{font-size:12.5px;font-weight:600;color:var(--fg-muted)}
+  .progress-count{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--accent)}
+  .progress-track{width:100%;height:8px;background:#eef2f2;border-radius:4px;overflow:hidden}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-light));border-radius:4px;transition:width .5s cubic-bezier(.22,1,.36,1);width:0%;position:relative}
+  .progress-fill::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);animation:shimmer 2.5s ease-in-out infinite}
+  @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+  .main{max-width:1000px;margin:26px auto 56px;padding:0 24px}
+  .ref-section{margin-bottom:28px}
+  .section-title{font-size:14.5px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;color:var(--fg)}
+  .section-title .icon{width:20px;height:20px;border-radius:5px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;flex-shrink:0}
+  .ref-table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+  .ref-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--bg-card)}
+  .ref-table th{background:#f8f6f1;padding:9px 12px;text-align:left;font-weight:600;font-size:10.5px;letter-spacing:.05em;color:var(--fg-muted);border-bottom:1px solid var(--border)}
+  .ref-table td{padding:8px 12px;border-bottom:1px solid #f0ede6;vertical-align:middle}
+  .ref-table tr:last-child td{border-bottom:none}
+  .ref-table tr:hover td{background:#fafaf7}
+  .code{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:#f0ede6;padding:2px 6px;border-radius:4px;color:var(--accent);cursor:default}
+  .tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:600}
+  .tag-admin{background:#fef3c7;color:#92400e}.tag-hod{background:#dbeafe;color:#1e40af}.tag-teacher{background:#dcfce7;color:#166534}
+  .tag-parent{background:#fce7f3;color:#9d174d}.tag-student{background:#e0e7ff;color:#3730a3}.tag-counselor{background:#f3e8ff;color:#6b21a8}.tag-admission{background:#ffedd5;color:#9a3412}
+  .act-card{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-sm);margin-bottom:18px;overflow:hidden;transition:box-shadow .25s,border-color .25s}
+  .act-card:hover{box-shadow:var(--shadow-md)}.act-card.checked{border-color:var(--check-fg)}
+  .act-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;user-select:none;border-bottom:1px solid transparent;transition:background .2s}
+  .act-header:hover{background:#fafaf7}
+  .act-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+  .act-num{width:32px;height:32px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent-light));color:#fff}
+  .act-title-group{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .act-name{font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+  .act-meta{font-size:11.5px;color:var(--fg-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .act-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .act-progress-mini{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;min-width:48px;text-align:right;transition:color .3s}
+  .act-chevron{color:var(--fg-muted);font-size:17px;transition:transform .3s}.act-card.open .act-chevron{transform:rotate(180deg)}
+  .ql-btn{padding:4px 11px;border-radius:6px;font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:4px;background:var(--accent-glow);color:var(--accent);flex-shrink:0}
+  .ql-btn:hover{background:var(--accent);color:#fff;transform:translateY(-1px)}
+  .ql-btn-group{display:flex;gap:4px;flex-shrink:0;align-items:center}
+  .ql-btn.ql-online{padding:4px 8px;font-size:10px;background:#e8f4f4;color:var(--accent);border:1px solid rgba(13,110,110,.2)}.ql-btn.ql-online:hover{background:var(--accent);color:#fff}
+  .act-body{display:none;padding:4px 20px 20px;animation:slideDown .3s ease}.act-card.open .act-body{display:block}@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  .check-list{list-style:none}
+  .check-item{display:flex;align-items:flex-start;gap:11px;padding:11px 12px;border-radius:8px;transition:background .2s;cursor:pointer;user-select:none;border:1px solid transparent}
+  .check-item:hover{background:#fafaf7}.check-item.checked{background:var(--check-bg);border-color:rgba(5,150,105,.15)}.check-item.checked:hover{background:#d1fae5}
+  .cb-wrap{flex-shrink:0;margin-top:2px}
+  .cb{width:21px;height:21px;border-radius:6px;border:2px solid #d1d5db;background:#fff;display:flex;align-items:center;justify-content:center;transition:all .2s cubic-bezier(.22,1,.36,1)}
+  .check-item.checked .cb{background:var(--check-fg);border-color:var(--check-fg);animation:popIn .3s cubic-bezier(.175,.885,.32,1.275)}@keyframes popIn{0%{transform:scale(.6)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+  .cb svg{width:12px;height:12px;stroke:#fff;stroke-width:3;stroke-dasharray:20;stroke-dashoffset:20;transition:stroke-dashoffset .25s ease .1s}.check-item.checked .cb svg{stroke-dashoffset:0}
+  .check-content{flex:1;min-width:0}
+  .check-step{font-size:11px;font-weight:600;color:var(--fg-muted);font-family:'JetBrains Mono',monospace;margin-bottom:2px}
+  .check-desc{font-size:13.5px;font-weight:500;color:var(--fg);transition:color .2s;line-height:1.55}
+  .check-item.checked .check-desc{color:var(--check-strike);text-decoration:line-through;text-decoration-color:rgba(156,163,176,.5)}
+  .check-url-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);background:var(--accent-glow);padding:2px 7px;border-radius:4px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;text-decoration:none;vertical-align:middle;transition:background .2s,color .2s;margin-top:3px;border:1px solid transparent}
+  .check-url-link:hover{background:var(--accent);color:#fff!important;text-decoration:none}
+  .check-url-link .url-icon{opacity:.6;flex-shrink:0}.check-url-link:hover .url-icon{opacity:1}
+  .url-links-row{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+  .check-expected{font-size:12px;color:var(--fg-muted);margin-top:4px;padding-left:13px;border-left:2.5px solid #c8d0d0;line-height:1.55}.check-expected strong{color:var(--accent)}
+  .mock-panel{background:#f8f6f1;border:1px solid #e5dfd4;border-radius:10px;padding:14px 16px;margin:10px 0 4px}
+  .mock-panel-title{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .mock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+  .mock-field{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e1d8;border-radius:6px;padding:6px 9px;font-size:12px}
+  .mock-field-label{font-weight:600;color:var(--fg-muted);min-width:72px;font-size:11px}
+  .mock-field-val{flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fg);word-break:break-all}
+  .copy-btn{flex-shrink:0;width:24px;height:24px;border:none;border-radius:5px;background:#eee;color:var(--fg-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;padding:0}.copy-btn:hover{background:var(--accent);color:#fff}.copy-btn.copied{background:var(--check-fg);color:#fff}
+  .copy-all-btn{margin-top:8px;padding:6px 14px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--fg);transition:all .2s;display:inline-flex;align-items:center;gap:5px}.copy-all-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .actions{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap}
+  .btn{padding:10px 18px;border-radius:8px;font-size:12.5px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+  .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#0a5858;transform:translateY(-1px);box-shadow:0 4px 12px rgba(13,110,110,.3)}
+  .btn-outline{background:transparent;color:var(--fg-muted);border:1px solid var(--border)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+  .toast{position:fixed;bottom:24px;right:24px;z-index:999;background:var(--fg);color:#fff;padding:11px 18px;border-radius:10px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-lg);transform:translateY(80px);opacity:0;transition:all .35s cubic-bezier(.22,1,.36,1);display:flex;align-items:center;gap:7px}.toast.show{transform:translateY(0);opacity:1}
+  .done-banner{display:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;padding:22px;border-radius:var(--radius-lg);text-align:center;margin:20px 0;animation:bannerIn .6s ease}.done-banner.show{display:block}@keyframes bannerIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}.done-banner h2{font-size:19px;margin-bottom:3px}.done-banner p{font-size:13px;opacity:.88}
+  @media(max-width:640px){.header{padding:28px 14px 24px}h1{font-size:19px}.main{padding:0 14px 44px}.progress-section{padding:0 14px}.act-header{padding:13px 14px}.act-body{padding:4px 14px 14px}.check-item{padding:9px 9px}.header-meta{gap:12px}.ref-table{font-size:10.5px}.ref-table th,.ref-table td{padding:7px 9px}.mock-grid{grid-template-columns:1fr}.ql-btn-group{display:none}.lang-switcher{order:-1;width:100%;justify-content:center}.header-inner{flex-direction:column}}
+  @media print{body{background:#fff}.header{background:#0d6e6e!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.btn,.act-header,.ql-btn,.copy-btn,.copy-all-btn,.check-url-link,.lang-switcher{display:none}.act-body{display:block!important}.mock-panel{display:none}.act-card{break-inside:avoid;box-shadow:none;border:1px solid #ddd}.progress-card{box-shadow:none;border:1px solid #ddd}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="header-badge"><span class="dot"></span><span id="badgeText">人工验收</span></div>
+      <h1 id="pageTitle">MOE SERPS POC — 演示脚本验收清单</h1>
+      <p class="header-sub" id="pageSub">基于 MCP 自测结果生成的人工复验路径 — 点击链接直接跳转，Mock 数据一键复制</p>
+      <div class="header-meta">
+        <div class="meta-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>2026-06-10</div>
+        <div class="meta-item" id="metaTest"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>MCP 自测通过 · 人工复验</div>
+        <div class="meta-item" id="metaDuration"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>约 55 分钟演示范围</div>
+      </div>
+    </div>
+    <div class="lang-switcher">
+      <button class="lang-btn active" id="btnZh" onclick="switchLang('zh')">中文</button>
+      <button class="lang-btn" id="btnEn" onclick="switchLang('en')">EN</button>
+    </div>
+  </div>
+</header>
+
+<div class="progress-section"><div class="progress-card">
+  <div class="progress-top"><span class="progress-label" id="lblProgress">总体进度</span><span class="progress-count" id="progressText">0 / 62</span></div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+</div></div>
+
+<main class="main">
+
+<section class="ref-section">
+  <div class="section-title"><span class="icon">K</span><span id="roleTitle">角色登录速查表（点击密码可复制）</span></div>
+  <div class="ref-table-wrap">
+    <table class="ref-table"><thead><tr><th id="thRole">角色</th><th id="thUser">用户名</th><th id="thPass">密码</th><th id="thPage">默认页面</th></tr></thead><tbody id="roleTableBody"></tbody></table>
+  </div>
+</section>
+
+<div id="actsContainer"></div>
+
+<div class="done-banner" id="doneBanner"><h2 id="bannerTitle">全部验收通过！</h2><p id="bannerSub">所有验证点已确认，演示脚本可以正常展示。</p></div>
+
+<div class="actions">
+  <button class="btn btn-primary" onclick="exportState()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span id="btnExport">导出报告</span></button>
+  <button class="btn btn-outline" onclick="resetAll()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span id="btnReset">重置全部</span></button>
+  <button class="btn btn-outline" onclick="window.print()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg><span id="btnPrint">打印 / PDF</span></button>
+</div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// I18N DATA
+// ============================================================
+const I18N = {
+  zh: {
+    badge:'人工验收', title:'MOE SERPS POC — 演示脚本验收清单',
+    sub:'基于 MCP 自测结果生成的人工复验路径 — 点击链接直接跳转，Mock 数据一键复制',
+    metaTest:'MCP 自测通过 · 人工复验', metaDuration:'约 55 分钟演示范围',
+    progress:'总体进度', roleTitle:'角色登录速查表（点击密码可复制）',
+    thRole:'角色', thUser:'用户名', thPass:'密码', thPage:'默认页面',
+    btnExport:'导出报告', btnReset:'重置全部', btnPrint:'打印 / PDF',
+    bannerTitle:'全部验收通过！', bannerSub:'所有验证点已确认，演示脚本可以正常展示。',
+    confirmReset:'确定要重置所有勾选吗？', resetDone:'已重置全部勾选', exportDone:'报告已导出！',
+    copied:'已复制: ', openLocal:'本地', openOnline:'线上', openLocalH5:'本地 H5', openOnlineH5:'线上 H5',
+    loginBtn:'登录', mockTitle:'Mock 数据（点击值可复制）', copyAll:'一键复制全部', expectedPrefix:'预期结果：',
+    roles:[
+      {t:'tag-admin',l:'系统管理员',u:'admin',p:'admin123',pg:'/admin/command-center'},
+      {t:'tag-admin',l:'校长',u:'principal',p:'principal123',pg:'/admin/command-center'},
+      {t:'tag-hod',l:'学科主任',u:'hod01',p:'hod123',pg:'/approvals'},
+      {t:'tag-teacher',l:'教师（班主任）',u:'teacher01',p:'teacher123',pg:'/attendance/daily-roll-call'},
+      {t:'tag-teacher',l:'教师（科任）',u:'drsiti',p:'Demo@2026',pg:'/teacher/dashboard'},
+      {t:'tag-admission',l:'招生官',u:'admission',p:'admission123',pg:'/admissions'},
+      {t:'tag-parent',l:'家长',u:'parent01',p:'parent123',pg:'/parent/dashboard'},
+      {t:'tag-student',l:'学生',u:'student001',p:'student123',pg:'/student/dashboard'},
+      {t:'tag-counselor',l:'辅导员',u:'farah',p:'Demo@2026',pg:'/counselor/dashboard'}
+    ],
+    regMock:[
+      {l:'Full Name',v:'Nurul Amina Binti Hassan'},{l:'IC Number',v:'001218-12-5678'},{l:'Date of Birth',v:'2018-12-01'},
+      {l:'Gender',v:'Female'},{l:'Nationality',v:'Bruneian'},{l:'Previous School',v:'Sekolah Rendah Keriam, Tutong'},
+      {l:'Last Exam Results',v:'PSR: 4A 1B (Merit)'},{l:'SEN Status',v:'None'},{l:'Guardian Name',v:'Hassan Bin Osman'},
+      {l:'Guardian Relation',v:'Father'},{l:'Guardian Phone',v:'+673 8881234'},{l:'Guardian Email',v:'hassan.osman@email.com'},
+      {l:'Guardian IC',v:'750315-08-1234'},{l:'Address',v:'Jln Pasar Baru, SPG 2215, Kampong Penanjong, Tutong'},
+      {l:'Preferred School',v:'Sekolah Menengah Arab Kampong Rimba'}
+    ],
+    acts:[
+      {id:0,t:'登录页 & Demo 账号面板',m:'无需登录 — 演示起始页',lc:null,
+       items:[{s:'0.1',p:'/login',d:'打开登录页',e:'看到「Sign in to MOE SERPS」标题 + 右侧 Demo Accounts 表格（约 15 行角色）'},
+              {s:'0.2',d:'点击任意一行（如 Admin）',e:'用户名和密码自动填入输入框'},
+              {s:'0.3',d:'点击 Sign In 按钮',e:'成功跳转到对应角色的默认首页'}]},
+      {id:1,t:'公共注册门户',m:'5 步向导 — 无需登录',lc:null,
+       items:[{s:'1.1',p:'/register',d:'打开注册页',e:'显示「Student Registration」5 步向导，Step 1 高亮'},
+              {s:'1.2',d:'Step 1：填写学生信息',ms:[0,5],e:'选择出生日期后，Year Level 自动计算'},
+              {s:'1.3',d:'点击 Next → Step 2',e:'Academic Background 表单：Previous School / Last Results / SEN 字段'},
+              {s:'1.4',d:'Step 2 填写学术背景',ms:[5,8],e:'Previous School、Last Exam Results、SEN 可正常填写'},
+              {s:'1.5',d:'点击 Next → Step 3',e:'Guardian Details 表单：手机号有国家码选择器（+673 默认）'},
+              {s:'1.6',d:'Step 3 填写监护人信息',ms:[8,14],e:'监护人姓名、关系、手机号、邮箱、IC、地址均可填写'},
+              {s:'1.7',d:'点击 Next → Step 4 文档上传',e:'文档上传页：Birth Cert / Student IC / Parent IC / Photo 标记为 Required 必填'},
+              {s:'1.8',d:'不传文档直接点 Next',e:'校验拦截，提示「Please upload required documents」'},
+              {s:'1.9',d:'上传文件后点 Next → Step 5 Review',e:'Review 页面汇总显示所有已填信息 + Submit 提交按钮'}]},
+      {id:2,t:'招生官处理申请',m:'申请流程审核',lc:{u:'admission',p:'admission123'},
+       items:[{s:'2.1',p:'/login',d:'以 admission / admission123 登录 → Admissions Dashboard',e:'显示申请列表 + 统计数字（Pending / Approved / Rejected）'},
+              {s:'2.2',p:'/admissions',d:'进入 Admissions 列表页',e:'申请列表含学生姓名、状态、提交时间等列'},
+              {s:'2.3',d:'点击某个申请的 View/Details',e:'完整展示学生信息、家长信息、学校选择、文档列表'},
+              {s:'2.4',d:'查看详情页操作按钮',e:'有 Approve / Reject / Request Info 按钮，工作流状态可变更'}]},
+      {id:3,t:'教师晨间点名',m:'班主任考勤流程',lc:{u:'teacher01',p:'teacher123'},
+       items:[{s:'3.1',p:'/login',d:'以 teacher01 / teacher123 登录 → Attendance → Daily Roll Call',e:'Form Class Dashboard：班级名称、学生人数、今日出勤率'},
+              {s:'3.2',p:'/attendance/daily-roll-call',d:'进入 Daily Roll Call 页面',e:'班级仪表盘显示'},
+              {s:'3.3',d:'点击 Start Roll Call 或进入点名页',e:'学生名单，每人有 Present / Absent / Late / Excused 状态选项'},
+              {s:'3.4',d:'为学生切换出勤状态',e:'状态即时更新，统计数字联动变化'},
+              {s:'3.5',d:'提交点名记录',e:'出勤记录保存成功，出现确认提示消息'}]},
+      {id:4,t:'布置作业与成绩管理',m:'课程作业与评分',lc:{u:'teacher01',p:'teacher123'},
+       items:[{s:'4.1',p:'/teacher/assignments',d:'进入 Assignments 作业页面',e:'显示课程列表或作业列表'},
+              {s:'4.2',d:'进入 Grade Management 成绩页面',e:'课程下拉选择器 → 选课后显示学生成绩表格'},
+              {s:'4.3',d:'在成绩表中输入/修改分数',e:'分数可编辑并保存'}]},
+      {id:5,t:'家长视图',m:'子女信息、缴费、通讯',lc:{u:'parent01',p:'parent123'},
+       items:[{s:'5.1',p:'/login',d:'以 parent01 / parent123 登录',e:'Parent Portal 左侧菜单含 Children / Fees / Messages 等模块'},
+              {s:'5.2',p:'/parent/dashboard',d:'进入 Parent Dashboard',e:'家长主页展示概览信息'},
+              {s:'5.3',d:'进入 Children / My Children 页面',e:'显示子女姓名、班级、照片等基本信息'},
+              {s:'5.4',d:'进入 Fees / Invoices 页面',e:'Fee Invoice 列表，金额为 BND，状态含 Paid / Pending'},
+              {s:'5.5',d:'进入 Messages / Communications 页面',e:'显示学校发送的通知/公告列表'}]},
+      {id:6,t:'教师消息 + 移动端体验',m:'跨平台消息系统',lc:{u:'drsiti',p:'Demo@2026'},
+       items:[{s:'6.1',p:'/login',d:'以 drsiti / Demo@2026 登录',e:'登录成功'},
+              {s:'6.2',p:'/teacher/messages',d:'进入 Messages 消息中心',e:'收件箱有来自 admin / 系统通知的消息列表'},
+              {s:'6.3',mob:true,d:'用手机模式打开移动端 H5',e:'移动端适配布局，Demo Accounts 可折叠'},
+              {s:'6.4',d:'在移动端用教师账号登录',e:'移动端教师主页：底部导航栏、功能入口正常展示'}]},
+      {id:7,t:'员工考勤与异常检测',m:'HR 考勤分析',lc:{u:'admin',p:'admin123'},
+       items:[{s:'7.1',p:'/attendance/staff-attendance',d:'进入 Staff Attendance Dashboard',e:'出勤率饼图、异常列表、迟到/早退统计'},
+              {s:'7.2',d:'查看 Anomaly Detection 区域',e:'标记异常员工（如连续迟到）及原因说明'}]},
+      {id:8,t:'EMS — 绩效评估 / CPD 培训 / 休假管理',m:'教育者管理系统',lc:{u:'hod01',p:'hod123'},
+       items:[{s:'8.1',p:'/ems/performance-evaluations',d:'HOD Portal → Performance Evaluations',e:'显示待评估 / 已完成评估列表'},
+              {s:'8.2',d:'→ Leave Hub 休假中心',e:'休假申请列表 + Approve/Reject 按钮 + 审批链（HOD → Principal）'},
+              {s:'8.3',d:'→ CPD Workshops 专业发展培训',e:'培训活动列表'}]},
+      {id:9,t:'HOD 审批中心',m:'费用审批与成绩修正',lc:{u:'hod01',p:'hod123'},
+       items:[{s:'9.1',p:'/approvals',d:'HOD Portal → Approvals Inbox',e:'标题显示「Approvals Inbox N」（N > 0 有待办项）'},
+              {s:'9.2',d:'查看标签栏',e:'Expenses / Grade Amendments / Other / History 标签，Expenses 有数据'},
+              {s:'9.3',d:'查看每条费用审批项',e:'显示标题、金额（BND）、提交人、时间 + Details/Approve/Reject 按钮'},
+              {s:'9.4',d:'检查每条审批的工作流显示',e:'底部显示 HOD → Principal 审批链'}]},
+      {id:10,t:'学校管理套件',m:'课表 / 图书馆 / 资产库存',lc:{u:'admin',p:'admin123'},
+       items:[{s:'10.1',p:'/sms/timetable',d:'→ Timetable 课表管理',e:'Edit Mode / Auto-Arrange / Publish 按钮 + 周×时段课表格子（含课程名/教师/教室）'},
+              {s:'10.2',p:'/sms/library',d:'→ Library 图书馆管理',e:'Catalogue / Active Loans / Holds / Fines 标签 + 书籍列表（含 Borrow 按钮）+ KOHA 同步标识'},
+              {s:'10.3',p:'/sms/inventory',d:'→ Inventory 资产库存',e:'Asset Tag / Name / Category / Location / Condition / Value 表格 + 搜索筛选'}]},
+      {id:11,t:'学生体验',m:'完整学生仪表盘走查',lc:{u:'student001',p:'student123'},
+       items:[{s:'11.1',p:'/login',d:'以 student001 / student123 登录',e:'自动跳转到 Student Dashboard'},
+              {s:'11.2',p:'/student/dashboard',d:'Student Dashboard 主页',e:'欢迎语 + 学期信息头部'},
+              {s:'11.3',d:'查看统计卡片',e:'Enrolled Courses / Attendance Rate / GPA 数字非零且有实际意义'},
+              {s:'11.4',d:'GPA Trend 图表',e:'8 周折线图，有数据点和趋势线'},
+              {s:'11.5',d:'My Timetable 本周课程区域',e:'本周课程列表，含课程代码、时间、教室'},
+              {s:'11.6',d:'Subject Performance 各科成绩对比',e:'至少 5 门科目，每科显示 You % 和 Class avg %'},
+              {s:'11.7',d:'Attendance Detail 出勤明细',e:'Present / Absent / Late / Excused 数字之和 = Total Sessions'},
+              {s:'11.8',d:'Notifications 通知区域',e:'最新通知如「Grade Published」/「Attendance Warning」'},
+              {s:'11.9',d:'Upcoming Assessments 即将到来的评估',e:'测验/作业列表，含 Due Date 截止日和权重百分比'}]},
+      {id:12,t:'辅导员 & 校长总览大屏',m:'管理层决策视图',lc:null,
+       items:[{s:'12.1',p:'/login',d:'以 farah / Demo@2026 辅导员登录',e:'登录成功'},
+              {s:'12.2',p:'/counselor/dashboard',d:'Counselor Dashboard 辅导员面板',e:'Open Cases / In Progress / High-Risk / Resolved 四张统计卡片'},
+              {s:'12.3',d:'Risk Band Distribution 风险分布图',e:'饼图显示 High / Medium / Low 分布'},
+              {s:'12.4',d:'Active Cases 活跃案例列表',e:'高风险学生卡片，含姓名、风险来源、状态（OPEN / IN PROGRESS）'},
+              {s:'12.5',p:'/login',d:'切换到 principal / principal123 校长登录',e:'登录成功'},
+              {s:'12.6',p:'/admin/command-center',d:'Command Center 校长指挥中心',e:'<strong>实时 KPI 大屏</strong>（Live 标识 + 时间戳）'},
+              {s:'12.7',d:'逐一确认每张 KPI 卡片',e:'Total Enrolment / Pending Apps / Attendance / Staff / CPD / At-Risk / Timetable Health / Facility Utilization / Fees — 每张卡都有数字 + 含义明确的标签'},
+              {s:'12.8',d:'Current snapshot 底部摘要行',e:'一行文字汇总当前学校整体运行状态'}]}
+    ]
+  },
+  en: {
+    badge:'Manual QA', title:'MOE SERPS POC — Demo Script Acceptance Checklist',
+    sub:'Manual review path from MCP self-test results — Click links to navigate directly, one-click copy for mock data',
+    metaTest:'MCP Self-test Passed · Manual Review', metaDuration:'~55 min demo scope',
+    progress:'Overall Progress', roleTitle:'Role Login Quick Reference (click password to copy)',
+    thRole:'Role', thUser:'Username', thPass:'Password', thPage:'Default Page',
+    btnExport:'Export Report', btnReset:'Reset All', btnPrint:'Print / PDF',
+    bannerTitle:'All Checks Passed!', bannerSub:'Every verification point confirmed. Demo script ready for presentation.',
+    confirmReset:'Reset all checks?', resetDone:'All checks reset', exportDone:'Report exported!',
+    copied:'Copied: ', openLocal:'Local', openOnline:'Online', openLocalH5:'Local H5', openOnlineH5:'Online H5',
+    loginBtn:'Login', mockTitle:'Mock Data (click value to copy)', copyAll:'Copy All', expectedPrefix:'Expected: ',
+    roles:[
+      {t:'tag-admin',l:'System Admin',u:'admin',p:'admin123',pg:'/admin/command-center'},
+      {t:'tag-admin',l:'Principal',u:'principal',p:'principal123',pg:'/admin/command-center'},
+      {t:'tag-hod',l:'Head of Dept.',u:'hod01',p:'hod123',pg:'/approvals'},
+      {t:'tag-teacher',l:'Teacher (Homeroom)',u:'teacher01',p:'teacher123',pg:'/attendance/daily-roll-call'},
+      {t:'tag-teacher',l:'Teacher (Subject)',u:'drsiti',p:'Demo@2026',pg:'/teacher/dashboard'},
+      {t:'tag-admission',l:'Admissions Officer',u:'admission',p:'admission123',pg:'/admissions'},
+      {t:'tag-parent',l:'Parent',u:'parent01',p:'parent123',pg:'/parent/dashboard'},
+      {t:'tag-student',l:'Student',u:'student001',p:'student123',pg:'/student/dashboard'},
+      {t:'tag-counselor',l:'Counselor',u:'farah',p:'Demo@2026',pg:'/counselor/dashboard'}
+    ],
+    regMock:[
+      {l:'Full Name',v:'Nurul Amina Binti Hassan'},{l:'IC Number',v:'001218-12-5678'},{l:'Date of Birth',v:'2018-12-01'},
+      {l:'Gender',v:'Female'},{l:'Nationality',v:'Bruneian'},{l:'Previous School',v:'Sekolah Rendah Keriam, Tutong'},
+      {l:'Last Exam Results',v:'PSR: 4A 1B (Merit)'},{l:'SEN Status',v:'None'},{l:'Guardian Name',v:'Hassan Bin Osman'},
+      {l:'Guardian Relation',v:'Father'},{l:'Guardian Phone',v:'+673 8881234'},{l:'Guardian Email',v:'hassan.osman@email.com'},
+      {l:'Guardian IC',v:'750315-08-1234'},{l:'Address',v:'Jln Pasar Baru, SPG 2215, Kampong Penanjong, Tutong'},
+      {l:'Preferred School',v:'Sekolah Menengah Arab Kampong Rimba'}
+    ],
+    acts:[
+      {id:0,t:'Login Page & Demo Accounts Panel',m:'No login required — Starting point',lc:null,
+       items:[{s:'0.1',p:'/login',d:'Open the login page',e:'See "Sign in to MOE SERPS" heading + Demo Accounts table on the right (~15 rows)'},
+              {s:'0.2',d:'Click any row (e.g., Admin)',e:'Username and password are auto-filled into input fields'},
+              {s:'0.3',d:'Click Sign In button',e:'Successfully redirects to the default home page for that role'}]},
+      {id:1,t:'Public Registration Portal',m:'5-step wizard — No login required',lc:null,
+       items:[{s:'1.1',p:'/register',d:'Open registration page',e:'Shows "Student Registration" 5-step wizard with Step 1 highlighted'},
+              {s:'1.2',d:'Step 1: Fill student information',ms:[0,5],e:'After selecting date of birth, Year Level is auto-calculated'},
+              {s:'1.3',d:'Click Next → Step 2',e:'Academic Background form: Previous School / Last Results / SEN fields'},
+              {s:'1.4',d:'Step 2: Fill academic background',ms:[5,8],e:'Previous School, Last Exam Results, SEN can be filled normally'},
+              {s:'1.5',d:'Click Next → Step 3',e:'Guardian Details form: Phone number has country code selector (+673 default)'},
+              {s:'1.6',d:'Step 3: Fill guardian details',ms:[8,14],e:'Guardian name, relation, phone, email, IC, address are all fillable'},
+              {s:'1.7',d:'Click Next → Step 4 Document Upload',e:'Document upload page: Birth Cert / Student IC / Parent IC / Photo marked as Required'},
+              {s:'1.8',d:'Click Next without uploading documents',e:'Validation blocks it, showing "Please upload required documents"'},
+              {s:'1.9',d:'Upload files then click Next → Step 5 Review',e:'Review page shows summary of all filled info + Submit button'}]},
+      {id:2,t:'Admissions Officer Process Applications',m:'Application workflow review',lc:{u:'admission',p:'admission123'},
+       items:[{s:'2.1',p:'/login',d:'Login as admission / admission123 → Admissions Dashboard',e:'Application list + statistics (Pending / Approved / Rejected)'},
+              {s:'2.2',p:'/admissions',d:'Go to Admissions list page',e:'Application list includes student name, status, submission time columns'},
+              {s:'2.3',d:"Click an application's View/Details",e:'Full display of student info, guardian info, school selection, document list'},
+              {s:'2.4',d:'Check detail page action buttons',e:'Approve / Reject / Request Info buttons present, workflow state changeable'}]},
+      {id:3,t:'Teacher Morning Roll Call',m:'Homeroom attendance workflow',lc:{u:'teacher01',p:'teacher123'},
+       items:[{s:'3.1',p:'/login',d:'Login as teacher01 / teacher123 → Attendance → Daily Roll Call',e:'Form Class Dashboard: class name, student count, today\'s attendance rate'},
+              {s:'3.2',p:'/attendance/daily-roll-call',d:'Go to Daily Roll Call page',e:'Class dashboard displayed'},
+              {s:'3.3',d:'Click Start Roll Call or enter roll call page',e:'Student list with Present / Absent / Late / Excused status options per student'},
+              {s:'3.4',d:'Toggle attendance status for students',e:'Status updates instantly, statistics update accordingly'},
+              {s:'3.5',d:'Submit roll call record',e:'Attendance record saved successfully, confirmation message shown'}]},
+      {id:4,t:'Assignments & Grade Management',m:'Course assignments & grading',lc:{u:'teacher01',p:'teacher123'},
+       items:[{s:'4.1',p:'/teacher/assignments',d:'Go to Assignments page',e:'Course list or assignment list displayed'},
+              {s:'4.2',d:'Go to Grade Management page',e:'Course dropdown selector → after selecting course, student grade table appears'},
+              {s:'4.3',d:'Enter/modify scores in grade table',e:'Scores editable and saveable'}]},
+      {id:5,t:'Parent Portal',m:'Children info, fees, communications',lc:{u:'parent01',p:'parent123'},
+       items:[{s:'5.1',p:'/login',d:'Login as parent01 / parent123',e:'Parent Portal left sidebar contains Children / Fees / Messages modules'},
+              {s:'5.2',p:'/parent/dashboard',d:'Go to Parent Dashboard',e:'Parent homepage shows overview information'},
+              {s:'5.3',d:'Go to Children / My Children page',e:'Displays child name, class, photo and other basic info'},
+              {s:'5.4',d:'Go to Fees / Invoices page',e:'Fee Invoice list, amounts in BND, statuses include Paid / Pending'},
+              {s:'5.5',d:'Go to Messages / Communications page',e:'Shows school announcements/notification list'}]},
+      {id:6,t:'Teacher Messages + Mobile Experience',m:'Cross-platform messaging system',lc:{u:'drsiti',p:'Demo@2026'},
+       items:[{s:'6.1',p:'/login',d:'Login as drsiti / Demo@2026',e:'Login successful'},
+              {s:'6.2',p:'/teacher/messages',d:'Go to Messages center',e:'Inbox has messages from admin / system notifications'},
+              {s:'6.3',mob:true,d:'Open mobile H5 in phone mode',e:'Mobile-responsive layout, Demo Accounts collapsible'},
+              {s:'6.4',d:'Login with teacher account on mobile',e:'Mobile teacher homepage: bottom nav bar, feature entries display normally'}]},
+      {id:7,t:'Staff Attendance & Anomaly Detection',m:'HR attendance analytics',lc:{u:'admin',p:'admin123'},
+       items:[{s:'7.1',p:'/attendance/staff-attendance',d:'Go to Staff Attendance Dashboard',e:'Attendance rate pie chart, anomaly list, late/early leave statistics'},
+              {s:'7.2',d:'Check Anomaly Detection section',e:'Flagged anomalous staff (e.g., consecutive lateness) with reason notes'}]},
+      {id:8,t:'EMS — Performance Eval / CPD Training / Leave Mgmt',m:'Educator Management System',lc:{u:'hod01',p:'hod123'},
+       items:[{s:'8.1',p:'/ems/performance-evaluations',d:'HOD Portal → Performance Evaluations',e:'Shows pending / completed evaluation lists'},
+              {s:'8.2',d:'→ Leave Hub',e:'Leave request list + Approve/Reject buttons + approval chain (HOD → Principal)'},
+              {s:'8.3',d:'→ CPD Workshops',e:'Training activity list'}]},
+      {id:9,t:'HOD Approval Center',m:'Expense approvals & grade amendments',lc:{u:'hod01',p:'hod123'},
+       items:[{s:'9.1',p:'/approvals',d:'HOD Portal → Approvals Inbox',e:'Heading shows "Approvals Inbox N" (N > 0 pending items)'},
+              {s:'9.2',d:'Check tab bar',e:'Expenses / Grade Amendments / Other / History tabs, Expenses has data'},
+              {s:'9.3',d:'Check each expense approval item',e:'Shows title, amount (BND), submitter, time + Details/Approve/Reject buttons'},
+              {s:'9.4',d:'Check workflow display per approval',e:'Bottom shows HOD → Principal approval chain'}]},
+      {id:10,t:'School Management Suite',m:'Timetable / Library / Asset Inventory',lc:{u:'admin',p:'admin123'},
+       items:[{s:'10.1',p:'/sms/timetable',d:'→ Timetable management',e:'Edit Mode / Auto-Arrange / Publish buttons + week×period timetable grid (with course names/teachers/rooms)'},
+              {s:'10.2',p:'/sms/library',d:'→ Library management',e:'Catalogue / Active Loans / Holds / Fines tabs + book list (with Borrow button) + KOHA sync indicator'},
+              {s:'10.3',p:'/sms/inventory',d:'→ Asset Inventory',e:'Asset Tag / Name / Category / Location / Condition / Value table + search filters'}]},
+      {id:11,t:'Student Experience',m:'Complete student dashboard walkthrough',lc:{u:'student001',p:'student123'},
+       items:[{s:'11.1',p:'/login',d:'Login as student001 / student123',e:'Auto-redirects to Student Dashboard'},
+              {s:'11.2',p:'/student/dashboard',d:'Student Dashboard main page',e:'Welcome message + semester info header'},
+              {s:'11.3',d:'Check statistics cards',e:'Enrolled Courses / Attendance Rate / GPA numbers non-zero and meaningful'},
+              {s:'11.4',d:'GPA Trend chart',e:'8-week line chart with data points and trend line'},
+              {s:'11.5',d:'My Timetable this week section',e:'This week\'s course list with course codes, times, rooms'},
+              {s:'11.6',d:'Subject Performance comparison',e:'At least 5 subjects, each showing You % and Class avg %'},
+              {s:'11.7',d:'Attendance Detail breakdown',e:'Present + Absent + Late + Excused = Total Sessions'},
+              {s:'11.8',d:'Notifications area',e:'Latest notifications like "Grade Published" / "Attendance Warning"'},
+              {s:'11.9',d:'Upcoming Assessments',e:'Quiz/assignment list with Due Date and weight percentage'}]},
+      {id:12,t:'Counselor & Principal Command Center',m:'Management decision views',lc:null,
+       items:[{s:'12.1',p:'/login',d:'Login as farah / Demo@2026 (Counselor)',e:'Login successful'},
+              {s:'12.2',p:'/counselor/dashboard',d:'Counselor Dashboard',e:'Open Cases / In Progress / High-Risk / Resolved four stat cards'},
+              {s:'12.3',d:'Risk Band Distribution chart',e:'Pie chart shows High / Medium / Low distribution'},
+              {s:'12.4',d:'Active Cases list',e:'High-risk student cards with name, risk source, status (OPEN / IN PROGRESS)'},
+              {s:'12.5',p:'/login',d:'Switch to principal / principal123 (Principal)',e:'Login successful'},
+              {s:'12.6',p:'/admin/command-center',d:'Command Center',e:'<strong>Real-time KPI dashboard</strong> (Live indicator + timestamp)'},
+              {s:'12.7',d:'Verify each KPI card',e:'Total Enrolment / Pending Apps / Attendance / Staff / CPD / At-Risk / Timetable Health / Facility Utilization / Fees — every card has a number + clear label'},
+              {s:'12.8',d:'Current snapshot bottom summary row',e:'One-line summary of overall school operational status'}]}
+    ]
+  }
+};
+
+const BASE_LOCAL='http://localhost:3000', BASE_ONLINE='https://moe-poc.easycraft.ai';
+const BASE_MOBILE='https://moe-poc-m.easycraft.ai', LOCAL_H5='http://localhost:5173';
+
+let currentLang=localStorage.getItem('moe-checklist-lang')||'zh';
+let checkedSet=new Set();
+const STORAGE_KEY='moe-serps-checklist-v3';
+
+function loadState(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)checkedSet=new Set(JSON.parse(s))}catch(e){}}
+function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify([...checkedSet]))}
+
+function switchLang(lang){
+  if(currentLang===lang)return;
+  currentLang=lang;
+  localStorage.setItem('moe-checklist-lang',lang);
+  document.getElementById('btnZh').classList.toggle('active',lang==='zh');
+  document.getElementById('btnEn').classList.toggle('active',lang==='en');
+  const t=I18N[lang];
+  document.getElementById('badgeText').textContent=t.badge;
+  document.getElementById('pageTitle').textContent=t.title;
+  document.getElementById('pageSub').textContent=t.sub;
+  document.getElementById('metaTest').innerHTML=`<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${t.metaTest}`;
+  document.getElementById('metaDuration').innerHTML=`<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>${t.metaDuration}`;
+  document.getElementById('lblProgress').textContent=t.progress;
+  document.getElementById('roleTitle').textContent=t.roleTitle;
+  ['thRole','thUser','thPass','thPage','btnExport','btnReset','btnPrint','bannerTitle','bannerSub'].forEach(id=>document.getElementById(id).textContent=t[id]);
+  document.documentElement.lang=lang==='zh'?'zh-CN':'en';
+  document.title=t.title;
+  renderRoleTable();render();
+}
+
+function buildUrl(path,env,isMobile){
+  if(isMobile)return env==='online'?`${BASE_MOBILE}/login`:LOCAL_H5;
+  const prefix=currentLang==='en'?'/en':'';
+  const base=env==='local'?BASE_LOCAL:BASE_ONLINE;
+  return `${base}${prefix}${path}`;
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+function copyToClipboard(text,btnEl){
+  navigator.clipboard.writeText(text).then(()=>{
+    if(btnEl){btnEl.classList.add('copied');btnEl.innerHTML='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+    setTimeout(()=>{btnEl.classList.remove('copied');btnEl.innerHTML='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>'},1200)}
+    showToast(`${I18N[currentLang].copied}${text}`);
+  });
+}
+function openUrl(url){window.open(url,'_blank')}
+
+function renderRoleTable(){
+  const tbody=document.getElementById('roleTableBody'), t=I18N[currentLang];
+  tbody.innerHTML=t.roles.map(r=>`<tr><td><span class="class ${r.t}">${r.l}</span></td><td><span class="code">${r.u}</span></td><td><span class="code" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px dashed #ccc;" onclick="event.stopPropagation();copyToClipboard('${r.p}',this)" title="${t.copied}">${r.p}</span></td><td><span style="font-size:10.5px;color:var(--fg-muted);font-family:'JetBrains Mono',monospace;">${r.pg}</span></td></tr>`).join('');
+}
+
+function render(){
+  const container=document.getElementById('actsContainer'), t=I18N[currentLang];
+  let html='';
+  t.acts.forEach(act=>{
+    const pref=`act${act.id}`, total=act.items.length;
+    const done=act.items.filter((_,i)=>checkedSet.has(`${pref}-${i}`)).length;
+    const isComplete=done===total&&total>0;
+    let qlHtml='';
+    if(act.lc){
+      qlHtml=`<div class="ql-btn-group"><button class="ql-btn" onclick="event.stopPropagation();openUrl('${buildUrl('/login','local',false)}')" title="${t.loginBtn}: ${act.lc.u}"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>${t.openLocal}</button><button class="ql-btn ql-online" onclick="event.stopPropagation();openUrl('${buildUrl('/login','online',false)}')">${t.openOnline}</button></div>`;
+    }
+    html+=`<div class="act-card ${isComplete?'checked':''}" id="card-${act.id}">
+      <div class="act-header" onclick="toggleCard(${act.id})">
+        <div class="act-left"><div class="act-num">${String(act.id).padStart(2,'0')}</div><div class="act-title-group"><div class="act-name">${act.t}</div><div class="act-meta">${act.m}${act.lc?` · <span class="code">${act.lc.u} / ${act.lc.p}</span>`:''}</div></div></div>
+        <div class="act-right">${qlHtml}<span class="act-progress-mini" style="color:${isComplete?'var(--check-fg)':'var(--fg-muted)'}">${done}/${total}</span><svg class="act-chevron" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+      <div class="act-body"><ul class="check-list">`;
+    act.items.forEach((item,ii)=>{
+      const cid=`${pref}-${ii}`, isChecked=checkedSet.has(cid);
+      let descHtml=item.d;
+      if(item.p&&!descHtml.includes('check-url-link')){
+        const urls=[];
+        if(item.mob){urls.push({l:t.openLocalH5,u:LOCAL_H5});urls.push({l:t.openOnlineH5,u:`${BASE_MOBILE}/login`})}
+        else{let rp=item.p;urls.push({l:t.openLocal,u:buildUrl(rp,'local',false)});urls.push({l:t.openOnline,u:buildUrl(rp,'online',false)})}
+        descHtml+=`<div class="url-links-row">${urls.map(u=>`<a class="check-url-link" href="${u.u}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><svg class="url-icon" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>${u.l}</a>`).join('')}</div>`;
+      }
+      let mockHtml='';
+      if(item.ms){
+        const fields=t.regMock.slice(item.ms[0],item.ms[1]).map(m=>`<div class="mock-field"><span class="mock-field-label">${m.l}</span><span class="mock-field-val">${m.v}</span><button class="copy-btn" onclick="event.stopPropagation();copyToClipboard('${m.v.replace(/'/g,"\\'")}',this)" title="${t.copied}${m.l}"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg></button></div>`).join('');
+        const allVals=t.regMock.slice(item.ms[0],item.ms[1]).map(m=>`${m.l}: ${m.v}`).join('\n');
+        mockHtml=`<div class="mock-panel"><div class="mock-panel-title"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>${t.mockTitle}</div><div class="mock-grid">${fields}</div><button class="copy-all-btn" onclick="event.stopPropagation();copyToClipboard(\`${allVals.replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`,this)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>${t.copyAll}</button></div>`;
+      }
+      html+=`<li class="check-item ${isChecked?'checked':''}" data-id="${cid}" onclick="toggleItem('${cid}',${act.id})">
+        <div class="cb-wrap"><div class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg></div></div>
+        <div class="check-content"><div class="check-step">${item.s}</div><div class="check-desc">${descHtml}</div>${mockHtml}${item.e?`<div class="check-expected">${t.expectedPrefix}${item.e}</div>`:''}</div></li>`;
+    });
+    html+=`</ul></div></div>`;
+  });
+  container.innerHTML=html;updateProgress();
+}
+
+function toggleCard(id){document.getElementById(`card-${id}`).classList.toggle('open')}
+function toggleItem(cid,actId){
+  if(checkedSet.has(cid))checkedSet.delete(cid);else checkedSet.add(cid);
+  saveState();
+  const el=document.querySelector(`[data-id="${cid}"]`);
+  if(el)el.classList.toggle('checked');
+  const act=I18N[currentLang].acts.find(a=>a.id===actId);
+  if(act){const pref=`act${actId}`,total=act.items.length,done=act.items.filter((_,i)=>checkedSet.has(`${pref}-${i}`)).length;
+    const card=document.getElementById(`card-${actId}`),miniEl=card?.querySelector('.act-progress-mini');
+    if(miniEl)miniEl.textContent=`${done}/${total}`;
+    if(done===total&&total>0){card?.classList.add('checked');if(miniEl)miniEl.style.color='var(--check-fg)'}
+    else{card?.classList.remove('checked');if(miniEl)miniEl.style.color='var(--fg-muted)'}}
+  updateProgress();
+}
+function updateProgress(){
+  let total=0,done=0;
+  I18N[currentLang].acts.forEach(act=>{total+=act.items.length;act.items.forEach((_,i)=>{if(checkedSet.has(`act${act.id}-${i}`))done++})});
+  const pct=total>0?Math.round(done/total*100):0;
+  document.getElementById('progressText').textContent=`${done} / ${total}`;
+  document.getElementById('progressFill').style.width=`${pct}%`;
+  const banner=document.getElementById('doneBanner');
+  if(done===total&&total>0)banner.classList.add('show');else banner.classList.remove('show');
+  document.title=`${I18N[currentLang].title} [${pct}%]`;
+}
+function resetAll(){if(!confirm(I18N[currentLang].confirmReset))return;checkedSet.clear();saveState();render();showToast(I18N[currentLang].resetDone)}
+function exportState(){
+  const t=I18N[currentLang];
+  let report=`# MOE SERPS POC — ${currentLang==='zh'?'验收报告':'Acceptance Report'}\n`;
+  report+=`**Date:** ${new Date().toISOString().slice(0,10)}\n**Progress:** ${document.getElementById('progressText').textContent}\n\n`;
+  let gT=0,gD=0;
+  t.acts.forEach(act=>{
+    const pref=`act${act.id}`,total=act.items.length;
+    const done=act.items.filter((_,i)=>checkedSet.has(`${pref}-${i}`)).length;
+    gT+=total;gD+=done;
+    report+=`${done===total?'✅':done>0?'🔶':'⬜'} **ACT ${String(act.id).padStart(2,'0')}: ${act.t}** — ${done}/${total}\n`;
+    act.items.forEach((item,i)=>{report+=`  ${checkedSet.has(`${pref}-${i}`)?'☑':'☐'} ${item.s} ${item.d.replace(/<[^>]+>/g,'')}\n`});report+='\n';
+  });
+  report+=`---\n**Total: ${gD}/${gT} (${Math.round(gD/gT*100)}%)\n`;
+  const blob=new Blob([report],{type:'text/markdown;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`moe-serps-checklist-${currentLang}-${new Date().toISOString().slice(0,10)}.md`;a.click();URL.revokeObjectURL(a.href);
+  showToast(t.exportDone);
+}
+
+loadState();
+renderRoleTable();
+render();
+setTimeout(()=>toggleCard(0),300);
+</script>
+</body>
+</html>

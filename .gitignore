@@ -16,5 +16,5 @@ dev-dist
 
 # Playwright / dev screenshots — store here, never commit
 screenshots/
-
+uploads/
 */人工验收/*
