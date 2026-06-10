@@ -71,3 +71,4 @@
 | 2026-06-09 20:30 | [260609-2030.md](260609-2030.md) | 修复Teaching Workload无数据(schoolFilter误用于无schoolId的TimetableSlot)、Staff Attendance计数不合计(absent改为从total推算) | ~8k |
 | 2026-06-09 21:30 | [260609-2130.md](260609-2130.md) | PC/Mobile数据一致性4项修复：同意书端点404、通知点击无导航、家长移动端无法发起新消息、消息详情缺teacherName | ~35k |
 | 2026-06-10 08:23 | [260610-0823.md](260610-0823.md) | 演示日 Playwright 全功能自测，发现并修复 3 个 Bug（路由拦截/HOD 403/i18n key 错误），创建招生文件 stub | ~60k |
+| 2026-06-10 14:00 | [260610-1400.md](260610-1400.md) | 演示日 Demo Fixes：招生账号/通知链接/跨校可见性修复，db:reset，双端推送 | ~80k |
